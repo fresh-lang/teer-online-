@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Panel - TEER ONLINE</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <script src="https://cdn.tailwindcss.com"><\/script>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#0b1315] text-slate-100 min-h-screen p-4">
   <div id="lockScreen" class="fixed inset-0 bg-[#070d0e] flex items-center justify-center p-4 z-50">
@@ -24,32 +24,37 @@
       <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-1 rounded">Live Active</span>
     </div>
 
+    <!-- Update Results -->
     <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-3">
       <h3 class="font-bold text-sm text-amber-400">Declare Live Teer Result</h3>
-      <select id="mkt" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs">
+      <select id="mkt" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white">
         <option>Shilong Morning Teer</option>
         <option>Khanapara Morning Teer</option>
         <option>Assam morning teer</option>
+        <option>Sikkim</option>
+        <option>Sikkim Night Teer</option>
         <option>Shillong Night Teer</option>
+        <option>Assam night teer</option>
       </select>
       <div class="grid grid-cols-2 gap-2">
-        <input type="text" id="fr" placeholder="FR (e.g. 45)" maxlength="2" class="bg-black/40 border border-teal-800 rounded p-2 text-center font-bold">
-        <input type="text" id="sr" placeholder="SR (e.g. 78)" maxlength="2" class="bg-black/40 border border-teal-800 rounded p-2 text-center font-bold">
+        <input type="text" id="fr" placeholder="FR (e.g. 45)" maxlength="2" class="bg-black/40 border border-teal-800 rounded p-2 text-center font-bold text-white">
+        <input type="text" id="sr" placeholder="SR (e.g. 78)" maxlength="2" class="bg-black/40 border border-teal-800 rounded p-2 text-center font-bold text-white">
       </div>
-      <button onclick="alert('Result Updated Successfully!')" class="w-full py-2 bg-emerald-600 font-bold rounded text-xs text-white">Save Result</button>
+      <button onclick="saveResult()" class="w-full py-2 bg-emerald-600 font-bold rounded text-xs text-white">Save Result to User App</button>
     </div>
 
+    <!-- Payment & Helpline Settings -->
     <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-3">
       <h3 class="font-bold text-sm text-teal-300">Helpline & Payment Settings</h3>
       <div>
         <label class="text-xs text-slate-400">Helpline / WhatsApp:</label>
-        <input type="text" value="+918134834380" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs font-mono">
+        <input type="text" id="cfgPhone" value="+918134834380" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs font-mono text-white">
       </div>
       <div>
         <label class="text-xs text-slate-400">Deposit UPI Receiver:</label>
-        <input type="text" value="8134834380@mbk" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs font-mono">
+        <input type="text" id="cfgUpi" value="8134834380@mbk" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs font-mono text-white">
       </div>
-      <button onclick="alert('Settings Saved!')" class="w-full py-2 bg-teal-800 text-amber-300 font-bold rounded text-xs">Update Settings</button>
+      <button onclick="saveSettings()" class="w-full py-2 bg-teal-800 text-amber-300 font-bold rounded text-xs">Update Settings</button>
     </div>
   </div>
 
@@ -63,6 +68,28 @@
         document.getElementById('err').classList.remove('hidden');
       }
     }
-  <\/script>
+
+    function saveResult() {
+      const market = document.getElementById('mkt').value;
+      const fr = document.getElementById('fr').value.trim() || '**';
+      const sr = document.getElementById('sr').value.trim() || '**';
+
+      let results = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      results[market] = { fr, sr };
+      localStorage.setItem('teer_market_results', JSON.stringify(results));
+
+      alert('Result successfully updated for ' + market + '!\nFR: ' + fr + ' | SR: ' + sr);
+    }
+
+    function saveSettings() {
+      const phone = document.getElementById('cfgPhone').value.trim();
+      const upi = document.getElementById('cfgUpi').value.trim();
+
+      localStorage.setItem('teer_helpline_phone', phone);
+      localStorage.setItem('teer_deposit_upi', upi);
+
+      alert('Helpline aur UPI settings User App ke liye update ho gayi hain!');
+    }
+  </script>
 </body>
 </html>
