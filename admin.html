@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - TEER ONLINE</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"><\/script>
+</head>
+<body class="bg-[#0b1315] text-slate-100 min-h-screen p-4">
+  <div id="lockScreen" class="fixed inset-0 bg-[#070d0e] flex items-center justify-center p-4 z-50">
+    <div class="bg-[#132226] border border-teal-900 p-6 rounded-2xl max-w-sm w-full text-center">
+      <h2 class="text-xl font-bold text-amber-400 mb-2">MASTER ADMIN</h2>
+      <p class="text-xs text-slate-400 mb-4">Enter Password (8822)</p>
+      <input type="password" id="passInput" placeholder="Password" class="w-full p-2.5 text-center text-lg font-mono bg-black/40 border border-teal-800 rounded-xl mb-3 text-white outline-none">
+      <button onclick="checkPass()" class="w-full py-2.5 bg-amber-500 text-teal-950 font-bold rounded-xl text-sm">Unlock Panel</button>
+      <p id="err" class="text-xs text-rose-500 font-bold mt-2 hidden">Galat Password!</p>
+    </div>
+  </div>
+
+  <div id="dash" class="max-w-2xl mx-auto space-y-4 hidden">
+    <div class="flex justify-between items-center bg-[#132226] p-4 rounded-xl border border-teal-900">
+      <h1 class="font-bold text-amber-400 text-base">TEER MASTER ADMIN PANEL</h1>
+      <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-1 rounded">Live Active</span>
+    </div>
+
+    <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-3">
+      <h3 class="font-bold text-sm text-amber-400">Declare Live Teer Result</h3>
+      <select id="mkt" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs">
+        <option>Shilong Morning Teer</option>
+        <option>Khanapara Morning Teer</option>
+        <option>Assam morning teer</option>
+        <option>Shillong Night Teer</option>
+      </select>
+      <div class="grid grid-cols-2 gap-2">
+        <input type="text" id="fr" placeholder="FR (e.g. 45)" maxlength="2" class="bg-black/40 border border-teal-800 rounded p-2 text-center font-bold">
+        <input type="text" id="sr" placeholder="SR (e.g. 78)" maxlength="2" class="bg-black/40 border border-teal-800 rounded p-2 text-center font-bold">
+      </div>
+      <button onclick="alert('Result Updated Successfully!')" class="w-full py-2 bg-emerald-600 font-bold rounded text-xs text-white">Save Result</button>
+    </div>
+
+    <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-3">
+      <h3 class="font-bold text-sm text-teal-300">Helpline & Payment Settings</h3>
+      <div>
+        <label class="text-xs text-slate-400">Helpline / WhatsApp:</label>
+        <input type="text" value="+918134834380" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs font-mono">
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Deposit UPI Receiver:</label>
+        <input type="text" value="8134834380@mbk" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs font-mono">
+      </div>
+      <button onclick="alert('Settings Saved!')" class="w-full py-2 bg-teal-800 text-amber-300 font-bold rounded text-xs">Update Settings</button>
+    </div>
+  </div>
+
+  <script>
+    function checkPass() {
+      const p = document.getElementById('passInput').value;
+      if (p === '8822') {
+        document.getElementById('lockScreen').classList.add('hidden');
+        document.getElementById('dash').classList.remove('hidden');
+      } else {
+        document.getElementById('err').classList.remove('hidden');
+      }
+    }
+  <\/script>
+</body>
+</html>

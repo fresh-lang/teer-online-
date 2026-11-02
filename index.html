@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>TEER ONLINE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel:wght@700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Poppins', sans-serif; background-color: #021a1c; color: #1e293b; user-select: none; }
+    .font-decorative { font-family: 'Caveat', cursive; }
+    .font-cinzel { font-family: 'Cinzel', serif; }
+    .gold-gradient-text { background: linear-gradient(135deg, #fce088 0%, #dfa539 50%, #996e1b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .gold-btn { background: linear-gradient(180deg, #ffd768 0%, #cf972d 100%); color: #022326; font-weight: 700; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .app-screen { display: none; }
+    .app-screen.active { display: block; }
+  </style>
+</head>
+<body class="flex justify-center bg-black min-h-screen">
+  <div id="appContainer" class="w-full max-w-[480px] min-h-screen bg-[#f3f7f8] flex flex-col relative pb-20 shadow-2xl overflow-x-hidden">
+
+    <!-- Top Header -->
+    <header class="bg-[#032427] text-white px-3.5 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-md">
+      <div class="flex items-center gap-2">
+        <button onclick="toggleDrawer()" class="p-1 text-teal-100 hover:text-white">
+          <i class="fa-solid fa-bars text-xl"></i>
+        </button>
+        <div class="flex items-center gap-1.5 cursor-pointer" onclick="switchTab('home')">
+          <div class="w-7 h-7 rounded-full border border-amber-400/40 bg-teal-950 flex items-center justify-center p-0.5">
+            <svg viewBox="0 0 100 100" class="w-full h-full fill-current text-amber-400">
+              <circle cx="50" cy="50" r="44" stroke="currentColor" stroke-width="3" fill="none" />
+              <path d="M 30,50 L 70,50 M 50,30 L 70,50 L 50,70" stroke="currentColor" stroke-width="4" fill="none"/>
+            </svg>
+          </div>
+          <div class="flex flex-col leading-none">
+            <span class="font-cinzel font-black tracking-wider text-xs gold-gradient-text">TEER</span>
+            <span class="text-[8px] font-bold tracking-widest text-teal-200">ONLINE</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <div onclick="switchTab('wallet')" class="bg-teal-900/80 border border-teal-700/60 rounded-full px-2.5 py-1 flex items-center gap-1.5 cursor-pointer shadow-inner">
+          <i class="fa-solid fa-wallet text-amber-400 text-xs"></i>
+          <span id="headerBalance" class="text-xs font-bold text-white tracking-wide">₹0.00</span>
+        </div>
+        <button onclick="refreshBalance()" class="w-7 h-7 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-teal-200 active:rotate-180 transition-transform">
+          <i class="fa-solid fa-rotate text-xs"></i>
+        </button>
+        <a href="admin.html" class="w-7 h-7 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-amber-400 text-xs">
+          <i class="fa-solid fa-lock text-[11px]"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Marquee Ticker -->
+    <div class="bg-[#02181a] border-b border-teal-900/40 py-1 px-2 flex items-center gap-2 overflow-hidden text-[11px] text-amber-300 font-semibold shadow-inner">
+      <i class="fa-solid fa-bullhorn text-amber-400 animate-pulse text-xs shrink-0"></i>
+      <marquee behavior="scroll" direction="left" scrollamount="4">
+        DIPOSIT KARO 5% BONUS LELO APKA DOST LOG KO APP LINK SEND KARO &bull; OFFICIAL HELPLINE +918134834380 &bull; LIVE SHILLONG & KHANAPARA DRAWS
+      </marquee>
+    </div>
+
+    <!-- PWA Install Banner -->
+    <div id="pwaBanner" class="bg-gradient-to-r from-amber-500 to-amber-600 text-teal-950 px-3 py-1.5 flex items-center justify-between text-xs font-bold shadow-sm">
+      <div class="flex items-center gap-1.5">
+        <i class="fa-solid fa-cloud-arrow-down text-sm"></i>
+        <span>Install Teer Online App</span>
+      </div>
+      <button onclick="alert('Browser menu (3 dots) par tap karke Add to Home Screen select karein.')" class="bg-teal-950 text-amber-300 px-2.5 py-0.5 rounded-full text-[11px]">Install</button>
+    </div>
+
+    <!-- MAIN SCREENS CONTAINER -->
+    <main class="flex-1 overflow-y-auto no-scrollbar">
+
+      <!-- SCREEN 1: HOME -->
+      <section id="screen-home" class="app-screen active">
+        <!-- Promotional Auto-Slider -->
+        <div class="p-3">
+          <div class="relative w-full aspect-[2.1/1] rounded-2xl overflow-hidden shadow-lg border border-teal-800/40 bg-teal-950">
+            <!-- Slide 1: Online Teer Deposit Bonus -->
+            <div id="slide1" class="absolute inset-0 transition-opacity duration-500 opacity-100 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#012528] via-[#05373c] to-[#011c1e]">
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="inline-block bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-bold mb-1">
+                    ⚡ 1ST DIPOSIT 100% BONUS
+                  </div>
+                  <h3 class="font-cinzel text-lg font-black text-white leading-tight">ONLINE <span class="gold-gradient-text">TEER</span></h3>
+                  <p class="text-[11px] text-teal-200 font-medium">Every Deposit Flat 5% Extra</p>
+                </div>
+                <div class="flex gap-1">
+                  <span class="w-6 h-6 rounded-full bg-amber-400 text-teal-950 font-bold flex items-center justify-center text-xs shadow-md">2</span>
+                  <span class="w-6 h-6 rounded-full bg-amber-400 text-teal-950 font-bold flex items-center justify-center text-xs shadow-md">9</span>
+                  <span class="w-6 h-6 rounded-full bg-amber-400 text-teal-950 font-bold flex items-center justify-center text-xs shadow-md">5</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between bg-teal-900/60 p-1.5 rounded-xl border border-teal-700/40 text-[10px]">
+                <div class="text-center font-bold text-teal-100">GUTI <span class="text-amber-300">10-900/-</span></div>
+                <div class="w-px h-3 bg-teal-700"></div>
+                <div class="text-center font-bold text-teal-100">HOUSE <span class="text-amber-300">10-90</span></div>
+                <div class="w-px h-3 bg-teal-700"></div>
+                <div class="text-center font-bold text-teal-100">ENDING <span class="text-amber-300">10-90</span></div>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="openDepositModal()" class="flex-1 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px] text-center shadow">
+                  DIPOSIT NOW
+                </button>
+                <button onclick="openPlayModal('Shilong Morning Teer')" class="flex-1 py-1.5 rounded-lg gold-btn text-[11px] text-center shadow">
+                  PLAY NOW &gt;
+                </button>
+              </div>
+            </div>
+
+            <!-- Slide 2: Aviator & Casino -->
+            <div id="slide2" class="absolute inset-0 transition-opacity duration-500 opacity-0 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#2b0808] via-[#4d0b16] to-[#1a0408]">
+              <div class="flex justify-between items-start">
+                <div>
+                  <span class="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold">CRASH 100x</span>
+                  <h3 class="text-xl font-black text-amber-300 italic tracking-wider">AVIATOR</h3>
+                  <p class="text-[11px] text-red-200">Play Now &bull; Instant Win</p>
+                </div>
+                <div class="text-3xl text-amber-400">
+                  <i class="fa-solid fa-plane-departure animate-bounce"></i>
+                </div>
+              </div>
+              <div class="text-[11px] text-zinc-300">3D European Roulette &bull; Multiplier live 24x7</div>
+              <button onclick="alert('Aviator games will be active soon!')" class="w-full py-1.5 bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold rounded-lg text-xs shadow">
+                PLAY CASINO &gt;
+              </button>
+            </div>
+
+            <!-- Dots -->
+            <div class="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+              <span id="dot1" class="w-2 h-1 rounded-full bg-amber-400"></span>
+              <span id="dot2" class="w-1.5 h-1 rounded-full bg-white/40"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="px-3 grid grid-cols-3 gap-2">
+          <button onclick="openDepositModal()" class="bg-[#032f33] border border-teal-700/40 rounded-xl py-2 px-1 flex items-center justify-center gap-1.5 text-white active:scale-95 shadow-sm">
+            <i class="fa-solid fa-wallet text-emerald-400 text-sm"></i>
+            <span class="text-xs font-semibold">Add Money</span>
+          </button>
+          <button onclick="openWithdrawModal()" class="bg-[#032f33] border border-teal-700/40 rounded-xl py-2 px-1 flex items-center justify-center gap-1.5 text-white active:scale-95 shadow-sm">
+            <i class="fa-solid fa-arrow-up-right-from-square text-rose-400 text-xs"></i>
+            <span class="text-xs font-semibold">Withdrawal</span>
+          </button>
+          <a href="https://wa.me/918134834380?text=Hello%20Teer%20Online%20Support" target="_blank" class="bg-[#032f33] border border-teal-700/40 rounded-xl py-2 px-1 flex items-center justify-center gap-1.5 text-white active:scale-95 shadow-sm">
+            <i class="fa-brands fa-whatsapp text-emerald-400 text-sm"></i>
+            <span class="text-xs font-semibold">WhatsApp</span>
+          </a>
+        </div>
+
+        <!-- Casino Games Quick Row -->
+        <div class="p-3">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-decorative text-lg font-bold text-teal-950 flex items-center gap-1">
+              <i class="fa-solid fa-dice text-amber-600 text-sm"></i> Casino Games
+            </h4>
+            <span class="text-[10px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full border border-red-200">● LIVE 24x7</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div onclick="alert('Opening Aviator...')" class="bg-gradient-to-r from-red-800 to-rose-900 rounded-xl p-2.5 text-white shadow-sm cursor-pointer relative overflow-hidden">
+              <span class="bg-rose-500 text-[9px] font-bold px-1.5 py-0.5 rounded">HOT</span>
+              <div class="font-black text-sm mt-1">Aviator</div>
+              <div class="text-[10px] text-rose-200">Crash • 100x</div>
+              <span class="mt-2 inline-block text-[10px] font-bold bg-white text-rose-900 px-2 py-0.5 rounded">PLAY NOW &gt;</span>
+            </div>
+            <div onclick="alert('Opening 3D Roulette...')" class="bg-gradient-to-r from-teal-800 to-emerald-900 rounded-xl p-2.5 text-white shadow-sm cursor-pointer relative overflow-hidden">
+              <span class="bg-amber-400 text-teal-950 text-[9px] font-bold px-1.5 py-0.5 rounded">3D LIVE</span>
+              <div class="font-black text-sm mt-1">3D Roulette</div>
+              <div class="text-[10px] text-teal-200">European • 500x</div>
+              <span class="mt-2 inline-block text-[10px] font-bold bg-amber-400 text-teal-950 px-2 py-0.5 rounded">PLAY NOW &gt;</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Markets Section -->
+        <div class="px-3 pb-4">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-decorative text-xl font-bold text-teal-950">Main Markets</h4>
+            <span class="text-[11px] font-semibold text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md" id="currentDateBadge">01/11/2026</span>
+          </div>
+          <div id="marketCardsContainer" class="space-y-3"></div>
+        </div>
+      </section>
+
+      <!-- SCREEN 2: WALLET -->
+      <section id="screen-wallet" class="app-screen p-3 space-y-3">
+        <div class="bg-gradient-to-br from-[#032f33] to-[#011c1e] text-white rounded-2xl p-4 shadow-md border border-teal-700/40 relative">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="font-decorative text-base text-teal-200">Available Balance</p>
+              <h2 id="walletBalanceBig" class="text-3xl font-black text-amber-300 mt-0.5">₹0.00</h2>
+              <p class="text-[11px] text-teal-300 mt-0.5">Teer Online Safe Wallet</p>
+            </div>
+            <button onclick="refreshBalance()" class="w-9 h-9 rounded-full bg-teal-800/60 border border-teal-600 flex items-center justify-center text-teal-200 active:rotate-180 transition-transform">
+              <i class="fa-solid fa-rotate"></i>
+            </button>
+          </div>
+          <div class="mt-4 pt-3 border-t border-teal-800/80 flex gap-2">
+            <button onclick="openDepositModal()" class="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 font-bold text-xs flex items-center justify-center gap-1.5 shadow">
+              <i class="fa-solid fa-plus-circle"></i> Deposit Money
+            </button>
+            <button onclick="openWithdrawModal()" class="flex-1 py-2 rounded-xl bg-teal-700 hover:bg-teal-600 font-bold text-xs flex items-center justify-center gap-1.5 shadow">
+              <i class="fa-solid fa-arrow-up"></i> Withdraw
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 divide-y divide-slate-100 text-sm">
+          <div onclick="openDepositModal()" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                <i class="fa-solid fa-plus"></i>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 leading-tight">Deposit</p>
+                <p class="text-xs text-slate-400">Add money to wallet</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+
+          <div onclick="openWithdrawModal()" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center font-bold">
+                <i class="fa-solid fa-arrow-up"></i>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 leading-tight">Withdraw</p>
+                <p class="text-xs text-slate-400">Withdraw your winnings</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+
+          <div onclick="alert('Transaction History: All wallet activities are verified.')" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 leading-tight">Transaction History</p>
+                <p class="text-xs text-slate-400">All credits & debits</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 3: MY BIDS -->
+      <section id="screen-bids" class="app-screen p-3 space-y-3">
+        <div>
+          <h3 class="font-decorative text-xl font-bold text-teal-950">Bid History</h3>
+          <p class="text-xs text-slate-500">Track your bids</p>
+        </div>
+        <div class="bg-[#032f33] text-white rounded-xl p-2 flex items-center justify-between text-xs font-semibold shadow-sm">
+          <span>01 Nov 2026</span>
+          <span class="bg-white text-teal-950 px-2 py-0.5 rounded-md text-[10px] font-bold">TODAY</span>
+        </div>
+        <div id="bidsListContainer" class="min-h-[260px] flex flex-col items-center justify-center p-6 text-center">
+          <div class="w-16 h-16 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center mb-2">
+            <span class="text-2xl">📝</span>
+          </div>
+          <h4 class="font-decorative text-lg font-bold text-slate-800">No bids yet</h4>
+          <p class="text-xs text-slate-400 mt-0.5">Place a bid on an open market to see it here.</p>
+        </div>
+      </section>
+
+      <!-- SCREEN 4: PROFILE -->
+      <section id="screen-profile" class="app-screen p-3 space-y-3">
+        <div class="bg-gradient-to-r from-[#032427] to-[#063f45] text-white p-4 rounded-2xl flex items-center gap-3.5 shadow-md">
+          <div id="profileAvatar" class="w-14 h-14 rounded-full bg-teal-800 border-2 border-amber-400 flex items-center justify-center text-xl font-black text-amber-300">
+            ?
+          </div>
+          <div class="flex-1">
+            <h3 id="profileName" class="font-bold text-base text-white">Guest User</h3>
+            <p id="profilePhone" class="text-xs text-teal-200">+91 Not Registered</p>
+          </div>
+          <button onclick="openAuthModal()" class="text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg shadow">
+            Login
+          </button>
+        </div>
+
+        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-3.5 text-slate-800">
+          <div class="flex items-center gap-2 text-amber-800 font-bold text-sm mb-1">
+            <i class="fa-solid fa-gift text-base"></i> Refer &amp; Earn ₹50 Bonus
+          </div>
+          <p class="text-xs text-slate-600">Apne doston ko invite karein aur har deposit par 5% commission paayein.</p>
+          <div class="mt-3 flex gap-2">
+            <a href="https://wa.me/?text=TEER%20ONLINE%20App%20khelein%20aur%20100%25%20Bonus%20paayein!" target="_blank" class="flex-1 bg-emerald-600 text-white font-bold py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
+              <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Share
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 5: SUPPORT -->
+      <section id="screen-support" class="app-screen p-3 space-y-3">
+        <div class="bg-[#032427] text-white p-3 rounded-2xl flex items-center justify-between shadow-sm">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-full bg-teal-800 flex items-center justify-center text-teal-200">
+              <i class="fa-solid fa-headphones"></i>
+            </div>
+            <div>
+              <p class="font-bold text-sm leading-tight">Live Chat Support</p>
+              <p class="text-[11px] text-emerald-300">Online &bull; 24x7 helpline</p>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <a href="https://wa.me/918134834380?text=Hello%20Teer%20Online%20Support" target="_blank" class="flex-1 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold py-1.5 rounded-full text-center text-xs flex items-center justify-center gap-1">
+            <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Support
+          </a>
+          <a href="tel:+918134834380" class="flex-1 bg-teal-50 border border-teal-200 text-teal-800 font-bold py-1.5 rounded-full text-center text-xs flex items-center justify-center gap-1">
+            <i class="fa-solid fa-phone text-xs"></i> Call Support
+          </a>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER NAVIGATION -->
+    <nav class="bg-white border-t border-slate-200 px-2 py-1.5 flex justify-around items-center fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-30 shadow-lg">
+      <button onclick="switchTab('home')" class="nav-btn active flex flex-col items-center text-teal-900" data-tab="home">
+        <i class="fa-solid fa-house text-base"></i>
+        <span class="text-[10px] font-bold mt-0.5">Home</span>
+      </button>
+      <button onclick="switchTab('wallet')" class="nav-btn flex flex-col items-center text-slate-400" data-tab="wallet">
+        <i class="fa-solid fa-wallet text-base"></i>
+        <span class="text-[10px] font-bold mt-0.5">Wallet</span>
+      </button>
+      <button onclick="switchTab('bids')" class="nav-btn flex flex-col items-center text-slate-400" data-tab="bids">
+        <i class="fa-solid fa-clock-rotate-left text-base"></i>
+        <span class="text-[10px] font-bold mt-0.5">My Bids</span>
+      </button>
+      <button onclick="switchTab('profile')" class="nav-btn flex flex-col items-center text-slate-400" data-tab="profile">
+        <i class="fa-solid fa-user text-base"></i>
+        <span class="text-[10px] font-bold mt-0.5">Profile</span>
+      </button>
+      <button onclick="switchTab('support')" class="nav-btn flex flex-col items-center text-slate-400" data-tab="support">
+        <i class="fa-solid fa-comment-dots text-base"></i>
+        <span class="text-[10px] font-bold mt-0.5">Support</span>
+      </button>
+    </nav>
+
+    <!-- MODAL: PLAY GAME (FULL 00-99 GRID) -->
+    <div id="playGameModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-end justify-center">
+      <div class="bg-white w-full max-w-[480px] rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl">
+        <div class="bg-[#032427] text-white p-3.5 rounded-t-3xl flex items-center justify-between">
+          <div>
+            <h3 id="playMarketTitle" class="font-bold text-base text-amber-300">Shilong Morning Teer</h3>
+            <p class="text-xs text-teal-200">Select Bet Type &amp; Numbers</p>
+          </div>
+          <button onclick="closePlayModal()" class="w-8 h-8 rounded-full bg-teal-900 text-teal-200 hover:text-white flex items-center justify-center">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="p-3.5 overflow-y-auto flex-1 space-y-3 text-xs">
+          <div class="flex gap-2 bg-slate-100 p-1 rounded-xl">
+            <button id="btnRoundFR" onclick="selectRound('FR')" class="flex-1 py-1.5 rounded-lg font-bold text-xs bg-[#032427] text-white shadow">
+              First Round (FR)
+            </button>
+            <button id="btnRoundSR" onclick="selectRound('SR')" class="flex-1 py-1.5 rounded-lg font-bold text-xs text-slate-600">
+              Second Round (SR)
+            </button>
+          </div>
+
+          <div class="flex gap-1.5">
+            <button onclick="selectBetMode('direct')" id="modeBtnDirect" class="flex-1 py-1.5 bg-amber-400 text-teal-950 font-bold rounded-lg border border-amber-500">Direct Guti (1:90)</button>
+            <button onclick="selectBetMode('house')" id="modeBtnHouse" class="flex-1 py-1.5 bg-slate-100 text-slate-700 font-bold rounded-lg border">House (1:9)</button>
+            <button onclick="selectBetMode('ending')" id="modeBtnEnding" class="flex-1 py-1.5 bg-slate-100 text-slate-700 font-bold rounded-lg border">Ending (1:9)</button>
+          </div>
+
+          <!-- Direct Guti Grid 00-99 -->
+          <div id="directGutiSection" class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-slate-700">Choose Numbers (00 - 99):</span>
+              <button onclick="randomLuckyPick()" class="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md font-bold">🎲 Lucky Pick</button>
+            </div>
+            <div id="gutiGrid" class="grid grid-cols-10 gap-1 max-h-[160px] overflow-y-auto p-1 bg-slate-50 border rounded-xl"></div>
+          </div>
+
+          <!-- Digit 0-9 for House/Ending -->
+          <div id="digitSection" class="hidden space-y-2">
+            <span class="font-bold text-slate-700">Choose Digit (0 - 9):</span>
+            <div class="grid grid-cols-5 gap-2">
+              <button onclick="selectSingleDigit(0)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold">0</button>
+              <button onclick="selectSingleDigit(1)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold">1</button>
+              <button onclick="selectSingleDigit(2)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold">2</button>
+              <button onclick="selectSingleDigit(3)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold">3</button>
+              <button onclick="selectSingleDigit(4)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold">4</button>
+              <button onclick="selectSingleDigit(5)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold">5</button>
+              <button onclick="selectSingleDigit(6)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold">6</button>
+              <button onclick="selectSingleDigit(7)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold">7</button>
+              <button onclick="selectSingleDigit(8)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold">8</button>
+              <button onclick="selectSingleDigit(9)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold">9</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">Amount per number (₹):</label>
+            <input type="number" id="betAmountInput" value="20" min="10" step="10" oninput="calculatePayout()" class="w-full border rounded-xl px-3 py-2 font-bold text-base outline-none">
+          </div>
+
+          <div class="bg-teal-50 border border-teal-200 rounded-xl p-2.5 flex justify-between items-center text-xs">
+            <div>
+              <p class="text-slate-500">Total Bet Cost:</p>
+              <p id="totalBetCost" class="text-sm font-bold text-teal-900">₹0.00</p>
+            </div>
+            <div class="text-right">
+              <p class="text-slate-500">Potential Return:</p>
+              <p id="potentialWin" class="text-sm font-black text-amber-600">₹0.00</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 border-t flex gap-2">
+          <button onclick="closePlayModal()" class="flex-1 py-2.5 rounded-xl border font-bold text-slate-600 text-xs">Cancel</button>
+          <button onclick="confirmPlaceBet()" class="flex-1 py-2.5 rounded-xl gold-btn font-bold text-xs shadow-md">Confirm Bid</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: DEPOSIT -->
+    <div id="depositModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-end justify-center">
+      <div class="bg-white w-full max-w-[480px] rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl p-4 overflow-y-auto space-y-3">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="font-bold text-base text-teal-950">Add Money to Wallet</h3>
+          <button onclick="closeDepositModal()" class="text-slate-400 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="bg-slate-50 border rounded-2xl p-3 text-center">
+          <p class="text-xs font-bold text-teal-900 mb-1">SCAN QR TO PAY USING ANY UPI APP</p>
+          <div class="w-40 h-40 mx-auto bg-white p-2 rounded-xl border flex items-center justify-center">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=8134834380@mbk%26pn=TeerOnline" class="w-full h-full">
+          </div>
+          <p class="text-xs font-mono font-bold mt-2">8134834380@mbk</p>
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-700 block mb-1">Enter 12-Digit UTR / Ref Number:</label>
+          <input type="text" id="depositUtrInput" placeholder="e.g. 430198234823" maxlength="12" class="w-full border rounded-xl p-2 text-sm font-mono outline-none">
+        </div>
+        <button onclick="submitDepositForm()" class="w-full py-2.5 bg-teal-950 text-amber-300 font-bold rounded-xl text-xs">Submit (+5% Bonus)</button>
+        <a href="https://wa.me/918134834380" target="_blank" class="w-full py-2.5 bg-emerald-600 text-white font-bold rounded-xl text-xs text-center block">Send Slip on WhatsApp</a>
+      </div>
+    </div>
+
+    <!-- MODAL: AUTHENTICATION -->
+    <div id="authModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl text-slate-800 space-y-3">
+        <h3 class="text-center font-bold text-lg text-teal-950">TEER ONLINE LOGIN</h3>
+        <p class="text-center text-xs text-slate-500">1 Number Se Sirf 1 ID Banegi</p>
+        <form onsubmit="handleRegisterSubmit(event)" class="space-y-2.5">
+          <input type="text" id="regName" placeholder="Full Name" required class="w-full border rounded-xl p-2 text-sm">
+          <input type="tel" id="regPhone" placeholder="10-digit Mobile" maxlength="10" required class="w-full border rounded-xl p-2 text-sm">
+          <input type="password" id="regPass" placeholder="Password" minlength="4" required class="w-full border rounded-xl p-2 text-sm">
+          <button type="submit" class="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs shadow">Register &amp; Get ₹100 Bonus</button>
+        </form>
+        <button onclick="closeAuthModal()" class="w-full py-1 text-slate-400 text-xs">Skip for now</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const state = {
+      user: null,
+      balance: 100.00,
+      selectedNumbers: [],
+      betMode: 'direct',
+      currentRound: 'FR',
+      currentMarket: 'Shilong Morning Teer',
+      markets: [
+        { id: 'shillong-m', name: 'Shilong Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', frRes: '**', srRes: '**' },
+        { id: 'khanapara-m', name: 'Khanapara Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', frRes: '**', srRes: '**' },
+        { id: 'assam-m', name: 'Assam morning teer', frTime: '11:30 AM', srTime: '12:30 PM', frRes: '**', srRes: '**' },
+        { id: 'sikkim', name: 'Sikkim', frTime: '12:15 PM', srTime: '01:40 PM', frRes: '**', srRes: '**' },
+        { id: 'sikkim-n', name: 'Sikkim Night Teer', frTime: '06:50 PM', srTime: '07:50 PM', frRes: '**', srRes: '**' },
+        { id: 'shillong-n', name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM', frRes: '**', srRes: '**' },
+        { id: 'assam-n', name: 'Assam night teer', frTime: '09:40 PM', srTime: '10:40 PM', frRes: '**', srRes: '**' }
+      ]
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderMarkets();
+      renderGutiGrid();
+      startBannerAutoSlider();
+      updateUI();
+    });
+
+    function updateUI() {
+      const b = '₹' + state.balance.toFixed(2);
+      document.getElementById('headerBalance').innerText = b;
+      document.getElementById('walletBalanceBig').innerText = b;
+    }
+
+    function switchTab(t) {
+      document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'));
+      const sc = document.getElementById('screen-' + t);
+      if (sc) sc.classList.add('active');
+    }
+
+    function renderMarkets() {
+      const cont = document.getElementById('marketCardsContainer');
+      cont.innerHTML = '';
+      state.markets.forEach(m => {
+        const d = document.createElement('div');
+        d.className = "bg-white rounded-2xl p-3 border shadow-sm space-y-2";
+        d.innerHTML = `
+          <div class="flex justify-between text-xs font-bold">
+            <span>${m.name}</span>
+            <span class="text-slate-400">01/11/2026</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 bg-[#f4f9f9] p-2 rounded-xl text-center">
+            <div class="border-r"><p class="text-[11px] font-bold text-teal-900">FR (${m.frTime})</p><p class="text-xl font-bold">${m.frRes}</p></div>
+            <div><p class="text-[11px] font-bold text-teal-900">SR (${m.srTime})</p><p class="text-xl font-bold">${m.srRes}</p></div>
+          </div>
+          <button onclick="openPlayModal('${m.name}')" class="w-full py-1.5 gold-btn rounded-lg text-xs font-bold">Play Game &gt;</button>
+        `;
+        cont.appendChild(d);
+      });
+    }
+
+    function renderGutiGrid() {
+      const g = document.getElementById('gutiGrid');
+      g.innerHTML = '';
+      for (let i = 0; i <= 99; i++) {
+        const v = i < 10 ? '0' + i : '' + i;
+        const b = document.createElement('button');
+        b.innerText = v;
+        b.id = 'guti-btn-' + v;
+        b.className = "py-1 bg-white border rounded text-[10px] font-bold";
+        b.onclick = () => {
+          const idx = state.selectedNumbers.indexOf(v);
+          if (idx > -1) state.selectedNumbers.splice(idx, 1);
+          else state.selectedNumbers.push(v);
+          calculatePayout();
+        };
+        g.appendChild(b);
+      }
+    }
+
+    function calculatePayout() {
+      const amt = parseFloat(document.getElementById('betAmountInput').value) || 0;
+      const count = state.selectedNumbers.length;
+      document.getElementById('totalBetCost').innerText = '₹' + (amt * count).toFixed(2);
+      document.getElementById('potentialWin').innerText = '₹' + (amt * 90).toFixed(2);
+    }
+
+    function randomLuckyPick() {
+      const r = Math.floor(Math.random() * 100);
+      const v = r < 10 ? '0' + r : '' + r;
+      if (!state.selectedNumbers.includes(v)) state.selectedNumbers.push(v);
+      calculatePayout();
+    }
+
+    function selectRound(r) { state.currentRound = r; }
+    function selectBetMode(m) {
+      state.betMode = m;
+      document.getElementById('directGutiSection').classList.toggle('hidden', m !== 'direct');
+      document.getElementById('digitSection').classList.toggle('hidden', m === 'direct');
+    }
+    function selectSingleDigit(d) { state.selectedNumbers = ['' + d]; calculatePayout(); }
+
+    function openPlayModal(m) {
+      state.currentMarket = m;
+      document.getElementById('playMarketTitle').innerText = m;
+      document.getElementById('playGameModal').classList.remove('hidden');
+    }
+    function closePlayModal() { document.getElementById('playGameModal').classList.add('hidden'); }
+    function openDepositModal() { document.getElementById('depositModal').classList.remove('hidden'); }
+    function closeDepositModal() { document.getElementById('depositModal').classList.add('hidden'); }
+    function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
+    function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
+
+    function confirmPlaceBet() {
+      const amt = parseFloat(document.getElementById('betAmountInput').value) || 0;
+      const cost = amt * state.selectedNumbers.length;
+      if (state.balance < cost) { alert('Low balance! Please deposit.'); return; }
+      state.balance -= cost;
+      updateUI();
+      closePlayModal();
+      alert('Bid placed successfully!');
+    }
+
+    function submitDepositForm() {
+      const utr = document.getElementById('depositUtrInput').value;
+      if (utr.length < 6) { alert('Valid UTR daalein!'); return; }
+      state.balance += 525.00;
+      updateUI();
+      closeDepositModal();
+      alert('₹500 + ₹25 (5% Bonus) credited!');
+    }
+
+    function handleRegisterSubmit(e) {
+      e.preventDefault();
+      const phone = document.getElementById('regPhone').value;
+      const name = document.getElementById('regName').value;
+      state.user = { name, phone };
+      state.balance += 100.00;
+      updateUI();
+      closeAuthModal();
+      alert('Registration successful! ₹100 Welcome Bonus added.');
+    }
+
+    function startBannerAutoSlider() {
+      let f = true;
+      setInterval(() => {
+        f = !f;
+        document.getElementById('slide1').style.opacity = f ? '1' : '0';
+        document.getElementById('slide2').style.opacity = f ? '0' : '1';
+      }, 4000);
+    }
+
+    function refreshBalance() { alert('Balance refreshed: ₹' + state.balance.toFixed(2)); }
+    function toggleDrawer() { alert('Menu Drawer: Settings, Game Rates, Notifications active.'); }
+  <\/script>
+</body>
+</html>
