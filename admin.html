@@ -3,101 +3,308 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel - TEER ONLINE</title>
+  <title>Master Admin Panel - TEER ONLINE</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- FIREBASE SDK FOR INSTANT BROADCAST -->
+  <!-- FIREBASE SDK FOR INSTANT TWO-WAY SYNC -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
-<body class="bg-[#0b1315] text-slate-100 min-h-screen p-4">
-  <div id="lockScreen" class="fixed inset-0 bg-[#070d0e] flex items-center justify-center p-4 z-50">
-    <div class="bg-[#132226] border border-teal-900 p-6 rounded-2xl max-w-sm w-full text-center">
-      <h2 class="text-xl font-bold text-amber-400 mb-2">MASTER ADMIN</h2>
-      <p class="text-xs text-slate-400 mb-4">Enter Password (8822)</p>
-      <input type="password" id="passInput" placeholder="Password" class="w-full p-2.5 text-center text-lg font-mono bg-black/40 border border-teal-800 rounded-xl mb-3 text-white outline-none">
-      <button onclick="checkPass()" class="w-full py-2.5 bg-amber-500 text-teal-950 font-bold rounded-xl text-sm">Unlock Panel</button>
-      <p id="err" class="text-xs text-rose-500 font-bold mt-2 hidden">Galat Password!</p>
+<body class="bg-[#081012] text-slate-100 min-h-screen p-3 md:p-6 font-sans">
+
+  <!-- LOCK SCREEN (PASSWORD 8822) -->
+  <div id="lockScreen" class="fixed inset-0 bg-[#050a0b] flex items-center justify-center p-4 z-50">
+    <div class="bg-[#0f1d21] border border-teal-900 p-6 rounded-3xl max-w-sm w-full text-center shadow-2xl space-y-4">
+      <div class="w-16 h-16 rounded-full bg-amber-400/10 border-2 border-amber-400/40 mx-auto flex items-center justify-center text-amber-400 text-2xl">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <div>
+        <h2 class="text-xl font-black text-amber-400 tracking-wide">MASTER ADMIN</h2>
+        <p class="text-xs text-slate-400 mt-1">Authorized Access Only</p>
+      </div>
+      <input type="password" id="passInput" placeholder="••••••••" class="w-full p-3 text-center text-xl font-mono bg-black/50 border border-teal-800 rounded-2xl text-white outline-none focus:border-amber-400">
+      <button onclick="checkPass()" class="w-full py-3 bg-amber-400 hover:bg-amber-500 text-teal-950 font-black rounded-2xl text-sm transition shadow-lg">Unlock Panel</button>
+      <p id="err" class="text-xs text-rose-500 font-bold hidden">Galat Password! Kripya sahi password enter karein.</p>
     </div>
   </div>
 
-  <div id="dash" class="max-w-2xl mx-auto space-y-4 hidden">
-    <div class="flex justify-between items-center bg-[#132226] p-4 rounded-xl border border-teal-900">
+  <!-- MAIN ADMIN DASHBOARD -->
+  <div id="dash" class="max-w-4xl mx-auto space-y-4 hidden pb-12">
+    <!-- Top Header -->
+    <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 flex flex-wrap justify-between items-center gap-3 shadow-md">
       <div>
-        <h1 class="font-bold text-amber-400 text-base">TEER MASTER ADMIN PANEL</h1>
-        <p class="text-[10px] text-emerald-400 font-bold">● Firebase Realtime Sync Connected</p>
+        <h1 class="font-black text-amber-400 text-lg flex items-center gap-2">
+          <i class="fa-solid fa-bullseye"></i> TEER MASTER ADMIN
+        </h1>
+        <p class="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5 mt-0.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Firebase Realtime Cloud Connected
+        </p>
       </div>
-      <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-1 rounded">Live Active</span>
+      <div class="flex items-center gap-2">
+        <button onclick="location.reload()" class="px-3 py-1.5 bg-teal-900/50 hover:bg-teal-800 text-teal-200 text-xs font-bold rounded-xl border border-teal-700/50">
+          <i class="fa-solid fa-rotate"></i> Refresh
+        </button>
+        <a href="index.html" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-teal-950 text-xs font-bold rounded-xl shadow">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> Open User App
+        </a>
+      </div>
     </div>
 
-    <!-- Live Result Publisher with Firebase Push -->
-    <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-3">
-      <h3 class="font-bold text-sm text-amber-400">Declare Live Result (Auto-Wins Credit &amp; User Alerts)</h3>
-      <label class="text-xs text-slate-400 block mb-1">Select Market:</label>
-      <select id="mkt" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white font-semibold">
-        <optgroup label="Morning Draws">
-          <option value="Shilong Morning Teer">Shilong Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
-          <option value="Khanapara Morning Teer">Khanapara Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
-          <option value="Assam morning teer">Assam morning teer (FR 11:30 AM | SR 12:30 PM)</option>
-          <option value="Sikkim">Sikkim (FR 12:15 PM | SR 01:40 PM)</option>
-        </optgroup>
-        <optgroup label="Official Evening Draws">
-          <option value="Juwai Teer (Evening)">Juwai Teer Evening (FR 02:00 PM | SR 02:45 PM)</option>
-          <option value="Shillong Teer (Evening)">Shillong Teer Evening (FR 03:45 PM | SR 04:45 PM)</option>
-          <option value="Khanapara Teer (Evening)">Khanapara Teer Evening (FR 04:00 PM | SR 04:40 PM)</option>
-          <option value="Assam teer">Assam teer Evening (FR 05:10 PM | SR 06:10 PM)</option>
-        </optgroup>
-        <optgroup label="Night Draws">
-          <option value="Sikkim Night Teer">Sikkim Night Teer (FR 06:50 PM | SR 07:50 PM)</option>
-          <option value="Shillong Night Teer">Shillong Night Teer (FR 08:10 PM | SR 09:10 PM)</option>
-          <option value="Assam night teer">Assam night teer (FR 09:40 PM | SR 10:40 PM)</option>
-        </optgroup>
-      </select>
-      <div class="grid grid-cols-2 gap-2">
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">FR Result:</label>
-          <input type="text" id="fr" placeholder="e.g. 76" maxlength="2" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-center font-bold text-white text-lg">
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">SR Result:</label>
-          <input type="text" id="sr" placeholder="e.g. 15" maxlength="2" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-center font-bold text-white text-lg">
-        </div>
+    <!-- Quick Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+      <div class="bg-[#0f1d21] border border-teal-900/50 p-3 rounded-2xl">
+        <p class="text-[11px] text-slate-400 font-medium">Total Registered Users</p>
+        <p id="statTotalUsers" class="text-2xl font-black text-white mt-1">0</p>
       </div>
-      <button onclick="saveResultAndBroadcast()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 font-bold rounded-lg text-xs text-white shadow">
-        Save &amp; Broadcast to Firebase (Instant Auto-Sync)
+      <div class="bg-[#0f1d21] border border-teal-900/50 p-3 rounded-2xl">
+        <p class="text-[11px] text-amber-400 font-medium">Pending Deposits (UTR)</p>
+        <p id="statPendingDeposits" class="text-2xl font-black text-amber-400 mt-1">0</p>
+      </div>
+      <div class="bg-[#0f1d21] border border-teal-900/50 p-3 rounded-2xl">
+        <p class="text-[11px] text-rose-400 font-medium">Pending Withdrawals</p>
+        <p id="statPendingWithdrawals" class="text-2xl font-black text-rose-400 mt-1">0</p>
+      </div>
+      <div class="bg-[#0f1d21] border border-teal-900/50 p-3 rounded-2xl">
+        <p class="text-[11px] text-emerald-400 font-medium">Total User Balance</p>
+        <p id="statTotalWallet" class="text-2xl font-black text-emerald-400 mt-1">₹0</p>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex gap-1.5 bg-[#0a1518] p-1.5 rounded-2xl border border-teal-900/60 overflow-x-auto text-xs font-bold">
+      <button onclick="switchTab('results')" id="tabBtn_results" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl bg-amber-400 text-teal-950 transition whitespace-nowrap">
+        <i class="fa-solid fa-award mr-1"></i> Declare Results
+      </button>
+      <button onclick="switchTab('users')" id="tabBtn_users" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
+        <i class="fa-solid fa-users mr-1"></i> All Users (<span id="tabCountUsers">0</span>)
+      </button>
+      <button onclick="switchTab('deposits')" id="tabBtn_deposits" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
+        <i class="fa-solid fa-receipt mr-1"></i> UTR Deposits (<span id="tabCountDeposits" class="text-amber-400">0</span>)
+      </button>
+      <button onclick="switchTab('withdrawals')" id="tabBtn_withdrawals" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
+        <i class="fa-solid fa-money-bill-transfer mr-1"></i> Withdrawals (<span id="tabCountWithdrawals" class="text-rose-400">0</span>)
+      </button>
+      <button onclick="switchTab('settings')" id="tabBtn_settings" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
+        <i class="fa-solid fa-gear mr-1"></i> Settings
       </button>
     </div>
 
-    <!-- Agent & Refer Secret Commission Ledger -->
-    <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-2">
-      <h3 class="font-bold text-sm text-amber-300">Agent &amp; Referral Secret Earnings</h3>
-      <p class="text-[11px] text-slate-400">Rule: Display shows ₹100 deposit / ₹100 bet. Actual credited: <b>₹5 per ₹1000 deposit</b> aur <b>₹50 per ₹1000 bet</b>.</p>
-      <div id="agentEarningsList" class="bg-black/30 p-2.5 rounded-lg text-xs font-mono text-emerald-400">
-        No referral transactions yet.
+    <!-- TAB 1: DECLARE RESULTS -->
+    <div id="tabContent_results" class="tab-pane space-y-4">
+      <div class="bg-[#0f1d21] p-4 md:p-5 rounded-2xl border border-teal-900/60 space-y-3.5 shadow-md">
+        <div class="border-b border-teal-900/40 pb-2 flex justify-between items-center">
+          <div>
+            <h3 class="font-bold text-sm text-amber-400">Declare Live Market Result</h3>
+            <p class="text-[11px] text-slate-400">Result declare hote hi sabhi users ke wallet me auto winning credit ho jayegi.</p>
+          </div>
+          <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">Auto Winning 1:90</span>
+        </div>
+        <div>
+          <label class="text-xs text-slate-300 font-bold block mb-1">Select Market:</label>
+          <select id="mkt" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white font-semibold outline-none focus:border-amber-400">
+            <optgroup label="Morning Draws">
+              <option value="Shilong Morning Teer">Shilong Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
+              <option value="Khanapara Morning Teer">Khanapara Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
+              <option value="Assam morning teer">Assam morning teer (FR 11:30 AM | SR 12:30 PM)</option>
+              <option value="Sikkim">Sikkim (FR 12:15 PM | SR 01:40 PM)</option>
+            </optgroup>
+            <optgroup label="Official Evening Draws">
+              <option value="Juwai Teer (Evening)">Juwai Teer Evening (FR 02:00 PM | SR 02:45 PM)</option>
+              <option value="Shillong Teer (Evening)" selected>Shillong Teer Evening (FR 03:45 PM | SR 04:45 PM)</option>
+              <option value="Khanapara Teer (Evening)">Khanapara Teer Evening (FR 04:00 PM | SR 04:40 PM)</option>
+              <option value="Assam teer">Assam teer Evening (FR 05:10 PM | SR 06:10 PM)</option>
+            </optgroup>
+            <optgroup label="Night Draws">
+              <option value="Sikkim Night Teer">Sikkim Night Teer (FR 06:50 PM | SR 07:50 PM)</option>
+              <option value="Shillong Night Teer">Shillong Night Teer (FR 08:10 PM | SR 09:10 PM)</option>
+              <option value="Assam night teer">Assam night teer (FR 09:40 PM | SR 10:40 PM)</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-amber-300 font-bold block mb-1">FR Result (First Round):</label>
+            <input type="text" id="fr" placeholder="e.g. 76" maxlength="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-3 text-center font-black text-white text-2xl outline-none focus:border-amber-400">
+          </div>
+          <div>
+            <label class="text-xs text-amber-300 font-bold block mb-1">SR Result (Second Round):</label>
+            <input type="text" id="sr" placeholder="e.g. 15" maxlength="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-3 text-center font-black text-white text-2xl outline-none focus:border-amber-400">
+          </div>
+        </div>
+        <button onclick="saveResultAndBroadcast()" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-xs text-white shadow-lg transition">
+          <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> Save &amp; Broadcast to Firebase (Instant Cloud Sync)
+        </button>
+      </div>
+
+      <!-- Broadcast Custom Notification -->
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-2.5">
+        <h3 class="font-bold text-sm text-amber-300">Broadcast Notification to All Users</h3>
+        <input type="text" id="eventTitle" placeholder="Notification Title (e.g. Special Draw Today!)" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">
+        <textarea id="eventMsg" placeholder="Message details..." rows="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none"></textarea>
+        <button onclick="sendEventNotification()" class="w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-teal-950 font-bold rounded-xl text-xs shadow">Broadcast to All Users</button>
       </div>
     </div>
 
-    <!-- Broadcast Event Notice -->
-    <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-2">
-      <h3 class="font-bold text-sm text-amber-300">Broadcast Event Notice / Tournament Alert</h3>
-      <input type="text" id="eventTitle" placeholder="Event Title" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white">
-      <textarea id="eventMsg" placeholder="Notification message..." rows="2" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white"></textarea>
-      <button onclick="sendEventNotification()" class="w-full py-2 bg-amber-500 hover:bg-amber-600 text-teal-950 font-bold rounded-lg text-xs">Send Event Notification</button>
+    <!-- TAB 2: ALL REGISTERED USERS -->
+    <div id="tabContent_users" class="tab-pane space-y-3 hidden">
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3 shadow-md">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-teal-900/40 pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-white flex items-center gap-2">
+              <i class="fa-solid fa-users text-amber-400"></i> All Registered Users
+            </h3>
+            <p class="text-[11px] text-slate-400">Har user ka profile khol kar wallet balance edit aur check kar sakte hain.</p>
+          </div>
+          <input type="text" id="userSearchInput" oninput="filterUsersList()" placeholder="Search Name or Mobile..." class="bg-black/50 border border-teal-800 text-xs px-3 py-1.5 rounded-xl text-white outline-none">
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-teal-950/60 text-slate-400 uppercase text-[10px]">
+              <tr>
+                <th class="p-2.5">User Details</th>
+                <th class="p-2.5">Mobile Number</th>
+                <th class="p-2.5">Wallet Balance</th>
+                <th class="p-2.5">Referred By</th>
+                <th class="p-2.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody" class="divide-y divide-teal-900/30 font-medium">
+              <tr>
+                <td colspan="5" class="p-4 text-center text-slate-500">Loading users from Firebase...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
-    <!-- Helpline & Payment Settings -->
-    <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-3">
-      <h3 class="font-bold text-sm text-teal-300">Helpline &amp; Payment Settings</h3>
-      <div>
-        <label class="text-xs text-slate-400">Helpline / WhatsApp:</label>
-        <input type="text" id="cfgPhone" value="+918134834380" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs font-mono text-white">
+    <!-- TAB 3: DEPOSITS & UTR VERIFICATION -->
+    <div id="tabContent_deposits" class="tab-pane space-y-3 hidden">
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3 shadow-md">
+        <div class="border-b border-teal-900/40 pb-2 flex justify-between items-center">
+          <div>
+            <h3 class="font-bold text-sm text-amber-400 flex items-center gap-2">
+              <i class="fa-solid fa-receipt"></i> Deposit Requests &amp; UTR Auto-Verification
+            </h3>
+            <p class="text-[11px] text-slate-400">User dwara bheja gaya 12-digit UTR verify karke 1-click me wallet credit karein.</p>
+          </div>
+          <span class="text-[10px] bg-amber-400/20 text-amber-300 font-bold px-2 py-0.5 rounded-full">5% Deposit Bonus Included</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-teal-950/60 text-slate-400 uppercase text-[10px]">
+              <tr>
+                <th class="p-2.5">Date &amp; Time</th>
+                <th class="p-2.5">User</th>
+                <th class="p-2.5">Amount</th>
+                <th class="p-2.5">12-Digit UTR Code</th>
+                <th class="p-2.5">Status</th>
+                <th class="p-2.5 text-right">Verification Action</th>
+              </tr>
+            </thead>
+            <tbody id="depositsTableBody" class="divide-y divide-teal-900/30">
+              <tr>
+                <td colspan="6" class="p-4 text-center text-slate-500">No pending deposits.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <div>
-        <label class="text-xs text-slate-400">Deposit UPI Receiver:</label>
-        <input type="text" id="cfgUpi" value="8134834380@mbk" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs font-mono text-white">
+    </div>
+
+    <!-- TAB 4: WITHDRAWALS VERIFICATION -->
+    <div id="tabContent_withdrawals" class="tab-pane space-y-3 hidden">
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3 shadow-md">
+        <div class="border-b border-teal-900/40 pb-2 flex justify-between items-center">
+          <div>
+            <h3 class="font-bold text-sm text-rose-400 flex items-center gap-2">
+              <i class="fa-solid fa-money-bill-transfer"></i> Withdrawal Requests &amp; Payouts
+            </h3>
+            <p class="text-[11px] text-slate-400">User ko UPI se pay karne ke baad "Mark as Paid" karein ya Reject karein.</p>
+          </div>
+          <span class="text-[10px] bg-rose-500/20 text-rose-300 font-bold px-2 py-0.5 rounded-full">Min ₹200</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-teal-950/60 text-slate-400 uppercase text-[10px]">
+              <tr>
+                <th class="p-2.5">Date &amp; Time</th>
+                <th class="p-2.5">User</th>
+                <th class="p-2.5">Amount</th>
+                <th class="p-2.5">User UPI ID</th>
+                <th class="p-2.5">Status</th>
+                <th class="p-2.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="withdrawalsTableBody" class="divide-y divide-teal-900/30">
+              <tr>
+                <td colspan="6" class="p-4 text-center text-slate-500">No withdrawal requests yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <button onclick="saveSettings()" class="w-full py-2 bg-teal-800 text-amber-300 font-bold rounded text-xs">Update Settings</button>
+    </div>
+
+    <!-- TAB 5: SETTINGS & AGENTS -->
+    <div id="tabContent_settings" class="tab-pane space-y-3 hidden">
+      <!-- Agent Ledger -->
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-2">
+        <h3 class="font-bold text-sm text-amber-300">Agent &amp; Referral Secret Commission Ledger</h3>
+        <p class="text-[11px] text-slate-400">Display: ₹100/₹1000. Actual credited in Firebase: <b>₹5 per ₹1000 deposit</b> aur <b>₹50 per ₹1000 bet</b>.</p>
+        <div id="agentEarningsList" class="bg-black/40 p-3 rounded-xl text-xs font-mono text-emerald-400 max-h-40 overflow-y-auto">
+          No referral transactions recorded yet.
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3">
+        <h3 class="font-bold text-sm text-teal-300">Helpline &amp; Payment Settings</h3>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Helpline / WhatsApp Number:</label>
+          <input type="text" id="cfgPhone" value="+918134834380" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs font-mono text-white outline-none">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Deposit UPI Receiver ID:</label>
+          <input type="text" id="cfgUpi" value="8134834380@mbk" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs font-mono text-white outline-none">
+        </div>
+        <button onclick="saveSettings()" class="w-full py-2.5 bg-teal-800 hover:bg-teal-700 text-amber-300 font-bold rounded-xl text-xs transition">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: VIEW USER PROFILE & EDIT WALLET -->
+  <div id="userModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-[#0f1d21] border border-teal-800 rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-teal-900/60 pb-2">
+        <h3 class="font-bold text-sm text-amber-400 flex items-center gap-2">
+          <i class="fa-solid fa-user-gear"></i> User Profile &amp; Wallet
+        </h3>
+        <button onclick="closeUserModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="bg-black/40 p-3 rounded-2xl space-y-2 text-xs">
+        <div class="flex justify-between"><span class="text-slate-400">Name:</span> <span id="mUserName" class="font-bold text-white">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Mobile:</span> <span id="mUserPhone" class="font-mono text-amber-300 font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Current Balance:</span> <span id="mUserBalance" class="font-black text-emerald-400 text-sm">₹0.00</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Referred By:</span> <span id="mUserReferredBy" class="text-slate-300">Direct</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Registered Date:</span> <span id="mUserCreatedAt" class="text-slate-400">--</span></div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-amber-300 block">Adjust Wallet Balance (+/-):</label>
+        <div class="flex gap-2">
+          <input type="number" id="adjustAmtInput" placeholder="Amount (e.g. 100)" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button onclick="adjustUserBalance('add')" class="py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow">
+            <i class="fa-solid fa-plus mr-1"></i> Add Balance
+          </button>
+          <button onclick="adjustUserBalance('deduct')" class="py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow">
+            <i class="fa-solid fa-minus mr-1"></i> Deduct Balance
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -114,25 +321,326 @@
       console.log("Firebase fallback active:", err.message);
     }
 
+    let allUsersCache = {};
+    let allDepositsCache = {};
+    let allWithdrawalsCache = {};
+    let activeModalUserPhone = null;
+
     function checkPass() {
       const p = document.getElementById('passInput').value;
       if (p === '8822') {
         document.getElementById('lockScreen').classList.add('hidden');
         document.getElementById('dash').classList.remove('hidden');
-        renderAgentEarnings();
+        initAdminDataSync();
       } else {
         document.getElementById('err').classList.remove('hidden');
       }
     }
 
-    function renderAgentEarnings() {
-      const earnings = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.admin-tab-btn').forEach(el => {
+        el.className = "admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap";
+      });
+
+      const pane = document.getElementById('tabContent_' + tabId);
+      const btn = document.getElementById('tabBtn_' + tabId);
+      if (pane) pane.classList.remove('hidden');
+      if (btn) btn.className = "admin-tab-btn flex-1 py-2 px-3 rounded-xl bg-amber-400 text-teal-950 font-bold transition whitespace-nowrap";
+    }
+
+    // INITIALIZE REALTIME SYNC FOR USERS, DEPOSITS, WITHDRAWALS
+    function initAdminDataSync() {
+      if (!fbDatabase) return;
+
+      // 1. Sync All Users
+      fbDatabase.ref('users').on('value', (snap) => {
+        allUsersCache = snap.val() || {};
+        renderUsersList();
+      });
+
+      // 2. Sync Deposits
+      fbDatabase.ref('deposits').on('value', (snap) => {
+        allDepositsCache = snap.val() || {};
+        renderDepositsList();
+      });
+
+      // 3. Sync Withdrawals
+      fbDatabase.ref('withdrawals').on('value', (snap) => {
+        allWithdrawalsCache = snap.val() || {};
+        renderWithdrawalsList();
+      });
+
+      // 4. Sync Agent earnings
+      fbDatabase.ref('agent_earnings').on('value', (snap) => {
+        renderAgentEarnings(snap.val() || {});
+      });
+    }
+
+    // RENDER USERS
+    function renderUsersList() {
+      const tbody = document.getElementById('usersTableBody');
+      const phones = Object.keys(allUsersCache);
+      document.getElementById('statTotalUsers').innerText = phones.length;
+      document.getElementById('tabCountUsers').innerText = phones.length;
+
+      let totalWalletSum = 0;
+      phones.forEach(p => {
+        totalWalletSum += parseFloat(allUsersCache[p].balance || 0);
+      });
+      document.getElementById('statTotalWallet').innerText = '₹' + totalWalletSum.toFixed(0);
+
+      if (phones.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">Abhi tak koi user register nahi hua hai.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = phones.map(p => {
+        const u = allUsersCache[p];
+        const bal = parseFloat(u.balance || 0).toFixed(2);
+        return `
+          <tr class="hover:bg-teal-950/30 transition">
+            <td class="p-2.5">
+              <div class="font-bold text-white">${u.name || 'User'}</div>
+              <div class="text-[10px] text-slate-400">Reg: ${u.createdAt || 'Recent'}</div>
+            </td>
+            <td class="p-2.5 font-mono text-amber-300 font-semibold">+91 ${u.phone}</td>
+            <td class="p-2.5 font-black text-emerald-400">₹${bal}</td>
+            <td class="p-2.5 text-slate-400">${u.referredBy ? u.referredBy : 'Direct'}</td>
+            <td class="p-2.5 text-right">
+              <button onclick="openUserModal('${u.phone}')" class="px-2.5 py-1 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 rounded-lg text-xs font-bold transition">
+                <i class="fa-solid fa-eye mr-1"></i> View / Edit
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterUsersList() {
+      const query = document.getElementById('userSearchInput').value.toLowerCase();
+      const rows = document.querySelectorAll('#usersTableBody tr');
+      rows.forEach(r => {
+        const text = r.innerText.toLowerCase();
+        r.style.display = text.includes(query) ? '' : 'none';
+      });
+    }
+
+    function openUserModal(phone) {
+      const u = allUsersCache[phone];
+      if (!u) return;
+      activeModalUserPhone = phone;
+      document.getElementById('mUserName').innerText = u.name || 'User';
+      document.getElementById('mUserPhone').innerText = '+91 ' + u.phone;
+      document.getElementById('mUserBalance').innerText = '₹' + parseFloat(u.balance || 0).toFixed(2);
+      document.getElementById('mUserReferredBy').innerText = u.referredBy || 'Direct Registration';
+      document.getElementById('mUserCreatedAt').innerText = u.createdAt || 'Recent';
+      document.getElementById('adjustAmtInput').value = '';
+      document.getElementById('userModal').classList.remove('hidden');
+    }
+
+    function closeUserModal() {
+      document.getElementById('userModal').classList.add('hidden');
+      activeModalUserPhone = null;
+    }
+
+    function adjustUserBalance(type) {
+      if (!activeModalUserPhone) return;
+      const amt = parseFloat(document.getElementById('adjustAmtInput').value);
+      if (!amt || amt <= 0) { alert('Valid amount enter karein!'); return; }
+
+      const u = allUsersCache[activeModalUserPhone];
+      let currentBal = parseFloat(u.balance || 0);
+
+      if (type === 'deduct' && currentBal < amt) {
+        alert('User ke paas itna balance nahi hai!');
+        return;
+      }
+
+      const newBal = type === 'add' ? (currentBal + amt) : (currentBal - amt);
+
+      if (fbDatabase) {
+        fbDatabase.ref('users/' + activeModalUserPhone + '/balance').set(newBal).then(() => {
+          alert(`Balance updated! Naya balance: ₹${newBal.toFixed(2)}`);
+          document.getElementById('mUserBalance').innerText = '₹' + newBal.toFixed(2);
+        });
+      }
+    }
+
+    // RENDER DEPOSITS WITH UTR VERIFICATION
+    function renderDepositsList() {
+      const tbody = document.getElementById('depositsTableBody');
+      const depIds = Object.keys(allDepositsCache).reverse();
+      const pendingList = depIds.filter(id => allDepositsCache[id].status === 'pending');
+      
+      document.getElementById('statPendingDeposits').innerText = pendingList.length;
+      document.getElementById('tabCountDeposits').innerText = pendingList.length;
+
+      if (depIds.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Abhi tak koi deposit request nahi aayi hai.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = depIds.map(id => {
+        const d = allDepositsCache[id];
+        const isPending = d.status === 'pending';
+        const isApproved = d.status === 'approved';
+        const utrValid = d.utr && d.utr.length >= 10;
+
+        return `
+          <tr class="hover:bg-teal-950/30 transition">
+            <td class="p-2.5 text-[11px] text-slate-400">${d.date || ''} ${d.time || ''}</td>
+            <td class="p-2.5">
+              <div class="font-bold text-white">${d.name || 'User'}</div>
+              <div class="text-[10px] text-amber-300 font-mono">${d.phone}</div>
+            </td>
+            <td class="p-2.5 font-black text-amber-300 text-sm">₹${d.amount}</td>
+            <td class="p-2.5">
+              <div class="font-mono text-xs font-bold text-teal-200 bg-black/40 px-2 py-1 rounded-lg border border-teal-800/50 inline-block">
+                ${d.utr}
+              </div>
+              <div class="text-[9px] ${utrValid ? 'text-emerald-400' : 'text-rose-400'} mt-0.5">
+                ${utrValid ? '● UTR Format Valid' : '⚠️ Short UTR'}
+              </div>
+            </td>
+            <td class="p-2.5">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : (isPending ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-rose-500/20 text-rose-300')}">
+                ${d.status.toUpperCase()}
+              </span>
+            </td>
+            <td class="p-2.5 text-right space-x-1">
+              ${isPending ? `
+                <button onclick="approveDeposit('${id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow">
+                  <i class="fa-solid fa-check mr-1"></i> Verify &amp; Credit
+                </button>
+                <button onclick="rejectDeposit('${id}')" class="px-2 py-1 bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white font-bold rounded-lg text-xs">
+                  Reject
+                </button>
+              ` : `
+                <span class="text-xs text-slate-500 italic">Completed</span>
+              `}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function approveDeposit(depositId) {
+      const d = allDepositsCache[depositId];
+      if (!d) return;
+
+      const amt = parseFloat(d.amount);
+      const bonus = amt * 0.05; // 5% deposit bonus
+      const totalCredit = amt + bonus;
+
+      if (!confirm(`Deposit Verify Karein?\nUser: ${d.name} (${d.phone})\nAmount: ₹${amt} + ₹${bonus.toFixed(2)} (5% Bonus) = ₹${totalCredit.toFixed(2)}\n\nUser wallet me turant credit ho jayega!`)) return;
+
+      // 1. Update deposit status in Firebase
+      fbDatabase.ref('deposits/' + depositId + '/status').set('approved');
+
+      // 2. Add balance to user in Firebase
+      fbDatabase.ref('users/' + d.phone + '/balance').transaction((curr) => {
+        return (curr || 0) + totalCredit;
+      });
+
+      // 3. Trigger Agent Commission if user was referred
+      if (allUsersCache[d.phone] && allUsersCache[d.phone].referredBy) {
+        const refPhone = allUsersCache[d.phone].referredBy;
+        const realRefBonus = (amt / 1000) * 5; // ₹5 per 1000
+        fbDatabase.ref('agent_earnings/' + refPhone).transaction((curr) => (curr || 0) + realRefBonus);
+      }
+
+      alert(`✅ Deposit Approved! ₹${totalCredit.toFixed(2)} user ke wallet me instant credit ho gaya.`);
+    }
+
+    function rejectDeposit(depositId) {
+      if (!confirm('Kya aap is deposit request ko reject karna chahte hain?')) return;
+      fbDatabase.ref('deposits/' + depositId + '/status').set('rejected');
+      alert('Deposit rejected.');
+    }
+
+    // RENDER WITHDRAWALS
+    function renderWithdrawalsList() {
+      const tbody = document.getElementById('withdrawalsTableBody');
+      const wIds = Object.keys(allWithdrawalsCache).reverse();
+      const pendingList = wIds.filter(id => allWithdrawalsCache[id].status === 'pending');
+
+      document.getElementById('statPendingWithdrawals').innerText = pendingList.length;
+      document.getElementById('tabCountWithdrawals').innerText = pendingList.length;
+
+      if (wIds.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Abhi tak koi withdrawal request nahi aayi hai.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = wIds.map(id => {
+        const w = allWithdrawalsCache[id];
+        const isPending = w.status === 'pending';
+        const isApproved = w.status === 'approved';
+
+        return `
+          <tr class="hover:bg-teal-950/30 transition">
+            <td class="p-2.5 text-[11px] text-slate-400">${w.date || ''} ${w.time || ''}</td>
+            <td class="p-2.5">
+              <div class="font-bold text-white">${w.name || 'User'}</div>
+              <div class="text-[10px] text-amber-300 font-mono">${w.phone}</div>
+            </td>
+            <td class="p-2.5 font-black text-rose-400 text-sm">₹${w.amount}</td>
+            <td class="p-2.5 font-mono text-xs font-bold text-amber-300">
+              ${w.upi}
+              <button onclick="navigator.clipboard.writeText('${w.upi}'); alert('UPI ID Copied: ${w.upi}');" class="ml-1 text-[10px] bg-teal-900/40 px-1.5 py-0.5 rounded text-teal-300 hover:text-white">Copy</button>
+            </td>
+            <td class="p-2.5">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : (isPending ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-slate-500/20 text-slate-300')}">
+                ${w.status.toUpperCase()}
+              </span>
+            </td>
+            <td class="p-2.5 text-right space-x-1">
+              ${isPending ? `
+                <button onclick="approveWithdrawal('${id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow">
+                  <i class="fa-solid fa-check mr-1"></i> Mark Paid
+                </button>
+                <button onclick="rejectWithdrawal('${id}')" class="px-2 py-1 bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white font-bold rounded-lg text-xs">
+                  Refund
+                </button>
+              ` : `
+                <span class="text-xs text-slate-500 italic">Completed</span>
+              `}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function approveWithdrawal(wId) {
+      if (!confirm('Kya aapne user ko unke UPI par payout bhej diya hai? Is request ko Paid mark karein?')) return;
+      fbDatabase.ref('withdrawals/' + wId + '/status').set('approved');
+      alert('Withdrawal marked as Paid / Approved!');
+    }
+
+    function rejectWithdrawal(wId) {
+      const w = allWithdrawalsCache[wId];
+      if (!w) return;
+      if (!confirm(`Withdrawal Reject karke ₹${w.amount} user ke wallet me refund karein?`)) return;
+
+      // 1. Mark status rejected
+      fbDatabase.ref('withdrawals/' + wId + '/status').set('rejected');
+
+      // 2. Refund balance
+      fbDatabase.ref('users/' + w.phone + '/balance').transaction((curr) => {
+        return (curr || 0) + parseFloat(w.amount);
+      });
+
+      alert(`Withdrawal rejected aur ₹${w.amount} user ke wallet me wapas refund kar diye gaye hain.`);
+    }
+
+    function renderAgentEarnings(earnings) {
       const box = document.getElementById('agentEarningsList');
       const keys = Object.keys(earnings);
       if (keys.length === 0) {
         box.innerText = 'No referral transactions recorded yet.';
       } else {
-        box.innerHTML = keys.map(k => `<div>Agent ID: <b>${k}</b> &bull; Real Earned: <b>₹${earnings[k].toFixed(2)}</b></div>`).join('');
+        box.innerHTML = keys.map(k => `<div>Agent ID: <b>${k}</b> &bull; Real Earned: <b>₹${parseFloat(earnings[k] || 0).toFixed(2)}</b></div>`).join('');
       }
     }
 
@@ -145,46 +653,29 @@
       results[market] = { fr, sr };
       localStorage.setItem('teer_market_results', JSON.stringify(results));
 
-      // 1. PUSH DIRECTLY TO FIREBASE (ALL USER APPS AUTO UPDATE INSTANTLY!)
       if (fbDatabase) {
         fbDatabase.ref('results/' + market).set({ fr, sr });
       }
 
-      // 2. Local notification
-      let notifs = JSON.parse(localStorage.getItem('teer_notifications') || '[]');
-      notifs.unshift({
-        id: Date.now(),
-        type: 'result',
-        title: `${market} Result Out!`,
-        message: `Official Result declared! FR: [${fr}] | SR: [${sr}]. Winning bonus wallet me auto-credit ho gaya hai!`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        unread: true
-      });
-      localStorage.setItem('teer_notifications', JSON.stringify(notifs));
-
-      alert(`Result saved & pushed to Firebase for ${market}!
-FR: ${fr} | SR: ${sr}
-Sabhi users ki screen par bina refresh ke update ho gaya!`);
+      alert(`Result saved & broadcasted for ${market}!\nFR: ${fr} | SR: ${sr}\nSabhi users ke screens aur auto-winning sync ho gayi.`);
     }
 
     function sendEventNotification() {
-      const title = document.getElementById('eventTitle').value.trim() || 'Special Event Notice';
+      const title = document.getElementById('eventTitle').value.trim() || 'Notice';
       const msg = document.getElementById('eventMsg').value.trim();
       if (!msg) { alert('Notification message likhein!'); return; }
 
-      let notifs = JSON.parse(localStorage.getItem('teer_notifications') || '[]');
-      notifs.unshift({
-        id: Date.now(),
-        type: 'event',
-        title: title,
-        message: msg,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        unread: true
-      });
-      localStorage.setItem('teer_notifications', JSON.stringify(notifs));
+      if (fbDatabase) {
+        fbDatabase.ref('broadcast_notifications').push({
+          title,
+          message: msg,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: Date.now()
+        });
+      }
 
       document.getElementById('eventMsg').value = '';
-      alert('Event Notification sabhi users ke phone par broadcast ho gaya hai!');
+      alert('Event Notification broadcasted to all online users!');
     }
 
     function saveSettings() {
@@ -194,7 +685,11 @@ Sabhi users ki screen par bina refresh ke update ho gaya!`);
       localStorage.setItem('teer_helpline_phone', phone);
       localStorage.setItem('teer_deposit_upi', upi);
 
-      alert('Settings updated successfully!');
+      if (fbDatabase) {
+        fbDatabase.ref('settings').set({ helpline: phone, depositUpi: upi });
+      }
+
+      alert('Settings saved successfully!');
     }
   </script>
 </body>
