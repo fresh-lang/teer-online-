@@ -595,48 +595,109 @@
     </div>
 
     <!-- MODAL: DEPOSIT -->
-    <div id="depositModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-end justify-center">
+        <!-- MODAL: DEPOSIT (100% ENGLISH, SCREENSHOT UPLOAD, NO WHATSAPP) -->
+    <div id="depositModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-end justify-center">
       <div class="bg-white w-full max-w-[480px] rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl p-4 overflow-y-auto space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
-          <h3 class="font-bold text-base text-teal-950">Add Money to Wallet</h3>
-          <button onclick="closeDepositModal()" class="text-slate-400 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
-        </div>
-        <div class="bg-slate-50 border rounded-2xl p-3 text-center">
-          <p class="text-xs font-bold text-teal-900 mb-1">SCAN QR TO PAY USING ANY UPI APP</p>
-          <div class="w-40 h-40 mx-auto bg-white p-2 rounded-xl border flex items-center justify-center">
-            <img id="depositQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=8134834380@mbk%26pn=TeerOnline" class="w-full h-full">
+          <div>
+            <h3 class="font-bold text-base text-teal-950 flex items-center gap-1.5">
+              <i class="fa-solid fa-qrcode text-teal-700"></i> Add Money to Wallet
+            </h3>
+            <p class="text-[10px] text-slate-500">Scan QR &bull; Pay with any UPI &bull; Credited in 1-10 mins</p>
           </div>
-          <p id="depositUpiText" class="text-xs font-mono font-bold mt-2">8134834380@mbk</p>
+          <button onclick="closeDepositModal()" class="text-slate-400 p-1 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
         </div>
-        <div>
-          <label class="text-xs font-bold text-slate-700 block mb-1">Enter Deposit Amount (₹):</label>
-          <input type="number" id="depositAmountInput" value="500" min="100" class="w-full border rounded-xl p-2 text-sm font-bold outline-none">
+
+        <!-- QR Display Card -->
+        <div class="bg-gradient-to-b from-teal-50 to-emerald-50 border border-teal-200/80 rounded-2xl p-3 text-center shadow-sm">
+          <p class="text-[11px] font-black text-teal-950 uppercase tracking-wide">Scan QR Code to Pay via Any UPI App</p>
+          <p class="text-[10px] text-teal-700 mt-0.5">Google Pay &bull; PhonePe &bull; Paytm &bull; BHIM UPI</p>
+          
+          <div class="w-44 h-44 mx-auto bg-white p-2.5 rounded-2xl border-2 border-teal-600/30 shadow-md my-2 flex items-center justify-center">
+            <img id="depositQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=8134834380@mbk%26pn=TeerOnline" class="w-full h-full rounded-lg">
+          </div>
+
+          <div class="inline-flex items-center gap-1.5 bg-white px-3 py-1 rounded-full border border-teal-300 shadow-sm">
+            <span class="text-[10px] text-slate-500 font-bold">UPI ID:</span>
+            <span id="depositUpiText" class="text-xs font-mono font-bold text-teal-950">8134834380@mbk</span>
+            <button type="button" onclick="navigator.clipboard.writeText('8134834380@mbk'); alert('UPI ID Copied: 8134834380@mbk');" class="text-[10px] bg-teal-800 text-amber-300 font-bold px-2 py-0.5 rounded-full ml-1">Copy</button>
+          </div>
+
+          <div class="mt-2 bg-emerald-100/70 border border-emerald-300 rounded-xl p-1.5 text-[10px] text-emerald-900 font-semibold flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-bolt text-amber-500 animate-pulse"></i>
+            <span>Instant Credit: Wallet updated within <b>1 to 10 minutes</b> after verification!</span>
+          </div>
         </div>
-        <div>
-          <label class="text-xs font-bold text-slate-700 block mb-1">Enter 12-Digit UTR / Ref Number:</label>
-          <input type="text" id="depositUtrInput" placeholder="e.g. 430198234823" maxlength="12" class="w-full border rounded-xl p-2 text-sm font-mono outline-none">
+
+        <!-- Deposit Form Fields -->
+        <div class="space-y-2.5 text-xs">
+          <div>
+            <label class="text-xs font-bold text-slate-700 flex justify-between items-center mb-1">
+              <span>Deposit Amount (₹):</span>
+              <span class="text-emerald-600 font-bold text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">+5% Extra Bonus Added</span>
+            </label>
+            <input type="number" id="depositAmountInput" value="500" min="100" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-teal-950 outline-none focus:border-teal-700">
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-700 block mb-1">Enter 12-Digit UTR / Transaction Ref Number:</label>
+            <input type="text" id="depositUtrInput" placeholder="e.g. 430198234823" maxlength="12" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-mono tracking-wider font-bold text-teal-950 outline-none focus:border-teal-700">
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-700 block mb-1">Upload Payment Screenshot:</label>
+            <div class="border-2 border-dashed border-teal-300 bg-teal-50/50 rounded-2xl p-3 text-center cursor-pointer hover:bg-teal-50 transition relative">
+              <input type="file" id="depositScreenshotInput" accept="image/*" onchange="handleScreenshotPreview(event)" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10">
+              <div id="screenshotPreviewBox" class="flex flex-col items-center justify-center pointer-events-none">
+                <i class="fa-solid fa-cloud-arrow-up text-teal-700 text-xl mb-1"></i>
+                <p class="font-bold text-teal-950 text-xs" id="screenshotFileName">Tap to choose payment receipt screenshot</p>
+                <p class="text-[10px] text-slate-400">PNG, JPG or JPEG allowed (Direct to Admin)</p>
+              </div>
+              <img id="screenshotImgPreview" class="hidden max-h-32 mx-auto rounded-lg shadow border border-teal-200 mt-1 pointer-events-none">
+            </div>
+          </div>
         </div>
-        <button onclick="submitDepositForm()" class="w-full py-2.5 bg-teal-950 text-amber-300 font-bold rounded-xl text-xs">Submit Request (+5% Bonus)</button>
-        <a href="https://wa.me/918134834380" target="_blank" class="w-full py-2.5 bg-emerald-600 text-white font-bold rounded-xl text-xs text-center block">Send Slip on WhatsApp</a>
+
+        <!-- Submit Button (Direct to Admin Panel, WhatsApp removed) -->
+        <button onclick="submitDepositForm()" class="w-full py-3 bg-gradient-to-r from-teal-950 to-[#043338] text-amber-300 hover:text-white font-bold rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-circle-check"></i> Submit Deposit Request (+5% Bonus)
+        </button>
       </div>
     </div>
 
     <!-- MODAL: WITHDRAW -->
-    <div id="withdrawModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-end justify-center">
+        <!-- MODAL: WITHDRAW (ENGLISH, FAST 1-10 MIN PAYOUT) -->
+    <div id="withdrawModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-end justify-center">
       <div class="bg-white w-full max-w-[480px] rounded-t-3xl p-4 shadow-2xl space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
-          <h3 class="font-bold text-base text-teal-950">Withdraw Funds</h3>
-          <button onclick="closeWithdrawModal()" class="text-slate-400 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+          <div>
+            <h3 class="font-bold text-base text-teal-950 flex items-center gap-1.5">
+              <i class="fa-solid fa-money-bill-transfer text-teal-700"></i> Withdraw Funds
+            </h3>
+            <p class="text-[10px] text-slate-500">Fast UPI Transfer &bull; Processed in 1-10 minutes</p>
+          </div>
+          <button onclick="closeWithdrawModal()" class="text-slate-400 p-1 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
         </div>
-        <div>
-          <label class="text-xs font-bold text-slate-700 block mb-1">Amount (Min ₹200):</label>
-          <input type="number" id="withdrawAmountInput" placeholder="Enter amount" min="200" class="w-full border rounded-xl p-2 text-sm font-bold outline-none">
+
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-2.5 text-xs text-amber-900 flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-amber-600 text-sm"></i>
+          <span><b>1 to 10 Minutes Payout:</b> Withdrawals are directly transferred to your UPI ID without delay.</span>
         </div>
-        <div>
-          <label class="text-xs font-bold text-slate-700 block mb-1">UPI ID:</label>
-          <input type="text" id="withdrawUpiInput" placeholder="e.g. yourname@upi" class="w-full border rounded-xl p-2 text-sm font-mono outline-none">
+
+        <div class="space-y-2.5 text-xs">
+          <div>
+            <label class="text-xs font-bold text-slate-700 block mb-1">Enter Withdrawal Amount (Min ₹200):</label>
+            <input type="number" id="withdrawAmountInput" placeholder="Minimum ₹200" min="200" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-teal-950 outline-none focus:border-teal-700">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-700 block mb-1">Enter Your UPI ID:</label>
+            <input type="text" id="withdrawUpiInput" placeholder="e.g. mobile@paytm / name@upi" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-mono font-bold text-teal-950 outline-none focus:border-teal-700">
+          </div>
         </div>
-        <button onclick="submitWithdrawForm()" class="w-full py-2.5 bg-teal-950 text-amber-300 font-bold rounded-xl text-xs">Submit Withdrawal</button>
+
+        <button onclick="submitWithdrawForm()" class="w-full py-3 bg-gradient-to-r from-teal-950 to-[#043338] text-amber-300 hover:text-white font-bold rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> Submit Withdrawal Request
+        </button>
       </div>
     </div>
 
@@ -1717,16 +1778,63 @@
       });
     }
 
+        
+    // SCREENSHOT UPLOAD & COMPRESSION HANDLER
+    let currentDepositScreenshotBase64 = null;
+
+    function handleScreenshotPreview(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const fileNameLabel = document.getElementById('screenshotFileName');
+      if (fileNameLabel) fileNameLabel.innerText = file.name;
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          // Compress image using canvas so it fits smoothly in Firebase Realtime Database
+          const canvas = document.createElement('canvas');
+          const maxDim = 600;
+          let width = img.width;
+          let height = img.height;
+          if (width > height && width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Get compressed Base64
+          currentDepositScreenshotBase64 = canvas.toDataURL('image/jpeg', 0.65);
+          
+          const previewImg = document.getElementById('screenshotImgPreview');
+          if (previewImg) {
+            previewImg.src = currentDepositScreenshotBase64;
+            previewImg.classList.remove('hidden');
+          }
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
     function submitDepositForm() {
       if (!state.user) {
-        alert('Kripya pehle Login ya Register karein!');
+        alert('Please login or register to deposit money!');
         closeDepositModal();
         openAuthModal();
         return;
       }
       const utr = document.getElementById('depositUtrInput').value.trim();
-      const amt = parseFloat(document.getElementById('depositAmountInput').value) || 500;
-      if (utr.length < 10) { alert('Kripya valid 12-digit UPI / UTR Reference number daalein!'); return; }
+      const amt = parseFloat(document.getElementById('depositAmountInput').value) || 0;
+      if (amt < 100) { alert('Minimum deposit amount is ₹100.'); return; }
+      if (utr.length < 10) { alert('Please enter a valid 12-digit UPI / UTR Transaction Reference number!'); return; }
 
       const depId = 'dep_' + Date.now();
       const now = new Date();
@@ -1735,7 +1843,9 @@
         phone: state.user.phone,
         name: state.user.name,
         amount: amt,
+        bonus: amt * 0.05,
         utr: utr,
+        screenshot: currentDepositScreenshotBase64 || null,
         status: 'pending',
         date: now.toLocaleDateString(),
         time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -1746,28 +1856,46 @@
         fbDatabase.ref('deposits/' + depId).set(depRecord);
       }
 
+      recordTransaction({
+        id: depId,
+        type: 'deposit',
+        title: `Deposit Request (UTR: ${utr})`,
+        amount: amt,
+        isCredit: true,
+        status: 'Pending'
+      });
+
       addAppNotification({
         type: 'deposit',
         title: 'Deposit Request Submitted',
-        message: `₹${amt} deposit request (UTR: ${utr}) submit ho gayi hai. Admin UTR verification ke baad wallet me +5% bonus ke sath add karega.`
+        message: `₹${amt} deposit request (UTR: ${utr}) submitted. Admin will verify screenshot & UTR within 1 to 10 minutes.`
       });
 
+      // Reset form
+      document.getElementById('depositUtrInput').value = '';
+      currentDepositScreenshotBase64 = null;
+      const previewImg = document.getElementById('screenshotImgPreview');
+      if (previewImg) previewImg.classList.add('hidden');
+      const fileNameLabel = document.getElementById('screenshotFileName');
+      if (fileNameLabel) fileNameLabel.innerText = 'Tap to choose payment receipt screenshot';
+
       closeDepositModal();
-      alert(`Payment Slip Submitted!\nAmount: ₹${amt}\nUTR: ${utr}\n\nAdmin verification ke baad wallet me ₹${(amt * 1.05).toFixed(2)} (+5% Bonus) add ho jayenge.`);
+      alert(`Deposit Request Submitted!\nAmount: ₹${amt}\nUTR: ${utr}\n\nAdmin will verify your payment screenshot and UTR code. Balance (+5% Bonus) will be credited to your wallet within 1 to 10 minutes!`);
+    }\nUTR: ${utr}\n\nAdmin verification ke baad wallet me ₹${(amt * 1.05).toFixed(2)} (+5% Bonus) add ho jayenge.`);
     }
 
-    function submitWithdrawForm() {
+        function submitWithdrawForm() {
       if (!state.user) {
-        alert('Kripya pehle Login ya Register karein!');
+        alert('Please login or register to withdraw funds!');
         closeWithdrawModal();
         openAuthModal();
         return;
       }
       const amt = parseFloat(document.getElementById('withdrawAmountInput').value) || 0;
       const upi = document.getElementById('withdrawUpiInput').value.trim();
-      if (amt < 200) { alert('Minimum withdrawal ₹200 hai.'); return; }
-      if (state.balance < amt) { alert('Insufficient balance in wallet!'); return; }
-      if (!upi || !upi.includes('@')) { alert('Kripya valid UPI ID enter karein (e.g. 9876543210@paytm).'); return; }
+      if (amt < 200) { alert('Minimum withdrawal amount is ₹200.'); return; }
+      if (state.balance < amt) { alert('Insufficient wallet balance!'); return; }
+      if (!upi || !upi.includes('@')) { alert('Please enter a valid UPI ID (e.g. mobile@paytm or name@upi).'); return; }
 
       state.balance -= amt;
       localStorage.setItem('teer_balance', state.balance.toFixed(2));
@@ -1795,15 +1923,25 @@
         fbDatabase.ref('withdrawals/' + wthId).set(wthRecord);
       }
 
+      recordTransaction({
+        id: wthId,
+        type: 'withdraw',
+        title: `Withdrawal Request (UPI: ${upi})`,
+        amount: amt,
+        isCredit: false,
+        status: 'Processing'
+      });
+
       addAppNotification({
         type: 'withdraw',
         title: 'Withdrawal Submitted',
-        message: `₹${amt} withdrawal request (UPI: ${upi}) processing me hai. Admin jald hi approve karke payout bhejega.`
+        message: `₹${amt} withdrawal request (UPI: ${upi}) is being processed. Payout will be sent directly to your UPI ID within 1 to 10 minutes.`
       });
 
       updateUI();
       closeWithdrawModal();
-      alert(`Withdrawal request submitted!\n₹${amt} aapke UPI (${upi}) par bhej diye jayenge. Admin panel par verification chalu hai.`);
+      alert(`Withdrawal Request Submitted!\nAmount: ₹${amt}\nUPI ID: ${upi}\n\nYour payout will be credited directly to your UPI ID within 1 to 10 minutes!`);
+    } aapke UPI (${upi}) par bhej diye jayenge. Admin panel par verification chalu hai.`);
     }
 
     function switchAuthTab(type) {

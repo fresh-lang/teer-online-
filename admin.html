@@ -199,13 +199,14 @@
                 <th class="p-2.5">User</th>
                 <th class="p-2.5">Amount</th>
                 <th class="p-2.5">12-Digit UTR Code</th>
+                <th class="p-2.5">Receipt Screenshot</th>
                 <th class="p-2.5">Status</th>
                 <th class="p-2.5 text-right">Verification Action</th>
               </tr>
             </thead>
             <tbody id="depositsTableBody" class="divide-y divide-teal-900/30">
               <tr>
-                <td colspan="6" class="p-4 text-center text-slate-500">No pending deposits.</td>
+                <td colspan="7" class="p-4 text-center text-slate-500">No pending deposits.</td>
               </tr>
             </tbody>
           </table>
@@ -239,7 +240,7 @@
             </thead>
             <tbody id="withdrawalsTableBody" class="divide-y divide-teal-900/30">
               <tr>
-                <td colspan="6" class="p-4 text-center text-slate-500">No withdrawal requests yet.</td>
+                <td colspan="7" class="p-4 text-center text-slate-500">No withdrawal requests yet.</td>
               </tr>
             </tbody>
           </table>
@@ -468,6 +469,20 @@
     }
 
     // RENDER DEPOSITS WITH UTR VERIFICATION
+    
+    function viewFullReceipt(depId) {
+      const d = allDepositsCache[depId];
+      if (!d || !d.screenshot) return;
+      document.getElementById('receiptUserMeta').innerText = `User: ${d.name} (${d.phone}) | Amount: ₹${d.amount} | UTR: ${d.utr}`;
+      document.getElementById('fullReceiptImg').src = d.screenshot;
+      document.getElementById('receiptViewerModal').classList.remove('hidden');
+    }
+
+    function closeReceiptViewer() {
+      document.getElementById('receiptViewerModal').classList.add('hidden');
+      document.getElementById('fullReceiptImg').src = '';
+    }
+
     function renderDepositsList() {
       const tbody = document.getElementById('depositsTableBody');
       const depIds = Object.keys(allDepositsCache).reverse();
@@ -477,7 +492,7 @@
       document.getElementById('tabCountDeposits').innerText = pendingList.length;
 
       if (depIds.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Abhi tak koi deposit request nahi aayi hai.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">Abhi tak koi deposit request nahi aayi hai.</td></tr>`;
         return;
       }
 
@@ -486,13 +501,14 @@
         const isPending = d.status === 'pending';
         const isApproved = d.status === 'approved';
         const utrValid = d.utr && d.utr.length >= 10;
+        const hasSlip = d.screenshot && d.screenshot.startsWith('data:image');
 
         return `
           <tr class="hover:bg-teal-950/30 transition">
             <td class="p-2.5 text-[11px] text-slate-400">${d.date || ''} ${d.time || ''}</td>
             <td class="p-2.5">
               <div class="font-bold text-white">${d.name || 'User'}</div>
-              <div class="text-[10px] text-amber-300 font-mono">${d.phone}</div>
+              <div class="text-[10px] text-amber-300 font-mono">+91 ${d.phone}</div>
             </td>
             <td class="p-2.5 font-black text-amber-300 text-sm">₹${d.amount}</td>
             <td class="p-2.5">
@@ -500,20 +516,32 @@
                 ${d.utr}
               </div>
               <div class="text-[9px] ${utrValid ? 'text-emerald-400' : 'text-rose-400'} mt-0.5">
-                ${utrValid ? '● UTR Format Valid' : '⚠️ Short UTR'}
+                ${utrValid ? '● UTR Valid (12-Digit)' : '⚠️ Check UTR Length'}
               </div>
+            </td>
+            <td class="p-2.5">
+              ${hasSlip ? `
+                <div class="flex items-center gap-1.5">
+                  <img src="${d.screenshot}" onclick="viewFullReceipt('${id}')" class="w-12 h-12 object-cover rounded-lg border border-teal-600 cursor-pointer hover:border-amber-400 hover:scale-105 transition shadow" title="Click to view full screenshot">
+                  <button onclick="viewFullReceipt('${id}')" class="text-[10px] bg-teal-900/60 hover:bg-teal-800 text-teal-200 px-2 py-1 rounded-lg border border-teal-700/50">
+                    <i class="fa-solid fa-expand"></i> View
+                  </button>
+                </div>
+              ` : `
+                <span class="text-[10px] text-slate-500 italic">No image</span>
+              `}
             </td>
             <td class="p-2.5">
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : (isPending ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-rose-500/20 text-rose-300')}">
                 ${d.status.toUpperCase()}
               </span>
             </td>
-            <td class="p-2.5 text-right space-x-1">
+            <td class="p-2.5 text-right space-x-1 whitespace-nowrap">
               ${isPending ? `
-                <button onclick="approveDeposit('${id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow">
+                <button onclick="approveDeposit('${id}')" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow transition">
                   <i class="fa-solid fa-check mr-1"></i> Verify &amp; Credit
                 </button>
-                <button onclick="rejectDeposit('${id}')" class="px-2 py-1 bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white font-bold rounded-lg text-xs">
+                <button onclick="rejectDeposit('${id}')" class="px-2 py-1.5 bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white font-bold rounded-lg text-xs transition">
                   Reject
                 </button>
               ` : `
@@ -569,7 +597,7 @@
       document.getElementById('tabCountWithdrawals').innerText = pendingList.length;
 
       if (wIds.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Abhi tak koi withdrawal request nahi aayi hai.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">Abhi tak koi withdrawal request nahi aayi hai.</td></tr>`;
         return;
       }
 
@@ -692,5 +720,33 @@
       alert('Settings saved successfully!');
     }
   </script>
+
+  <!-- MODAL: FULL PAYMENT RECEIPT SCREENSHOT VIEWER -->
+  <div id="receiptViewerModal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-[#0f1d21] border border-teal-800 rounded-3xl p-4 max-w-lg w-full space-y-3 shadow-2xl flex flex-col max-h-[90vh]">
+      <div class="flex justify-between items-center border-b border-teal-900 pb-2">
+        <div>
+          <h3 class="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-image"></i> Payment Receipt Screenshot
+          </h3>
+          <p id="receiptUserMeta" class="text-[11px] text-slate-400">User: -- | UTR: --</p>
+        </div>
+        <button onclick="closeReceiptViewer()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-auto bg-black/60 rounded-2xl p-2 flex items-center justify-center">
+        <img id="fullReceiptImg" src="" class="max-h-[65vh] w-auto rounded-xl object-contain shadow-2xl">
+      </div>
+
+      <div class="flex justify-end gap-2 pt-1 border-t border-teal-900">
+        <button onclick="closeReceiptViewer()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
