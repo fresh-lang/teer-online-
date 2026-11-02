@@ -22,7 +22,7 @@
     <div class="flex justify-between items-center bg-[#132226] p-4 rounded-xl border border-teal-900">
       <div>
         <h1 class="font-bold text-amber-400 text-base">TEER MASTER ADMIN PANEL</h1>
-        <p class="text-[10px] text-teal-300">Live Auto Winning Credit &bull; User Push Notifications</p>
+        <p class="text-[10px] text-teal-300">Live Auto Winning Credit &bull; Agent Rules &bull; Push Notifications</p>
       </div>
       <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-1 rounded">Live Active</span>
     </div>
@@ -65,11 +65,20 @@
       </button>
     </div>
 
-    <!-- Send Custom Event Notification to all Users -->
+    <!-- Agent & Refer Secret Commission Ledger -->
+    <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-2">
+      <h3 class="font-bold text-sm text-amber-300">Agent &amp; Referral Secret Earnings</h3>
+      <p class="text-[11px] text-slate-400">Rule: Display shows ₹100 deposit / ₹100 bet. Actual credited: <b>₹5 per ₹1000 deposit</b> aur <b>₹50 per ₹1000 bet</b>.</p>
+      <div id="agentEarningsList" class="bg-black/30 p-2.5 rounded-lg text-xs font-mono text-emerald-400">
+        No referral transactions yet.
+      </div>
+    </div>
+
+    <!-- Broadcast Event Notice -->
     <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-2">
       <h3 class="font-bold text-sm text-amber-300">Broadcast Event Notice / Tournament Alert</h3>
-      <input type="text" id="eventTitle" placeholder="Event Title (e.g. Sunday Jackpot / Bonus Offer)" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white">
-      <textarea id="eventMsg" placeholder="Notification message jo sabhi users ke bell icon me show hoga..." rows="2" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white"></textarea>
+      <input type="text" id="eventTitle" placeholder="Event Title" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white">
+      <textarea id="eventMsg" placeholder="Notification message..." rows="2" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white"></textarea>
       <button onclick="sendEventNotification()" class="w-full py-2 bg-amber-500 hover:bg-amber-600 text-teal-950 font-bold rounded-lg text-xs">Send Event Notification</button>
     </div>
 
@@ -94,8 +103,20 @@
       if (p === '8822') {
         document.getElementById('lockScreen').classList.add('hidden');
         document.getElementById('dash').classList.remove('hidden');
+        renderAgentEarnings();
       } else {
         document.getElementById('err').classList.remove('hidden');
+      }
+    }
+
+    function renderAgentEarnings() {
+      const earnings = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
+      const box = document.getElementById('agentEarningsList');
+      const keys = Object.keys(earnings);
+      if (keys.length === 0) {
+        box.innerText = 'No referral transactions recorded yet.';
+      } else {
+        box.innerHTML = keys.map(k => `<div>Agent ID: <b>${k}</b> &bull; Real Earned: <b>₹${earnings[k].toFixed(2)}</b></div>`).join('');
       }
     }
 
