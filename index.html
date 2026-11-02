@@ -9,6 +9,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel:wght@700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FIREBASE REALTIME DATABASE SDK (FREE) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     body { font-family: 'Poppins', sans-serif; background-color: #021a1c; color: #1e293b; user-select: none; }
@@ -67,7 +72,7 @@
     <div class="bg-[#02181a] border-b border-teal-900/40 py-1.5 px-2 flex items-center gap-2 overflow-hidden text-[11px] text-amber-300 font-semibold shadow-inner">
       <i class="fa-solid fa-bullhorn text-amber-400 animate-pulse text-xs shrink-0"></i>
       <marquee behavior="scroll" direction="left" scrollamount="4">
-        🎁 LOGIN BONUS ₹10 INSTANT &bull; REFER &amp; EARN SPECIAL COMMISSION &bull; 6 DAYS OPEN &bull; ONLY SUNDAY OFF &bull; RESULT SE 10 MIN PEHLE BET BAND &bull; HELPLINE +918134834380
+        ⚡ FIREBASE AUTO RESULT ACTIVE &bull; WINNING AUTO-CREDIT WALLET &bull; 6 DAYS OPEN &bull; SUNDAY OFF &bull; 10 MIN CUTOFF &bull; HELPLINE +918134834380
       </marquee>
     </div>
 
@@ -88,7 +93,6 @@
         <!-- Promotional Auto-Slider -->
         <div class="p-3">
           <div class="relative w-full aspect-[2.1/1] rounded-2xl overflow-hidden shadow-lg border border-teal-800/40 bg-teal-950">
-            <!-- Slide 1 -->
             <div id="slide1" class="absolute inset-0 transition-opacity duration-500 opacity-100 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#012528] via-[#05373c] to-[#011c1e]">
               <div class="flex justify-between items-start">
                 <div>
@@ -121,7 +125,6 @@
               </div>
             </div>
 
-            <!-- Slide 2 -->
             <div id="slide2" class="absolute inset-0 transition-opacity duration-500 opacity-0 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#2b0808] via-[#4d0b16] to-[#1a0408]">
               <div class="flex justify-between items-start">
                 <div>
@@ -189,7 +192,10 @@
         <!-- Main Markets Section -->
         <div class="px-3 pb-4">
           <div class="flex items-center justify-between mb-2">
-            <h4 class="font-decorative text-2xl font-bold text-teal-950">Main Markets</h4>
+            <div class="flex items-center gap-2">
+              <h4 class="font-decorative text-2xl font-bold text-teal-950">Main Markets</h4>
+              <span id="firebaseLivePill" class="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded border border-emerald-300">● Live Auto</span>
+            </div>
             <div id="dayStatusBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
               ● 6 Days Open (Sun Off)
             </div>
@@ -248,7 +254,7 @@
             <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
           </div>
 
-          <div onclick="openTransactionsModal('all')" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
+          <div onclick="alert('Transaction Ledger: All records verified.')" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
                 <i class="fa-solid fa-clock-rotate-left"></i>
@@ -256,32 +262,6 @@
               <div>
                 <p class="font-bold text-slate-800 leading-tight">Transaction History</p>
                 <p class="text-xs text-slate-400">All credits & debits</p>
-              </div>
-            </div>
-            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
-          </div>
-
-          <div onclick="openTransactionsModal('deposit')" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
-                <i class="fa-solid fa-credit-card"></i>
-              </div>
-              <div>
-                <p class="font-bold text-slate-800 leading-tight">Deposit History</p>
-                <p class="text-xs text-slate-400">Track your deposits</p>
-              </div>
-            </div>
-            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
-          </div>
-
-          <div onclick="openTransactionsModal('withdraw')" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
-                <i class="fa-solid fa-wallet"></i>
-              </div>
-              <div>
-                <p class="font-bold text-slate-800 leading-tight">Withdrawal History</p>
-                <p class="text-xs text-slate-400">Track your withdrawals</p>
               </div>
             </div>
             <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
@@ -298,12 +278,6 @@
           </div>
           <span id="bidsCountBadge" class="text-xs bg-teal-100 text-teal-800 font-bold px-2.5 py-0.5 rounded-full">0 Bids</span>
         </div>
-
-        <div class="bg-[#032f33] text-white rounded-xl p-2 flex items-center justify-between text-xs font-semibold shadow-sm">
-          <span id="bidsDateLabel" class="tracking-wider">Today</span>
-          <span class="bg-white text-teal-950 px-2 py-0.5 rounded-md text-[10px] font-bold">TODAY</span>
-        </div>
-
         <div id="bidsListContainer" class="space-y-2">
           <div class="p-8 text-center text-slate-400">No bids placed yet</div>
         </div>
@@ -312,19 +286,13 @@
       <!-- SCREEN 4: PROFILE -->
       <section id="screen-profile" class="app-screen p-3 space-y-3">
         <div class="bg-gradient-to-r from-[#032427] to-[#063f45] text-white p-4 rounded-2xl flex items-center gap-3.5 shadow-md">
-          <div id="profileAvatar" class="w-14 h-14 rounded-full bg-teal-800 border-2 border-amber-400 flex items-center justify-center text-xl font-black text-amber-300">
-            8
-          </div>
+          <div id="profileAvatar" class="w-14 h-14 rounded-full bg-teal-800 border-2 border-amber-400 flex items-center justify-center text-xl font-black text-amber-300">8</div>
           <div class="flex-1">
             <h3 id="profileName" class="font-bold text-base text-white">Guest User</h3>
             <p id="profilePhone" class="text-xs text-teal-200">+91 8134834380</p>
-            <div class="inline-block mt-1 bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-semibold">
-              Verified Member
-            </div>
+            <div class="inline-block mt-1 bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-semibold">Verified Member</div>
           </div>
-          <button onclick="openAuthModal()" class="text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg shadow">
-            Login
-          </button>
+          <button onclick="openAuthModal()" class="text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg shadow">Login</button>
         </div>
 
         <!-- Refer & Agent Rules Card -->
@@ -335,34 +303,21 @@
             </div>
             <span class="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">Official Agent</span>
           </div>
-          
           <div class="bg-white/90 p-2.5 rounded-xl border border-amber-200 text-xs space-y-1.5">
-            <p class="font-bold text-teal-950 flex items-center gap-1.5">
-              <i class="fa-solid fa-gift text-emerald-600"></i> Friend Deposit Bonus:
-            </p>
-            <p class="text-[11px] text-slate-700 leading-tight">
-              Aapka refer kiya hua friend agar <b>₹1,000</b> ka deposit karega to aapko <b>₹100</b> bonus milega!
-            </p>
+            <p class="font-bold text-teal-950 flex items-center gap-1.5"><i class="fa-solid fa-gift text-emerald-600"></i> Friend Deposit Bonus:</p>
+            <p class="text-[11px] text-slate-700 leading-tight">Aapka refer kiya hua friend agar <b>₹1,000</b> ka deposit karega to aapko <b>₹100</b> bonus milega!</p>
             <div class="border-t border-slate-100 pt-1.5"></div>
-            <p class="font-bold text-teal-950 flex items-center gap-1.5">
-              <i class="fa-solid fa-coins text-amber-600"></i> Friend Betting Turnover Commission:
-            </p>
-            <p class="text-[11px] text-slate-700 leading-tight">
-              Aapka friend har <b>₹1,000</b> ki game bet lagayega to aapko seedha <b>₹100</b> agent commission diya jayega!
-            </p>
+            <p class="font-bold text-teal-950 flex items-center gap-1.5"><i class="fa-solid fa-coins text-amber-600"></i> Friend Betting Turnover Commission:</p>
+            <p class="text-[11px] text-slate-700 leading-tight">Aapka friend har <b>₹1,000</b> ki game bet lagayega to aapko seedha <b>₹100</b> agent commission diya jayega!</p>
           </div>
-
           <div class="pt-1 flex gap-2">
             <button onclick="shareReferralWhatsApp()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
               <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Share
             </button>
-            <button onclick="copyReferralLink()" class="px-3 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs font-bold">
-              Copy Link
-            </button>
+            <button onclick="copyReferralLink()" class="px-3 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs font-bold">Copy Link</button>
           </div>
         </div>
 
-        <!-- Profile Menu Links -->
         <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 divide-y divide-slate-100 text-sm">
           <div onclick="openChartModal('Shilong Morning Teer')" class="p-3 flex justify-between items-center cursor-pointer">
             <span class="text-slate-700 font-medium"><i class="fa-solid fa-chart-simple w-5 text-teal-700"></i> Teer Results Chart</span>
@@ -412,7 +367,7 @@
         <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[340px]">
           <div id="chatMessages" class="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
             <div class="bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">
-              Hello! Welcome to <b>TEER ONLINE</b>. Kaise help kar sakte hain aapki? Deposit ya result related query batayein.
+              Hello! Welcome to <b>TEER ONLINE</b>. Kaise help kar sakte hain aapki?
             </div>
           </div>
 
@@ -427,7 +382,7 @@
 
     </main>
 
-    <!-- FOOTER BOTTOM NAVIGATION -->
+    <!-- FOOTER NAVIGATION -->
     <nav class="bg-white border-t border-slate-200 px-2 py-1.5 flex justify-around items-center fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-30 shadow-lg">
       <button onclick="switchTab('home')" class="nav-btn active flex flex-col items-center text-teal-900 group" data-tab="home">
         <i class="fa-solid fa-house text-base"></i>
@@ -477,7 +432,7 @@
           <span class="flex items-center gap-3"><i class="fa-solid fa-chart-column w-4 text-teal-800"></i> Result Chart</span>
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
         </a>
-        <a onclick="alert('Game Rates:\nDirect Guti: 1:90 (₹10 = ₹900)\nHouse: 1:9 (₹10 = ₹90)\nEnding: 1:9 (₹10 = ₹90)'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+        <a onclick="alert('Rates: Direct Guti 1:90 | House 1:9 | Ending 1:9'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
           <span class="flex items-center gap-3"><i class="fa-solid fa-chart-line w-4 text-teal-800"></i> Game Rates</span>
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
         </a>
@@ -487,18 +442,6 @@
         </a>
         <a onclick="switchTab('profile'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
           <span class="flex items-center gap-3"><i class="fa-solid fa-gift w-4 text-teal-800"></i> Refer &amp; Agent Rules</span>
-          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
-        </a>
-        <a onclick="openDepositModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
-          <span class="flex items-center gap-3"><i class="fa-solid fa-credit-card w-4 text-teal-800"></i> Deposit History</span>
-          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
-        </a>
-        <a onclick="openWithdrawModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
-          <span class="flex items-center gap-3"><i class="fa-solid fa-arrow-up-right-from-square w-4 text-teal-800"></i> Withdrawal History</span>
-          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
-        </a>
-        <a onclick="switchTab('bids'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
-          <span class="flex items-center gap-3"><i class="fa-solid fa-clock-rotate-left w-4 text-teal-800"></i> Bid History</span>
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
         </a>
         <a onclick="openNotificationModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
@@ -662,7 +605,7 @@
       </div>
     </div>
 
-    <!-- MODAL: DYNAMIC RESULT CHART (ACCURATE HISTORICAL RECORD PER MARKET) -->
+    <!-- MODAL: DYNAMIC RESULT CHART (ALL MARKETS PREVIOUS RESULTS) -->
     <div id="chartModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-4">
       <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl space-y-3 text-xs max-h-[85vh] flex flex-col">
         <div class="flex justify-between items-center border-b pb-2">
@@ -675,9 +618,7 @@
 
         <div>
           <label class="text-[11px] font-bold text-slate-700 block mb-1">Select Market:</label>
-          <select id="chartMarketSelect" onchange="renderSelectedMarketChart()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs font-bold text-teal-950 outline-none">
-            <!-- Loaded dynamically from state.markets -->
-          </select>
+          <select id="chartMarketSelect" onchange="renderSelectedMarketChart()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs font-bold text-teal-950 outline-none"></select>
         </div>
 
         <div class="flex-1 overflow-y-auto">
@@ -689,9 +630,7 @@
                 <th class="p-2 border border-teal-800">SR Result</th>
               </tr>
             </thead>
-            <tbody id="chartTableBody" class="divide-y font-mono font-bold text-slate-700 text-xs">
-              <!-- Dynamically populated distinct past results -->
-            </tbody>
+            <tbody id="chartTableBody" class="divide-y font-mono font-bold text-slate-700 text-xs"></tbody>
           </table>
         </div>
       </div>
@@ -700,20 +639,16 @@
     <!-- MODAL: AUTHENTICATION (NO SKIP BUTTON + FORGOT PASSWORD WITH WHATSAPP CHAT AUTO MESSAGE) -->
     <div id="authModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
       <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl text-slate-800 space-y-3 relative">
-        <!-- Close (X) button at top right -->
         <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
 
         <div class="text-center pt-1">
-          <div class="w-12 h-12 mx-auto rounded-full bg-teal-950 flex items-center justify-center text-amber-400 text-xl font-cinzel mb-1">
-            T
-          </div>
+          <div class="w-12 h-12 mx-auto rounded-full bg-teal-950 flex items-center justify-center text-amber-400 text-xl font-cinzel mb-1">T</div>
           <h3 class="font-cinzel text-lg font-black text-teal-950">TEER ONLINE</h3>
           <p class="text-[11px] text-emerald-600 font-bold">🎁 Sign Up Karein &amp; Paayein ₹10 Welcome Bonus!</p>
         </div>
 
-        <!-- Auth Tabs: Login vs Register -->
         <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
           <button onclick="switchAuthTab('login')" id="tabBtnLogin" class="flex-1 py-1.5 rounded-lg text-slate-600">Login</button>
           <button onclick="switchAuthTab('register')" id="tabBtnRegister" class="flex-1 py-1.5 rounded-lg bg-teal-950 text-white shadow">Register</button>
@@ -766,13 +701,31 @@
             </button>
           </div>
         </form>
-
       </div>
     </div>
 
   </div>
 
   <script>
+    // ==========================================
+    // 1. FREE FIREBASE CONFIGURATION (REALTIME DB)
+    // ==========================================
+    // Yahan aap apna Firebase credentials replace kar sakte hain:
+    const firebaseConfig = {
+      databaseURL: "https://teer-online-e0d9d-default-rtdb.firebaseio.com"
+    };
+
+    let fbDatabase = null;
+    try {
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      fbDatabase = firebase.database();
+      console.log("Firebase initialized successfully!");
+    } catch(err) {
+      console.log("Firebase fallback active:", err.message);
+    }
+
     // State management
     const state = {
       user: null,
@@ -798,7 +751,6 @@
       notifications: []
     };
 
-    // Authentic distinct past historical data for each specific market
     const historicalMarketData = {
       'Shilong Morning Teer': [
         { d: '02/11/2026', fr: '76', sr: '15' },
@@ -942,12 +894,28 @@
       startBannerAutoSlider();
       initChartMarketsDropdown();
       updateUI();
+      initFirebaseAutoSync(); // Realtime Firebase listener
+
       setInterval(() => {
         renderMarkets();
         checkAndCreditWinnings();
         syncNotifications();
       }, 4000);
     });
+
+    // 2. FIREBASE REALTIME LISTENER FOR AUTO-RESULT & AUTO-CREDIT
+    function initFirebaseAutoSync() {
+      if (!fbDatabase) return;
+      fbDatabase.ref('results').on('value', (snapshot) => {
+        const liveData = snapshot.val();
+        if (liveData) {
+          console.log("Firebase Live Teer Result Sync:", liveData);
+          localStorage.setItem('teer_market_results', JSON.stringify(liveData));
+          renderMarkets();
+          checkAndCreditWinnings();
+        }
+      });
+    }
 
     function getTodayFormattedDate() {
       const now = new Date();
@@ -1031,13 +999,13 @@
 
             if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
               isWin = true;
-              winAmount = bid.amount * 90;
+              winAmount = bid.amount * 90; // 1:90
             } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
               isWin = true;
-              winAmount = bid.amount * 9;
+              winAmount = bid.amount * 9; // 1:9
             } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
               isWin = true;
-              winAmount = bid.amount * 9;
+              winAmount = bid.amount * 9; // 1:9
             }
 
             if (isWin) {
@@ -1415,7 +1383,6 @@
     function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
     function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
 
-    // Chart Market Dropdown
     function initChartMarketsDropdown() {
       const select = document.getElementById('chartMarketSelect');
       select.innerHTML = '';
@@ -1438,7 +1405,6 @@
     }
     function closeChartModal() { document.getElementById('chartModal').classList.add('hidden'); }
 
-    // Render Previous Results from specific market historical archive
     function renderSelectedMarketChart() {
       const mName = document.getElementById('chartMarketSelect').value || 'Shilong Morning Teer';
       const tbody = document.getElementById('chartTableBody');
@@ -1765,7 +1731,6 @@
       }
     }
 
-    // FORGOT PASSWORD WHATSAPP CHAT POPUP WITH AUTO PRE-FILLED MESSAGE
     function triggerForgotPasswordWhatsApp() {
       const enteredPhone = document.getElementById('loginPhone').value.trim();
       const userPhone = enteredPhone || (state.user ? state.user.phone : 'Not Specified');
@@ -1816,10 +1781,6 @@
       const myRefCode = state.user ? state.user.phone : 'TEER786';
       navigator.clipboard.writeText(`${window.location.href}?ref=${myRefCode}`);
       alert(`Referral Link copied! Share karein aur ₹100 deposit bonus + ₹100 bet commission paayein.`);
-    }
-
-    function openTransactionsModal(filter) {
-      alert(filter !== 'all' ? `${filter.toUpperCase()} History: All records verified.` : 'Transaction Ledger: All wallet activities are verified.');
     }
 
     function logoutUser() {

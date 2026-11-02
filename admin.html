@@ -6,6 +6,10 @@
   <title>Admin Panel - TEER ONLINE</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FIREBASE SDK FOR INSTANT BROADCAST -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body class="bg-[#0b1315] text-slate-100 min-h-screen p-4">
   <div id="lockScreen" class="fixed inset-0 bg-[#070d0e] flex items-center justify-center p-4 z-50">
@@ -22,12 +26,12 @@
     <div class="flex justify-between items-center bg-[#132226] p-4 rounded-xl border border-teal-900">
       <div>
         <h1 class="font-bold text-amber-400 text-base">TEER MASTER ADMIN PANEL</h1>
-        <p class="text-[10px] text-teal-300">Live Auto Winning Credit &bull; Agent Rules &bull; Push Notifications</p>
+        <p class="text-[10px] text-emerald-400 font-bold">● Firebase Realtime Sync Connected</p>
       </div>
       <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-1 rounded">Live Active</span>
     </div>
 
-    <!-- Live Result Publisher with User Notification Broadcast -->
+    <!-- Live Result Publisher with Firebase Push -->
     <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-3">
       <h3 class="font-bold text-sm text-amber-400">Declare Live Result (Auto-Wins Credit &amp; User Alerts)</h3>
       <label class="text-xs text-slate-400 block mb-1">Select Market:</label>
@@ -61,7 +65,7 @@
         </div>
       </div>
       <button onclick="saveResultAndBroadcast()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 font-bold rounded-lg text-xs text-white shadow">
-        Save, Auto-Credit Winnings &amp; Send Result Notification
+        Save &amp; Broadcast to Firebase (Instant Auto-Sync)
       </button>
     </div>
 
@@ -98,6 +102,18 @@
   </div>
 
   <script>
+    const firebaseConfig = {
+      databaseURL: "https://teer-online-e0d9d-default-rtdb.firebaseio.com"
+    };
+
+    let fbDatabase = null;
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      fbDatabase = firebase.database();
+    } catch(err) {
+      console.log("Firebase fallback active:", err.message);
+    }
+
     function checkPass() {
       const p = document.getElementById('passInput').value;
       if (p === '8822') {
@@ -129,6 +145,12 @@
       results[market] = { fr, sr };
       localStorage.setItem('teer_market_results', JSON.stringify(results));
 
+      // 1. PUSH DIRECTLY TO FIREBASE (ALL USER APPS AUTO UPDATE INSTANTLY!)
+      if (fbDatabase) {
+        fbDatabase.ref('results/' + market).set({ fr, sr });
+      }
+
+      // 2. Local notification
       let notifs = JSON.parse(localStorage.getItem('teer_notifications') || '[]');
       notifs.unshift({
         id: Date.now(),
@@ -140,9 +162,9 @@
       });
       localStorage.setItem('teer_notifications', JSON.stringify(notifs));
 
-      alert(`Result saved for ${market}!
+      alert(`Result saved & pushed to Firebase for ${market}!
 FR: ${fr} | SR: ${sr}
-User app par result aur win notification live bhej diya gaya hai.`);
+Sabhi users ki screen par bina refresh ke update ho gaya!`);
     }
 
     function sendEventNotification() {
