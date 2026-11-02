@@ -1302,7 +1302,7 @@
                 <button onclick="openChartModal('${m.name}')" class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800">
                   <i class="fa-solid fa-chart-simple text-xs"></i>
                 </button>
-                <button class="px-3.5 py-1.5 rounded-lg bg-[#b91c1c] text-white font-decorative text-base font-bold tracking-wide shadow-sm">
+                <button onclick="alert('Is market ka draw samay samapt ho chuka hai! Agla draw kal time par open hoga.')" class="px-3.5 py-1.5 rounded-lg bg-[#b91c1c] hover:bg-red-800 text-white font-decorative text-base font-bold tracking-wide shadow-sm cursor-pointer active:scale-95 transition">
                   Closed
                 </button>
               </div>
@@ -1517,8 +1517,7 @@
       if (frOpen) selectRound('FR');
       else if (srOpen) selectRound('SR');
       else {
-        alert('Time Over! 10 minute cutoff ho chuka hai.');
-        return;
+        selectRound('FR');
       }
 
       state.selectedNumbers = [];
@@ -1881,10 +1880,9 @@
 
       closeDepositModal();
       alert(`Deposit Request Submitted!\nAmount: ₹${amt}\nUTR: ${utr}\n\nAdmin will verify your payment screenshot and UTR code. Balance (+5% Bonus) will be credited to your wallet within 1 to 10 minutes!`);
-    }\nUTR: ${utr}\n\nAdmin verification ke baad wallet me ₹${(amt * 1.05).toFixed(2)} (+5% Bonus) add ho jayenge.`);
     }
 
-        function submitWithdrawForm() {
+    function submitWithdrawForm() {
       if (!state.user) {
         alert('Please login or register to withdraw funds!');
         closeWithdrawModal();
@@ -1941,7 +1939,6 @@
       updateUI();
       closeWithdrawModal();
       alert(`Withdrawal Request Submitted!\nAmount: ₹${amt}\nUPI ID: ${upi}\n\nYour payout will be credited directly to your UPI ID within 1 to 10 minutes!`);
-    } aapke UPI (${upi}) par bhej diye jayenge. Admin panel par verification chalu hai.`);
     }
 
     function switchAuthTab(type) {
