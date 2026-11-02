@@ -72,7 +72,7 @@
     <div class="bg-[#02181a] border-b border-teal-900/40 py-1.5 px-2 flex items-center gap-2 overflow-hidden text-[11px] text-amber-300 font-semibold shadow-inner">
       <i class="fa-solid fa-bullhorn text-amber-400 animate-pulse text-xs shrink-0"></i>
       <marquee behavior="scroll" direction="left" scrollamount="4">
-        ⚡ FIREBASE AUTO RESULT ACTIVE &bull; WINNING AUTO-CREDIT WALLET &bull; 6 DAYS OPEN &bull; SUNDAY OFF &bull; 10 MIN CUTOFF &bull; HELPLINE +918134834380
+        WINNING AUTO-CREDIT WALLET &bull; 6 DAYS OPEN (SUNDAY OFF) &bull; 10 MIN CUTOFF &bull; HELPLINE +918134834380
       </marquee>
     </div>
 
@@ -194,7 +194,7 @@
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
               <h4 class="font-decorative text-2xl font-bold text-teal-950">Main Markets</h4>
-              <span id="firebaseLivePill" class="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded border border-emerald-300">● Live Auto</span>
+              
             </div>
             <div id="dayStatusBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
               ● 6 Days Open (Sun Off)
@@ -309,6 +309,13 @@
             <div class="border-t border-slate-100 pt-1.5"></div>
             <p class="font-bold text-teal-950 flex items-center gap-1.5"><i class="fa-solid fa-coins text-amber-600"></i> Friend Betting Turnover Commission:</p>
             <p class="text-[11px] text-slate-700 leading-tight">Aapka friend har <b>₹1,000</b> ki game bet lagayega to aapko seedha <b>₹100</b> agent commission diya jayega!</p>
+            <div class="mt-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2 flex justify-between items-center">
+              <div>
+                <span class="text-[10px] text-emerald-800 font-bold block">Aapki Total Referral Kamai:</span>
+                <span id="myAgentEarnedText" class="text-sm font-black text-emerald-950">₹0.00</span>
+              </div>
+              <button onclick="claimAgentCommission()" class="px-2.5 py-1 bg-emerald-700 text-white font-bold rounded-lg text-[10px] shadow">Wallet Me Transfer</button>
+            </div>
           </div>
           <div class="pt-1 flex gap-2">
             <button onclick="shareReferralWhatsApp()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
@@ -895,6 +902,8 @@
       initChartMarketsDropdown();
       updateUI();
       initFirebaseAutoSync(); // Realtime Firebase listener
+      checkUrlReferral();
+      syncAgentEarningsFromFirebase();
 
       setInterval(() => {
         renderMarkets();
@@ -1589,15 +1598,38 @@
       alert(`Success! ₹${cost} ki bet lag gayi hai (${state.currentRound} - ${state.betMode.toUpperCase()}). Result aane par win amount auto-credit hoga.`);
     }
 
+
+    // SYNC AGENT EARNINGS FROM FIREBASE SO AGENT SEES COMMISSION LIVE
+    function syncAgentEarningsFromFirebase() {
+      if (!fbDatabase || !state.user) return;
+      const myCode = state.user.phone;
+      fbDatabase.ref('agent_earnings/' + myCode).on('value', (snap) => {
+        const total = snap.val() || 0;
+        const box = document.getElementById('myAgentEarnedText');
+        if (box) box.innerText = '₹' + parseFloat(total).toFixed(2);
+      });
+    }
+
+    // PUSH COMMISSION TO FIREBASE WHEN REFERRED FRIEND PLAYS BET
     function applyAgentBetTurnoverCommission(betAmount) {
       if (state.user && state.user.referredBy) {
         const agentComm = (betAmount / 1000) * 50; // Real ₹50 per 1000 bet
-        let agentLedger = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
         const ref = state.user.referredBy;
+        
+        // 1. Local
+        let agentLedger = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
         agentLedger[ref] = (agentLedger[ref] || 0) + agentComm;
         localStorage.setItem('teer_agent_earnings', JSON.stringify(agentLedger));
+
+        // 2. Firebase Realtime Cloud Push to Agent's Account
+        if (fbDatabase) {
+          fbDatabase.ref('agent_earnings/' + ref).transaction((current) => {
+            return (current || 0) + agentComm;
+          });
+        }
       }
     }
+
 
     function renderBidsList() {
       const cont = document.getElementById('bidsListContainer');
@@ -1642,10 +1674,17 @@
 
       if (state.user && state.user.referredBy) {
         const realRefBonus = (amt / 1000) * 5; // Real ₹5 per ₹1000 deposit
-        let agentLedger = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
         const ref = state.user.referredBy;
+        let agentLedger = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
         agentLedger[ref] = (agentLedger[ref] || 0) + realRefBonus;
         localStorage.setItem('teer_agent_earnings', JSON.stringify(agentLedger));
+
+        // Firebase Push to Agent
+        if (fbDatabase) {
+          fbDatabase.ref('agent_earnings/' + ref).transaction((current) => {
+            return (current || 0) + realRefBonus;
+          });
+        }
       }
 
       addAppNotification({
@@ -1804,16 +1843,28 @@
       `;
     }
 
+    function getBaseShareUrl() {
+      // Agar APK me chal raha hai ya localhost hai, toh official web link share hoga
+      if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '') {
+        return 'https://fresh-lang.github.io/teer-online/';
+      }
+      return window.location.origin + window.location.pathname;
+    }
+
     function shareReferralWhatsApp() {
       const myRefCode = state.user ? state.user.phone : 'TEER786';
-      const text = encodeURIComponent(`TEER ONLINE Official App! Register karein aur paayein ₹10 Welcome Bonus free. Referral Code: ${myRefCode}\nLink: ${window.location.href}`);
+      const baseUrl = getBaseShareUrl();
+      const shareUrl = `${baseUrl}?ref=${myRefCode}`;
+      const text = encodeURIComponent(`🏹 TEER ONLINE Official App!\n🎁 Mere link se register karein aur paayein ₹10 Welcome Bonus bilkul free!\n\n👉 Referral Code: ${myRefCode}\n👉 Link par click karein: ${shareUrl}`);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     }
 
     function copyReferralLink() {
       const myRefCode = state.user ? state.user.phone : 'TEER786';
-      navigator.clipboard.writeText(`${window.location.href}?ref=${myRefCode}`);
-      alert(`Referral Link copied! Share karein aur ₹100 deposit bonus + ₹100 bet commission paayein.`);
+      const baseUrl = getBaseShareUrl();
+      const shareUrl = `${baseUrl}?ref=${myRefCode}`;
+      navigator.clipboard.writeText(shareUrl);
+      alert(`✅ Referral Link Copied!\n${shareUrl}\n\nIse doston ko bhejein, link kholte hi unka referral code automatic fill ho jayega.`);
     }
 
     function logoutUser() {
