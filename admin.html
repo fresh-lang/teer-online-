@@ -108,7 +108,6 @@
       results[market] = { fr, sr };
       localStorage.setItem('teer_market_results', JSON.stringify(results));
 
-      // Push Live Result Notification to all Users
       let notifs = JSON.parse(localStorage.getItem('teer_notifications') || '[]');
       notifs.unshift({
         id: Date.now(),

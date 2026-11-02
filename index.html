@@ -53,20 +53,31 @@
         <button onclick="refreshBalance()" class="w-7 h-7 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-teal-200 active:rotate-180 transition-transform">
           <i class="fa-solid fa-rotate text-xs"></i>
         </button>
-        <!-- Notification Bell with Active Badge Counter -->
         <button onclick="openNotificationModal()" class="w-7 h-7 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-amber-400 text-xs relative">
           <i class="fa-solid fa-bell text-[11px]"></i>
           <span id="notifBadge" class="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] font-bold flex items-center justify-center hidden">0</span>
         </button>
+        <a href="admin.html" class="w-7 h-7 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-amber-400 text-xs">
+          <i class="fa-solid fa-lock text-[11px]"></i>
+        </a>
       </div>
     </header>
 
-    <!-- Marquee Notice -->
+    <!-- Marquee Ticker -->
     <div class="bg-[#02181a] border-b border-teal-900/40 py-1.5 px-2 flex items-center gap-2 overflow-hidden text-[11px] text-amber-300 font-semibold shadow-inner">
       <i class="fa-solid fa-bullhorn text-amber-400 animate-pulse text-xs shrink-0"></i>
       <marquee behavior="scroll" direction="left" scrollamount="4">
-        🎉 RESULT ANNOUNCE HOTE HI WINNING BONUS WALLET ME AUTO-CREDIT HOGA &bull; FR/SR, DEPOSIT &amp; WITHDRAWAL LIVE NOTIFICATION &bull; 10 MIN CUTOFF ACTIVE
+        🎉 1ST DEPOSIT 100% BONUS &bull; WINNING AUTO CREDIT WALLET &bull; 6 DAYS OPEN (MON-SAT) &bull; SUNDAY OFF &bull; RESULT SE 10 MIN PEHLE BET BAND &bull; HELPLINE +918134834380
       </marquee>
+    </div>
+
+    <!-- PWA Install Prompt Banner -->
+    <div id="pwaBanner" class="bg-gradient-to-r from-amber-500 to-amber-600 text-teal-950 px-3 py-1.5 flex items-center justify-between text-xs font-bold shadow-sm">
+      <div class="flex items-center gap-1.5">
+        <i class="fa-solid fa-cloud-arrow-down text-sm"></i>
+        <span>Install Teer Online App</span>
+      </div>
+      <button onclick="alert('Browser ke 3 dots par click karke Install App / Add to Home screen select karein.')" class="bg-teal-950 text-amber-300 px-2.5 py-0.5 rounded-full text-[11px]">Install</button>
     </div>
 
     <!-- MAIN SCREENS CONTAINER -->
@@ -74,36 +85,210 @@
 
       <!-- SCREEN 1: HOME -->
       <section id="screen-home" class="app-screen active">
+        <!-- Promotional Auto-Slider -->
         <div class="p-3">
-          <div class="flex items-center justify-between px-1 mb-2">
+          <div class="relative w-full aspect-[2.1/1] rounded-2xl overflow-hidden shadow-lg border border-teal-800/40 bg-teal-950">
+            <!-- Slide 1: Deposit Bonus -->
+            <div id="slide1" class="absolute inset-0 transition-opacity duration-500 opacity-100 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#012528] via-[#05373c] to-[#011c1e]">
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="inline-block bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-bold mb-1">
+                    ⚡ 1ST DEPOSIT 100% BONUS
+                  </div>
+                  <h3 class="font-cinzel text-lg font-black text-white leading-tight">ONLINE <span class="gold-gradient-text">TEER</span></h3>
+                  <p class="text-[11px] text-teal-200 font-medium">Every Deposit Flat 5% Extra</p>
+                </div>
+                <div class="flex gap-1">
+                  <span class="w-6 h-6 rounded-full bg-amber-400 text-teal-950 font-bold flex items-center justify-center text-xs shadow-md">7</span>
+                  <span class="w-6 h-6 rounded-full bg-amber-400 text-teal-950 font-bold flex items-center justify-center text-xs shadow-md">3</span>
+                  <span class="w-6 h-6 rounded-full bg-amber-400 text-teal-950 font-bold flex items-center justify-center text-xs shadow-md">9</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between bg-teal-900/60 p-1.5 rounded-xl border border-teal-700/40 text-[10px]">
+                <div class="text-center font-bold text-teal-100">GUTI <span class="text-amber-300">10-900/-</span></div>
+                <div class="w-px h-3 bg-teal-700"></div>
+                <div class="text-center font-bold text-teal-100">HOUSE <span class="text-amber-300">10-90</span></div>
+                <div class="w-px h-3 bg-teal-700"></div>
+                <div class="text-center font-bold text-teal-100">ENDING <span class="text-amber-300">10-90</span></div>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="openDepositModal()" class="flex-1 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px] text-center shadow">
+                  DEPOSIT NOW
+                </button>
+                <button onclick="openPlayModalByName('Shilong Morning Teer')" class="flex-1 py-1.5 rounded-lg gold-btn text-[11px] text-center shadow">
+                  PLAY NOW &gt;
+                </button>
+              </div>
+            </div>
+
+            <!-- Slide 2: Aviator & Casino -->
+            <div id="slide2" class="absolute inset-0 transition-opacity duration-500 opacity-0 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#2b0808] via-[#4d0b16] to-[#1a0408]">
+              <div class="flex justify-between items-start">
+                <div>
+                  <span class="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold">CRASH 100x</span>
+                  <h3 class="text-xl font-black text-amber-300 italic tracking-wider">AVIATOR</h3>
+                  <p class="text-[11px] text-red-200">Play Now &bull; Instant Win</p>
+                </div>
+                <div class="text-3xl text-amber-400">
+                  <i class="fa-solid fa-plane-departure animate-bounce"></i>
+                </div>
+              </div>
+              <div class="text-[11px] text-zinc-300">3D European Roulette &bull; Multiplier live 24x7</div>
+              <button onclick="alert('Aviator games will be active soon!')" class="w-full py-1.5 bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold rounded-lg text-xs shadow">
+                PLAY CASINO &gt;
+              </button>
+            </div>
+
+            <!-- Dots -->
+            <div class="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+              <span id="dot1" class="w-2 h-1 rounded-full bg-amber-400"></span>
+              <span id="dot2" class="w-1.5 h-1 rounded-full bg-white/40"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action 3 Buttons -->
+        <div class="px-3 grid grid-cols-3 gap-2">
+          <button onclick="openDepositModal()" class="bg-[#032f33] border border-teal-700/40 rounded-xl py-2 px-1 flex items-center justify-center gap-1.5 text-white active:scale-95 shadow-sm">
+            <i class="fa-solid fa-wallet text-emerald-400 text-sm"></i>
+            <span class="text-xs font-semibold">Add Money</span>
+          </button>
+          <button onclick="openWithdrawModal()" class="bg-[#032f33] border border-teal-700/40 rounded-xl py-2 px-1 flex items-center justify-center gap-1.5 text-white active:scale-95 shadow-sm">
+            <i class="fa-solid fa-arrow-up-right-from-square text-rose-400 text-xs"></i>
+            <span class="text-xs font-semibold">Withdrawal</span>
+          </button>
+          <a id="homeWhatsappBtn" href="https://wa.me/918134834380?text=Hello%20Teer%20Online%20Support" target="_blank" class="bg-[#032f33] border border-teal-700/40 rounded-xl py-2 px-1 flex items-center justify-center gap-1.5 text-white active:scale-95 shadow-sm">
+            <i class="fa-brands fa-whatsapp text-emerald-400 text-sm"></i>
+            <span class="text-xs font-semibold">WhatsApp</span>
+          </a>
+        </div>
+
+        <!-- Casino Games Quick Row -->
+        <div class="p-3">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-decorative text-lg font-bold text-teal-950 flex items-center gap-1">
+              <i class="fa-solid fa-dice text-amber-600 text-sm"></i> Casino Games
+            </h4>
+            <span class="text-[10px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full border border-red-200">● LIVE 24x7</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div onclick="alert('Opening Aviator...')" class="bg-gradient-to-r from-red-800 to-rose-900 rounded-xl p-2.5 text-white shadow-sm cursor-pointer relative overflow-hidden">
+              <span class="bg-rose-500 text-[9px] font-bold px-1.5 py-0.5 rounded">HOT</span>
+              <div class="font-black text-sm mt-1">Aviator</div>
+              <div class="text-[10px] text-rose-200">Crash • 100x</div>
+              <span class="mt-2 inline-block text-[10px] font-bold bg-white text-rose-900 px-2 py-0.5 rounded">PLAY NOW &gt;</span>
+            </div>
+            <div onclick="alert('Opening 3D Roulette...')" class="bg-gradient-to-r from-teal-800 to-emerald-900 rounded-xl p-2.5 text-white shadow-sm cursor-pointer relative overflow-hidden">
+              <span class="bg-amber-400 text-teal-950 text-[9px] font-bold px-1.5 py-0.5 rounded">3D LIVE</span>
+              <div class="font-black text-sm mt-1">3D Roulette</div>
+              <div class="text-[10px] text-teal-200">European • 500x</div>
+              <span class="mt-2 inline-block text-[10px] font-bold bg-amber-400 text-teal-950 px-2 py-0.5 rounded">PLAY NOW &gt;</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Markets Section (With Dynamic Daily Auto Date & 10 Min Cutoff) -->
+        <div class="px-3 pb-4">
+          <div class="flex items-center justify-between mb-2">
             <h4 class="font-decorative text-2xl font-bold text-teal-950">Main Markets</h4>
             <div id="dayStatusBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
               ● 6 Days Open (Sun Off)
             </div>
           </div>
 
-          <!-- Market Cards List (Dynamic Daily Date Auto Change) -->
+          <!-- Market Cards Container -->
           <div id="marketCardsContainer" class="space-y-3 pb-6"></div>
         </div>
       </section>
 
       <!-- SCREEN 2: WALLET -->
       <section id="screen-wallet" class="app-screen p-3 space-y-3">
+        <!-- Balance Card -->
         <div class="bg-gradient-to-br from-[#032f33] to-[#011c1e] text-white rounded-2xl p-4 shadow-md border border-teal-700/40 relative">
-          <p class="font-decorative text-base text-teal-200">Available Balance</p>
-          <h2 id="walletBalanceBig" class="text-3xl font-black text-amber-300 mt-0.5">₹0.00</h2>
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="font-decorative text-base text-teal-200">Available Balance</p>
+              <h2 id="walletBalanceBig" class="text-3xl font-black text-amber-300 mt-0.5">₹0.00</h2>
+              <p class="text-[11px] text-teal-300 mt-0.5">Teer Online Safe Wallet</p>
+            </div>
+            <button onclick="refreshBalance()" class="w-9 h-9 rounded-full bg-teal-800/60 border border-teal-600 flex items-center justify-center text-teal-200 active:rotate-180 transition-transform">
+              <i class="fa-solid fa-rotate"></i>
+            </button>
+          </div>
           <div class="mt-4 pt-3 border-t border-teal-800/80 flex gap-2">
-            <button onclick="openDepositModal()" class="flex-1 py-2 rounded-xl bg-emerald-500 font-bold text-xs shadow">Deposit</button>
-            <button onclick="openWithdrawModal()" class="flex-1 py-2 rounded-xl bg-teal-700 font-bold text-xs shadow">Withdraw</button>
+            <button onclick="openDepositModal()" class="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 font-bold text-xs flex items-center justify-center gap-1.5 shadow">
+              <i class="fa-solid fa-plus-circle"></i> Deposit Money
+            </button>
+            <button onclick="openWithdrawModal()" class="flex-1 py-2 rounded-xl bg-teal-700 hover:bg-teal-600 font-bold text-xs flex items-center justify-center gap-1.5 shadow">
+              <i class="fa-solid fa-arrow-up"></i> Withdraw
+            </button>
           </div>
         </div>
+
+        <!-- Menu List (Screenshot style) -->
         <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 divide-y divide-slate-100 text-sm">
-          <div onclick="openDepositModal()" class="p-3 flex items-center justify-between cursor-pointer">
-            <span class="font-bold text-slate-800">Deposit Money</span>
+          <div onclick="openDepositModal()" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                <i class="fa-solid fa-plus"></i>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 leading-tight">Deposit</p>
+                <p class="text-xs text-slate-400">Add money to wallet</p>
+              </div>
+            </div>
             <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
           </div>
-          <div onclick="openWithdrawModal()" class="p-3 flex items-center justify-between cursor-pointer">
-            <span class="font-bold text-slate-800">Withdraw Winnings</span>
+
+          <div onclick="openWithdrawModal()" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center font-bold">
+                <i class="fa-solid fa-arrow-up"></i>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 leading-tight">Withdraw</p>
+                <p class="text-xs text-slate-400">Withdraw your winnings</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+
+          <div onclick="openTransactionsModal('all')" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 leading-tight">Transaction History</p>
+                <p class="text-xs text-slate-400">All credits & debits</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+
+          <div onclick="openTransactionsModal('deposit')" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
+                <i class="fa-solid fa-credit-card"></i>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 leading-tight">Deposit History</p>
+                <p class="text-xs text-slate-400">Track your deposits</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+
+          <div onclick="openTransactionsModal('withdraw')" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
+                <i class="fa-solid fa-wallet"></i>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 leading-tight">Withdrawal History</p>
+                <p class="text-xs text-slate-400">Track your withdrawals</p>
+              </div>
+            </div>
             <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
           </div>
         </div>
@@ -112,60 +297,215 @@
       <!-- SCREEN 3: MY BIDS -->
       <section id="screen-bids" class="app-screen p-3 space-y-3">
         <div class="flex justify-between items-center">
-          <h3 class="font-decorative text-xl font-bold text-teal-950">Bid History</h3>
-          <span id="bidsCountBadge" class="text-xs bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full">0 Bids</span>
+          <div>
+            <h3 class="font-decorative text-xl font-bold text-teal-950">Bid History</h3>
+            <p class="text-xs text-slate-500">Track your bids &amp; auto winning bonus</p>
+          </div>
+          <span id="bidsCountBadge" class="text-xs bg-teal-100 text-teal-800 font-bold px-2.5 py-0.5 rounded-full">0 Bids</span>
         </div>
+
+        <div class="bg-[#032f33] text-white rounded-xl p-2 flex items-center justify-between text-xs font-semibold shadow-sm">
+          <span id="bidsDateLabel" class="tracking-wider">Today</span>
+          <span class="bg-white text-teal-950 px-2 py-0.5 rounded-md text-[10px] font-bold">TODAY</span>
+        </div>
+
         <div id="bidsListContainer" class="space-y-2">
-          <div class="p-6 text-center text-slate-400">No bids placed yet</div>
+          <div class="p-8 text-center text-slate-400">No bids placed yet</div>
         </div>
       </section>
 
       <!-- SCREEN 4: PROFILE -->
       <section id="screen-profile" class="app-screen p-3 space-y-3">
-        <div class="bg-[#032427] text-white p-4 rounded-2xl flex items-center justify-between">
-          <div>
-            <h3 id="profileName" class="font-bold text-base">Guest User</h3>
-            <p id="profilePhone" class="text-xs text-teal-200">+91 Not Registered</p>
+        <!-- User Card -->
+        <div class="bg-gradient-to-r from-[#032427] to-[#063f45] text-white p-4 rounded-2xl flex items-center gap-3.5 shadow-md">
+          <div id="profileAvatar" class="w-14 h-14 rounded-full bg-teal-800 border-2 border-amber-400 flex items-center justify-center text-xl font-black text-amber-300">
+            8
           </div>
-          <button onclick="openAuthModal()" class="text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg">Login</button>
+          <div class="flex-1">
+            <h3 id="profileName" class="font-bold text-base text-white">Guest User</h3>
+            <p id="profilePhone" class="text-xs text-teal-200">+91 8134834380</p>
+            <div class="inline-block mt-1 bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-semibold">
+              Verified Member
+            </div>
+          </div>
+          <button onclick="openAuthModal()" class="text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg shadow">
+            Login
+          </button>
+        </div>
+
+        <!-- Refer & Earn Card -->
+        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-3.5 text-slate-800">
+          <div class="flex items-center gap-2 text-amber-800 font-bold text-sm mb-1">
+            <i class="fa-solid fa-gift text-base"></i> Refer &amp; Earn ₹50 Bonus
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">Apne doston ko invite karein aur har deposit par 5% lifetime commission paayein.</p>
+          <div class="mt-3 flex gap-2">
+            <button onclick="shareReferralWhatsApp()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
+              <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Share
+            </button>
+            <button onclick="copyReferralLink()" class="px-3 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs font-bold">
+              Copy Link
+            </button>
+          </div>
+        </div>
+
+        <!-- Profile Menu Links -->
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 divide-y divide-slate-100 text-sm">
+          <div onclick="openChartModal('Shilong Morning Teer')" class="p-3 flex justify-between items-center cursor-pointer">
+            <span class="text-slate-700 font-medium"><i class="fa-solid fa-chart-simple w-5 text-teal-700"></i> Teer Results Chart</span>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+          <div onclick="switchTab('support')" class="p-3 flex justify-between items-center cursor-pointer">
+            <span class="text-slate-700 font-medium"><i class="fa-solid fa-headset w-5 text-teal-700"></i> Customer Support</span>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+          <div onclick="openNotificationModal()" class="p-3 flex justify-between items-center cursor-pointer">
+            <span class="text-slate-700 font-medium"><i class="fa-solid fa-bell w-5 text-teal-700"></i> Notifications</span>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+          <div onclick="logoutUser()" class="p-3 flex justify-between items-center cursor-pointer text-red-600 font-semibold">
+            <span><i class="fa-solid fa-arrow-right-from-bracket w-5"></i> Logout Account</span>
+            <i class="fa-solid fa-chevron-right text-xs"></i>
+          </div>
         </div>
       </section>
 
-      <!-- SCREEN 5: SUPPORT -->
+      <!-- SCREEN 5: SUPPORT (Screenshot Style) -->
       <section id="screen-support" class="app-screen p-3 space-y-3">
-        <div class="bg-[#032427] text-white p-4 rounded-2xl text-center">
-          <h3 class="font-bold text-base">24x7 Support</h3>
-          <p class="text-xs text-amber-400 mt-1">Official WhatsApp: +918134834380</p>
-          <a href="https://wa.me/918134834380" target="_blank" class="mt-3 block py-2 bg-emerald-600 font-bold text-xs rounded-xl text-white">Open WhatsApp Support</a>
+        <div class="bg-[#032427] text-white p-3 rounded-2xl flex items-center justify-between shadow-sm">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-full bg-teal-800 flex items-center justify-center text-teal-200">
+              <i class="fa-solid fa-headphones"></i>
+            </div>
+            <div>
+              <p class="font-bold text-sm leading-tight">Live Chat Support</p>
+              <p class="text-[11px] text-emerald-300">Online &bull; typically replies instantly</p>
+            </div>
+          </div>
+          <button onclick="resetChat()" class="text-teal-200 hover:text-white p-1">
+            <i class="fa-solid fa-rotate-right text-sm"></i>
+          </button>
+        </div>
+
+        <div class="flex gap-2">
+          <a href="https://wa.me/918134834380?text=Hello%20Teer%20Online%20Support" target="_blank" class="flex-1 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold py-1.5 rounded-full text-center text-xs shadow-sm flex items-center justify-center gap-1">
+            <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Support
+          </a>
+          <a href="tel:+918134834380" class="flex-1 bg-teal-50 border border-teal-200 text-teal-800 font-bold py-1.5 rounded-full text-center text-xs shadow-sm flex items-center justify-center gap-1">
+            <i class="fa-solid fa-phone text-xs"></i> Call Support
+          </a>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[340px]">
+          <div id="chatMessages" class="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
+            <div class="bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">
+              Hello! Welcome to <b>TEER ONLINE</b>. Kaise help kar sakte hain aapki? Deposit ya result related query batayein.
+            </div>
+          </div>
+
+          <form onsubmit="handleSendChat(event)" class="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1.5">
+            <input type="text" id="chatInput" placeholder="Type a message..." class="flex-1 bg-slate-50 border border-slate-200 rounded-full px-3.5 py-1.5 text-xs outline-none focus:border-teal-700" required>
+            <button type="submit" class="w-8 h-8 rounded-full bg-[#032427] text-amber-400 flex items-center justify-center shadow">
+              <i class="fa-solid fa-paper-plane text-xs"></i>
+            </button>
+          </form>
         </div>
       </section>
+
     </main>
 
-    <!-- Bottom Navigation -->
+    <!-- FOOTER BOTTOM NAVIGATION -->
     <nav class="bg-white border-t border-slate-200 px-2 py-1.5 flex justify-around items-center fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-30 shadow-lg">
-      <button onclick="switchTab('home')" class="nav-btn active flex flex-col items-center text-teal-900" data-tab="home">
+      <button onclick="switchTab('home')" class="nav-btn active flex flex-col items-center text-teal-900 group" data-tab="home">
         <i class="fa-solid fa-house text-base"></i>
         <span class="text-[10px] font-bold mt-0.5">Home</span>
       </button>
-      <button onclick="switchTab('wallet')" class="nav-btn flex flex-col items-center text-slate-400" data-tab="wallet">
+      <button onclick="switchTab('wallet')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="wallet">
         <i class="fa-solid fa-wallet text-base"></i>
         <span class="text-[10px] font-bold mt-0.5">Wallet</span>
       </button>
-      <button onclick="switchTab('bids')" class="nav-btn flex flex-col items-center text-slate-400" data-tab="bids">
+      <button onclick="switchTab('bids')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="bids">
         <i class="fa-solid fa-clock-rotate-left text-base"></i>
         <span class="text-[10px] font-bold mt-0.5">My Bids</span>
       </button>
-      <button onclick="switchTab('profile')" class="nav-btn flex flex-col items-center text-slate-400" data-tab="profile">
+      <button onclick="switchTab('profile')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="profile">
         <i class="fa-solid fa-user text-base"></i>
         <span class="text-[10px] font-bold mt-0.5">Profile</span>
       </button>
-      <button onclick="switchTab('support')" class="nav-btn flex flex-col items-center text-slate-400" data-tab="support">
+      <button onclick="switchTab('support')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="support">
         <i class="fa-solid fa-comment-dots text-base"></i>
         <span class="text-[10px] font-bold mt-0.5">Support</span>
       </button>
     </nav>
 
-    <!-- MODAL: NOTIFICATIONS (RESULTS, DEPOSIT, WITHDRAWAL, EVENTS) -->
+    <!-- SIDEBAR DRAWER OVERLAY -->
+    <div id="drawerOverlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black/60 z-40 hidden transition-opacity"></div>
+    
+    <!-- SIDEBAR DRAWER (Screenshot 1000060753 style) -->
+    <aside id="sideDrawer" class="fixed top-0 left-0 bottom-0 w-[280px] bg-white z-50 transform -translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
+      <div class="bg-[#032427] text-white p-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div id="drawerAvatar" class="w-11 h-11 rounded-full bg-teal-800 border border-amber-400 flex items-center justify-center font-bold text-amber-300">8</div>
+          <div>
+            <p id="drawerPhone" class="font-bold text-sm leading-tight text-white">8134834380</p>
+            <p id="drawerSub" class="text-xs text-teal-200">Official Member</p>
+            <p id="drawerBal" class="text-xs font-bold text-amber-400">₹0.00</p>
+          </div>
+        </div>
+        <button onclick="toggleDrawer()" class="text-teal-200 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto divide-y divide-slate-100 text-xs text-slate-700">
+        <a onclick="switchTab('home'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-house w-4 text-teal-800"></i> Home</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="openChartModal('Shilong Morning Teer'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-chart-column w-4 text-teal-800"></i> Result Chart</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="alert('Game Rates:\nDirect Guti: 1:90 (₹10 = ₹900)\nHouse: 1:9 (₹10 = ₹90)\nEnding: 1:9 (₹10 = ₹90)'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-chart-line w-4 text-teal-800"></i> Game Rates</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="switchTab('wallet'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-wallet w-4 text-teal-800"></i> Wallet</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="switchTab('profile'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-gift w-4 text-teal-800"></i> Refer &amp; Earn</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="openDepositModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-credit-card w-4 text-teal-800"></i> Deposit History</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="openWithdrawModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-arrow-up-right-from-square w-4 text-teal-800"></i> Withdrawal History</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="switchTab('bids'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-clock-rotate-left w-4 text-teal-800"></i> Bid History</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="openNotificationModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-bell w-4 text-teal-800"></i> Notifications</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a href="https://wa.me/918134834380" target="_blank" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-phone w-4 text-teal-800"></i> Contact Us</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <div onclick="logoutUser(); toggleDrawer()" class="p-3 flex items-center gap-3 text-red-600 font-bold hover:bg-red-50 cursor-pointer">
+          <i class="fa-solid fa-arrow-right-from-bracket w-4"></i> Logout
+        </div>
+      </div>
+    </aside>
+
+    <!-- MODAL: NOTIFICATIONS -->
     <div id="notificationModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
       <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl flex flex-col max-h-[80vh]">
         <div class="flex justify-between items-center border-b pb-2 mb-2">
@@ -175,14 +515,12 @@
           </div>
           <button onclick="closeNotificationModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
         </div>
-        <div id="notifListContainer" class="flex-1 overflow-y-auto space-y-2 text-xs">
-          <!-- Dynamically populated notifications -->
-        </div>
+        <div id="notifListContainer" class="flex-1 overflow-y-auto space-y-2 text-xs"></div>
         <button onclick="clearAllNotifications()" class="mt-3 w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold rounded-xl">Clear All</button>
       </div>
     </div>
 
-    <!-- MODAL: PLAY GAME (WITH 10-MIN CUTOFF & WINNING MULTIPLIER) -->
+    <!-- MODAL: PLAY GAME -->
     <div id="playGameModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-end justify-center">
       <div class="bg-white w-full max-w-[480px] rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl">
         <div class="bg-[#032427] text-white p-3.5 rounded-t-3xl flex items-center justify-between">
@@ -291,7 +629,7 @@
           <input type="text" id="depositUtrInput" placeholder="e.g. 430198234823" maxlength="12" class="w-full border rounded-xl p-2 text-sm font-mono outline-none">
         </div>
         <button onclick="submitDepositForm()" class="w-full py-2.5 bg-teal-950 text-amber-300 font-bold rounded-xl text-xs">Submit Request (+5% Bonus)</button>
-        <a href="https://wa.me/918134834380" target="_blank" class="w-full py-2.5 bg-emerald-600 text-white font-bold rounded-xl text-xs text-center block">Send Slip on WhatsApp</a>
+        <a id="depositWhatsappLink" href="https://wa.me/918134834380" target="_blank" class="w-full py-2.5 bg-emerald-600 text-white font-bold rounded-xl text-xs text-center block">Send Slip on WhatsApp</a>
       </div>
     </div>
 
@@ -311,6 +649,33 @@
           <input type="text" id="withdrawUpiInput" placeholder="e.g. yourname@upi" class="w-full border rounded-xl p-2 text-sm font-mono outline-none">
         </div>
         <button onclick="submitWithdrawForm()" class="w-full py-2.5 bg-teal-950 text-amber-300 font-bold rounded-xl text-xs">Submit Withdrawal</button>
+      </div>
+    </div>
+
+    <!-- MODAL: CHART (PAST TEER RESULTS) -->
+    <div id="chartModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl space-y-3 text-xs max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="font-bold text-sm text-teal-950">Past Teer Results Chart</h3>
+          <button onclick="closeChartModal()" class="text-slate-400"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto">
+          <table class="w-full text-center border-collapse">
+            <thead>
+              <tr class="bg-teal-950 text-amber-300 font-bold">
+                <th class="p-2 border">Date</th>
+                <th class="p-2 border">FR</th>
+                <th class="p-2 border">SR</th>
+              </tr>
+            </thead>
+            <tbody id="chartTableBody" class="divide-y font-mono font-bold text-slate-700">
+              <tr><td class="p-2 border">02/11/2026</td><td class="p-2 border text-teal-800">76</td><td class="p-2 border text-teal-800">15</td></tr>
+              <tr><td class="p-2 border">31/10/2026</td><td class="p-2 border text-teal-800">47</td><td class="p-2 border text-teal-800">82</td></tr>
+              <tr><td class="p-2 border">30/10/2026</td><td class="p-2 border text-teal-800">19</td><td class="p-2 border text-teal-800">63</td></tr>
+              <tr><td class="p-2 border">29/10/2026</td><td class="p-2 border text-teal-800">85</td><td class="p-2 border text-teal-800">04</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -361,8 +726,8 @@
       checkSundayHoliday();
       renderMarkets();
       renderGutiGrid();
+      startBannerAutoSlider();
       updateUI();
-      // Periodically check for winning bets, live results, and notifications
       setInterval(() => {
         renderMarkets();
         checkAndCreditWinnings();
@@ -370,7 +735,6 @@
       }, 4000);
     });
 
-    // AUTO MARKET DATE: Dynamically gets the current live date (DD/MM/YYYY)
     function getTodayFormattedDate() {
       const now = new Date();
       const d = String(now.getDate()).padStart(2, '0');
@@ -402,7 +766,6 @@
       const savedNotifs = localStorage.getItem('teer_notifications');
       if (savedNotifs) state.notifications = JSON.parse(savedNotifs);
       else {
-        // Default Welcome Event Notification
         state.notifications = [
           { id: 1, type: 'event', title: 'Daily Event Notice', message: 'Teer Online 6 days open! Mon to Sat grand tournament live.', time: 'Today', unread: true }
         ];
@@ -429,7 +792,7 @@
       }
     }
 
-    // WINNING CALCULATION & AUTO-CREDIT TO WALLET ENGINE
+    // Auto credit winnings
     function checkAndCreditWinnings() {
       const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
       let updated = false;
@@ -439,7 +802,6 @@
           const resObj = savedResults[bid.market];
           const announcedNum = (bid.round === 'FR') ? resObj.fr : resObj.sr;
 
-          // If result has been officially announced (not '**')
           if (announcedNum && announcedNum !== '**') {
             let isWin = false;
             let winAmount = 0;
@@ -450,13 +812,13 @@
 
             if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
               isWin = true;
-              winAmount = bid.amount * 90; // Direct Guti 1:90
+              winAmount = bid.amount * 90;
             } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
               isWin = true;
-              winAmount = bid.amount * 9; // House 1:9
+              winAmount = bid.amount * 9;
             } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
               isWin = true;
-              winAmount = bid.amount * 9; // Ending 1:9
+              winAmount = bid.amount * 9;
             }
 
             if (isWin) {
@@ -465,7 +827,6 @@
               state.balance += winAmount;
               updated = true;
 
-              // Trigger Notification for Winning Auto-Credit
               addAppNotification({
                 type: 'win',
                 title: '🎉 Congratulations! You Won!',
@@ -504,8 +865,8 @@
         const gain = audioCtx.createGain();
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
         gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
         osc.start();
@@ -517,9 +878,14 @@
       const b = '₹' + state.balance.toFixed(2);
       document.getElementById('headerBalance').innerText = b;
       document.getElementById('walletBalanceBig').innerText = b;
+      document.getElementById('drawerBal').innerText = b;
       if (state.user) {
         document.getElementById('profileName').innerText = state.user.name;
         document.getElementById('profilePhone').innerText = '+91 ' + state.user.phone;
+        document.getElementById('profileAvatar').innerText = state.user.name.charAt(0).toUpperCase();
+        document.getElementById('drawerPhone').innerText = state.user.phone;
+        document.getElementById('drawerSub').innerText = state.user.name;
+        document.getElementById('drawerAvatar').innerText = state.user.name.charAt(0).toUpperCase();
       }
       renderBidsList();
       syncNotifications();
@@ -562,13 +928,12 @@
       return (getMinutesRemaining(timeStr) > 10);
     }
 
-    // Render Markets using dynamic daily auto date
     function renderMarkets() {
       const cont = document.getElementById('marketCardsContainer');
       cont.innerHTML = '';
       const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
       const isSunday = (new Date().getDay() === 0);
-      const dynamicDate = getTodayFormattedDate(); // Automatic date change daily
+      const dynamicDate = getTodayFormattedDate();
 
       state.markets.forEach(m => {
         const live = savedResults[m.name] || { fr: m.defaultFr, sr: m.defaultSr };
@@ -594,7 +959,7 @@
             <div class="flex justify-between items-center pt-1">
               <span class="font-decorative text-base text-slate-700">Closed for today</span>
               <div class="flex items-center gap-1.5">
-                <button onclick="alert('${m.name} analytics')" class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800">
+                <button onclick="openChartModal('${m.name}')" class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800">
                   <i class="fa-solid fa-chart-simple text-xs"></i>
                 </button>
                 <button class="px-3.5 py-1.5 rounded-lg bg-[#b91c1c] text-white font-decorative text-base font-bold tracking-wide shadow-sm">
@@ -611,7 +976,7 @@
                 <span class="block text-[9px] text-amber-700 font-bold">10 min cutoff apply</span>
               </div>
               <div class="flex items-center gap-1.5">
-                <button onclick="alert('${m.name} analytics')" class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800">
+                <button onclick="openChartModal('${m.name}')" class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800">
                   <i class="fa-solid fa-chart-simple text-xs"></i>
                 </button>
                 <button onclick="openPlayModalByName('${m.name}')" class="px-3 py-1.5 rounded-lg bg-[#032f33] text-white font-decorative text-base font-bold tracking-wide shadow-sm">
@@ -829,6 +1194,37 @@
     function closeWithdrawModal() { document.getElementById('withdrawModal').classList.add('hidden'); }
     function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
     function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
+    function openChartModal(market) { document.getElementById('chartModal').classList.remove('hidden'); }
+    function closeChartModal() { document.getElementById('chartModal').classList.add('hidden'); }
+
+    function toggleDrawer() {
+      const drawer = document.getElementById('sideDrawer');
+      const overlay = document.getElementById('drawerOverlay');
+      if (drawer.classList.contains('-translate-x-full')) {
+        drawer.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+      } else {
+        drawer.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+      }
+    }
+
+    function startBannerAutoSlider() {
+      let isFirst = true;
+      setInterval(() => {
+        isFirst = !isFirst;
+        const s1 = document.getElementById('slide1');
+        const s2 = document.getElementById('slide2');
+        const d1 = document.getElementById('dot1');
+        const d2 = document.getElementById('dot2');
+        if (s1 && s2) {
+          s1.style.opacity = isFirst ? '1' : '0';
+          s2.style.opacity = isFirst ? '0' : '1';
+          d1.className = isFirst ? 'w-2 h-1 rounded-full bg-amber-400' : 'w-1.5 h-1 rounded-full bg-white/40';
+          d2.className = isFirst ? 'w-1.5 h-1 rounded-full bg-white/40' : 'w-2 h-1 rounded-full bg-amber-400';
+        }
+      }, 4000);
+    }
 
     function openNotificationModal() {
       const cont = document.getElementById('notifListContainer');
@@ -860,7 +1256,6 @@
         });
       }
 
-      // Mark all read on open
       state.notifications.forEach(n => n.unread = false);
       saveNotifications();
       syncNotifications();
@@ -929,7 +1324,7 @@
       countBadge.innerText = `${state.bids.length} Bids`;
 
       if (state.bids.length === 0) {
-        cont.innerHTML = '<div class="p-6 text-center text-slate-400">No bets placed yet.</div>';
+        cont.innerHTML = '<div class="p-8 text-center text-slate-400">No bids placed yet.</div>';
         return;
       }
       cont.innerHTML = '';
@@ -964,7 +1359,6 @@
       state.balance += totalCredit;
       localStorage.setItem('teer_balance', state.balance.toFixed(2));
 
-      // Deposit Notification Trigger
       addAppNotification({
         type: 'deposit',
         title: 'Deposit Successful',
@@ -986,7 +1380,6 @@
       state.balance -= amt;
       localStorage.setItem('teer_balance', state.balance.toFixed(2));
 
-      // Withdrawal Notification Trigger
       addAppNotification({
         type: 'withdraw',
         title: 'Withdrawal Submitted',
@@ -1019,8 +1412,61 @@
       alert('Registration successful! ₹100 Welcome Bonus added.');
     }
 
+    function handleSendChat(e) {
+      e.preventDefault();
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const container = document.getElementById('chatMessages');
+      const userBubble = document.createElement('div');
+      userBubble.className = "bg-[#032427] text-white p-2.5 rounded-2xl rounded-tr-none ml-auto max-w-[85%]";
+      userBubble.innerText = text;
+      container.appendChild(userBubble);
+      input.value = '';
+
+      setTimeout(() => {
+        const reply = document.createElement('div');
+        reply.className = "bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]";
+        reply.innerText = "Aapka message mil gaya hai. Kripya WhatsApp +918134834380 par contact karein direct support ke liye.";
+        container.appendChild(reply);
+        container.scrollTop = container.scrollHeight;
+      }, 700);
+    }
+
+    function resetChat() {
+      document.getElementById('chatMessages').innerHTML = `
+        <div class="bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">
+          Hello! Welcome to <b>TEER ONLINE</b>. Kaise help kar sakte hain aapki?
+        </div>
+      `;
+    }
+
+    function shareReferralWhatsApp() {
+      const url = encodeURIComponent(window.location.href);
+      const text = encodeURIComponent(`TEER ONLINE App par direct khelein aur paayein 1st Deposit 100% Bonus! Join here: ${window.location.href}`);
+      window.open(`https://wa.me/?text=${text}`, '_blank');
+    }
+
+    function copyReferralLink() {
+      navigator.clipboard.writeText(window.location.href);
+      alert('Referral link copied to clipboard!');
+    }
+
+    function openTransactionsModal(filter) {
+      alert(filter !== 'all' ? `${filter.toUpperCase()} History: All records verified.` : 'Transaction Ledger: All wallet activities are verified.');
+    }
+
+    function logoutUser() {
+      if (confirm('Kya aap logout karna chahte hain?')) {
+        state.user = null;
+        localStorage.removeItem('teer_current_user');
+        updateUI();
+        openAuthModal();
+      }
+    }
+
     function refreshBalance() { alert('Balance updated: ₹' + state.balance.toFixed(2)); }
-    function toggleDrawer() { alert('Teer Online: Auto Credit Winnings, Daily Auto Date & 10 Min Cutoff Active.'); }
   </script>
 </body>
 </html>
