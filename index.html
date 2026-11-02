@@ -53,7 +53,7 @@
       <div class="flex items-center gap-1.5">
         <div onclick="switchTab('wallet')" class="bg-teal-900/80 border border-teal-700/60 rounded-full px-2.5 py-1 flex items-center gap-1.5 cursor-pointer shadow-inner">
           <i class="fa-solid fa-wallet text-amber-400 text-xs"></i>
-          <span id="headerBalance" class="text-xs font-bold text-white tracking-wide">₹10.00</span>
+          <span id="headerBalance" class="text-xs font-bold text-white tracking-wide">₹0.00</span>
         </div>
         <button onclick="refreshBalance()" class="w-7 h-7 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-teal-200 active:rotate-180 transition-transform">
           <i class="fa-solid fa-rotate text-xs"></i>
@@ -210,7 +210,7 @@
           <div class="flex justify-between items-start">
             <div>
               <p class="font-decorative text-base text-teal-200">Available Balance</p>
-              <h2 id="walletBalanceBig" class="text-3xl font-black text-amber-300 mt-0.5">₹10.00</h2>
+              <h2 id="walletBalanceBig" class="text-3xl font-black text-amber-300 mt-0.5">₹0.00</h2>
               <p class="text-[11px] text-teal-300 mt-0.5">Teer Online Safe Wallet</p>
             </div>
             <button onclick="refreshBalance()" class="w-9 h-9 rounded-full bg-teal-800/60 border border-teal-600 flex items-center justify-center text-teal-200 active:rotate-180 transition-transform">
@@ -289,8 +289,8 @@
           <div id="profileAvatar" class="w-14 h-14 rounded-full bg-teal-800 border-2 border-amber-400 flex items-center justify-center text-xl font-black text-amber-300">8</div>
           <div class="flex-1">
             <h3 id="profileName" class="font-bold text-base text-white">Guest User</h3>
-            <p id="profilePhone" class="text-xs text-teal-200">+91 8134834380</p>
-            <div class="inline-block mt-1 bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-semibold">Verified Member</div>
+            <p id="profilePhone" class="text-xs text-teal-200">Not Logged In</p>
+            <div id="profileBadge" class="inline-block mt-1 bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-semibold">Guest Account</div>
           </div>
           <button onclick="openAuthModal()" class="text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg shadow">Login</button>
         </div>
@@ -411,11 +411,11 @@
     <aside id="sideDrawer" class="fixed top-0 left-0 bottom-0 w-[280px] bg-white z-50 transform -translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
       <div class="bg-[#032427] text-white p-4 flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div id="drawerAvatar" class="w-11 h-11 rounded-full bg-teal-800 border border-amber-400 flex items-center justify-center font-bold text-amber-300">8</div>
+          <div id="drawerAvatar" class="w-11 h-11 rounded-full bg-teal-800 border border-amber-400 flex items-center justify-center font-bold text-amber-300"><i class="fa-solid fa-user text-sm"></i></div>
           <div>
-            <p id="drawerPhone" class="font-bold text-sm leading-tight text-white">8134834380</p>
-            <p id="drawerSub" class="text-xs text-teal-200">Official Member</p>
-            <p id="drawerBal" class="text-xs font-bold text-amber-400">₹10.00</p>
+            <p id="drawerPhone" class="font-bold text-sm leading-tight text-white">Guest User</p>
+            <p id="drawerSub" class="text-xs text-teal-200">Please Login</p>
+            <p id="drawerBal" class="text-xs font-bold text-amber-400">₹0.00</p>
           </div>
         </div>
         <button onclick="toggleDrawer()" class="text-teal-200 hover:text-white p-1">
@@ -729,7 +729,7 @@
     // State management
     const state = {
       user: null,
-      balance: 10.00,
+      balance: 0.00,
       selectedNumbers: [],
       betMode: 'direct',
       currentRound: 'FR',
@@ -939,12 +939,16 @@
     }
 
     function loadStorage() {
-      const savedBal = localStorage.getItem('teer_balance');
-      if (savedBal !== null) state.balance = parseFloat(savedBal);
-      else state.balance = 10.00;
-
       const savedUser = localStorage.getItem('teer_current_user');
-      if (savedUser) state.user = JSON.parse(savedUser);
+      if (savedUser) {
+        state.user = JSON.parse(savedUser);
+        const savedBal = localStorage.getItem('teer_balance');
+        if (savedBal !== null) state.balance = parseFloat(savedBal);
+        else state.balance = 10.00;
+      } else {
+        state.user = null;
+        state.balance = 0.00;
+      }
 
       const savedBids = localStorage.getItem('teer_bids');
       if (savedBids) state.bids = JSON.parse(savedBids);
@@ -1067,13 +1071,36 @@
       document.getElementById('walletBalanceBig').innerText = b;
       document.getElementById('drawerBal').innerText = b;
 
+      const pName = document.getElementById('profileName');
+      const pPhone = document.getElementById('profilePhone');
+      const pAvatar = document.getElementById('profileAvatar');
+      const pBadge = document.getElementById('profileBadge');
+      const dPhone = document.getElementById('drawerPhone');
+      const dSub = document.getElementById('drawerSub');
+      const dAvatar = document.getElementById('drawerAvatar');
+
       if (state.user) {
-        document.getElementById('profileName').innerText = state.user.name;
-        document.getElementById('profilePhone').innerText = '+91 ' + state.user.phone;
-        document.getElementById('profileAvatar').innerText = state.user.name.charAt(0).toUpperCase();
-        document.getElementById('drawerPhone').innerText = state.user.phone;
-        document.getElementById('drawerSub').innerText = state.user.name;
-        document.getElementById('drawerAvatar').innerText = state.user.name.charAt(0).toUpperCase();
+        if (pName) pName.innerText = state.user.name;
+        if (pPhone) pPhone.innerText = '+91 ' + state.user.phone;
+        if (pAvatar) pAvatar.innerHTML = `<span class="font-bold text-amber-300 text-lg">${state.user.name.charAt(0).toUpperCase()}</span>`;
+        if (pBadge) {
+          pBadge.innerText = 'Verified Member';
+          pBadge.className = 'inline-block mt-1 bg-emerald-400/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-semibold';
+        }
+        if (dPhone) dPhone.innerText = '+91 ' + state.user.phone;
+        if (dSub) dSub.innerText = state.user.name;
+        if (dAvatar) dAvatar.innerHTML = `<span class="font-bold text-amber-300 text-base">${state.user.name.charAt(0).toUpperCase()}</span>`;
+      } else {
+        if (pName) pName.innerText = 'Guest User';
+        if (pPhone) pPhone.innerText = 'Not Logged In';
+        if (pAvatar) pAvatar.innerHTML = '<i class="fa-solid fa-user text-lg text-teal-200"></i>';
+        if (pBadge) {
+          pBadge.innerText = 'Guest Account (Please Login)';
+          pBadge.className = 'inline-block mt-1 bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-semibold';
+        }
+        if (dPhone) dPhone.innerText = 'Guest User';
+        if (dSub) dSub.innerText = 'Please Login';
+        if (dAvatar) dAvatar.innerHTML = '<i class="fa-solid fa-user text-sm text-teal-200"></i>';
       }
       renderBidsList();
       syncNotifications();
@@ -1510,6 +1537,12 @@
     }
 
     function confirmPlaceBet() {
+      if (!state.user) {
+        alert('Kripya pehle Login ya Register karein!');
+        closePlayModal();
+        openAuthModal();
+        return;
+      }
       if (!state.currentMarketObj) return;
 
       const targetTimeStr = (state.currentRound === 'FR') ? state.currentMarketObj.frTime : state.currentMarketObj.srTime;
