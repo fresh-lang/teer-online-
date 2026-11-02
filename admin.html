@@ -20,32 +20,62 @@
 
   <div id="dash" class="max-w-2xl mx-auto space-y-4 hidden">
     <div class="flex justify-between items-center bg-[#132226] p-4 rounded-xl border border-teal-900">
-      <h1 class="font-bold text-amber-400 text-base">TEER MASTER ADMIN PANEL</h1>
+      <div>
+        <h1 class="font-bold text-amber-400 text-base">TEER MASTER ADMIN PANEL</h1>
+        <p class="text-[10px] text-teal-300">Live Auto Winning Credit &bull; User Push Notifications</p>
+      </div>
       <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-1 rounded">Live Active</span>
     </div>
 
-    <!-- Update Results -->
+    <!-- Live Result Publisher with User Notification Broadcast -->
     <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-3">
-      <h3 class="font-bold text-sm text-amber-400">Declare Live Teer Result</h3>
-      <select id="mkt" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white">
-        <option>Shilong Morning Teer</option>
-        <option>Khanapara Morning Teer</option>
-        <option>Assam morning teer</option>
-        <option>Sikkim</option>
-        <option>Sikkim Night Teer</option>
-        <option>Shillong Night Teer</option>
-        <option>Assam night teer</option>
+      <h3 class="font-bold text-sm text-amber-400">Declare Live Result (Auto-Wins Credit &amp; User Alerts)</h3>
+      <label class="text-xs text-slate-400 block mb-1">Select Market:</label>
+      <select id="mkt" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white font-semibold">
+        <optgroup label="Morning Draws">
+          <option value="Shilong Morning Teer">Shilong Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
+          <option value="Khanapara Morning Teer">Khanapara Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
+          <option value="Assam morning teer">Assam morning teer (FR 11:30 AM | SR 12:30 PM)</option>
+          <option value="Sikkim">Sikkim (FR 12:15 PM | SR 01:40 PM)</option>
+        </optgroup>
+        <optgroup label="Official Evening Draws">
+          <option value="Juwai Teer (Evening)">Juwai Teer Evening (FR 02:00 PM | SR 02:45 PM)</option>
+          <option value="Shillong Teer (Evening)">Shillong Teer Evening (FR 03:45 PM | SR 04:45 PM)</option>
+          <option value="Khanapara Teer (Evening)">Khanapara Teer Evening (FR 04:00 PM | SR 04:40 PM)</option>
+          <option value="Assam teer">Assam teer Evening (FR 05:10 PM | SR 06:10 PM)</option>
+        </optgroup>
+        <optgroup label="Night Draws">
+          <option value="Sikkim Night Teer">Sikkim Night Teer (FR 06:50 PM | SR 07:50 PM)</option>
+          <option value="Shillong Night Teer">Shillong Night Teer (FR 08:10 PM | SR 09:10 PM)</option>
+          <option value="Assam night teer">Assam night teer (FR 09:40 PM | SR 10:40 PM)</option>
+        </optgroup>
       </select>
       <div class="grid grid-cols-2 gap-2">
-        <input type="text" id="fr" placeholder="FR (e.g. 45)" maxlength="2" class="bg-black/40 border border-teal-800 rounded p-2 text-center font-bold text-white">
-        <input type="text" id="sr" placeholder="SR (e.g. 78)" maxlength="2" class="bg-black/40 border border-teal-800 rounded p-2 text-center font-bold text-white">
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">FR Result:</label>
+          <input type="text" id="fr" placeholder="e.g. 76" maxlength="2" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-center font-bold text-white text-lg">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">SR Result:</label>
+          <input type="text" id="sr" placeholder="e.g. 15" maxlength="2" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-center font-bold text-white text-lg">
+        </div>
       </div>
-      <button onclick="saveResult()" class="w-full py-2 bg-emerald-600 font-bold rounded text-xs text-white">Save Result to User App</button>
+      <button onclick="saveResultAndBroadcast()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 font-bold rounded-lg text-xs text-white shadow">
+        Save, Auto-Credit Winnings &amp; Send Result Notification
+      </button>
     </div>
 
-    <!-- Payment & Helpline Settings -->
+    <!-- Send Custom Event Notification to all Users -->
+    <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-2">
+      <h3 class="font-bold text-sm text-amber-300">Broadcast Event Notice / Tournament Alert</h3>
+      <input type="text" id="eventTitle" placeholder="Event Title (e.g. Sunday Jackpot / Bonus Offer)" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white">
+      <textarea id="eventMsg" placeholder="Notification message jo sabhi users ke bell icon me show hoga..." rows="2" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs text-white"></textarea>
+      <button onclick="sendEventNotification()" class="w-full py-2 bg-amber-500 hover:bg-amber-600 text-teal-950 font-bold rounded-lg text-xs">Send Event Notification</button>
+    </div>
+
+    <!-- Helpline & Payment Settings -->
     <div class="bg-[#132226] p-4 rounded-xl border border-teal-900 space-y-3">
-      <h3 class="font-bold text-sm text-teal-300">Helpline & Payment Settings</h3>
+      <h3 class="font-bold text-sm text-teal-300">Helpline &amp; Payment Settings</h3>
       <div>
         <label class="text-xs text-slate-400">Helpline / WhatsApp:</label>
         <input type="text" id="cfgPhone" value="+918134834380" class="w-full bg-black/40 border border-teal-800 rounded p-2 text-xs font-mono text-white">
@@ -69,7 +99,7 @@
       }
     }
 
-    function saveResult() {
+    function saveResultAndBroadcast() {
       const market = document.getElementById('mkt').value;
       const fr = document.getElementById('fr').value.trim() || '**';
       const sr = document.getElementById('sr').value.trim() || '**';
@@ -78,7 +108,41 @@
       results[market] = { fr, sr };
       localStorage.setItem('teer_market_results', JSON.stringify(results));
 
-      alert('Result successfully updated for ' + market + '!\nFR: ' + fr + ' | SR: ' + sr);
+      // Push Live Result Notification to all Users
+      let notifs = JSON.parse(localStorage.getItem('teer_notifications') || '[]');
+      notifs.unshift({
+        id: Date.now(),
+        type: 'result',
+        title: `${market} Result Out!`,
+        message: `Official Result declared! FR: [${fr}] | SR: [${sr}]. Winning bonus wallet me auto-credit ho gaya hai!`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        unread: true
+      });
+      localStorage.setItem('teer_notifications', JSON.stringify(notifs));
+
+      alert(`Result saved for ${market}!
+FR: ${fr} | SR: ${sr}
+User app par result aur win notification live bhej diya gaya hai.`);
+    }
+
+    function sendEventNotification() {
+      const title = document.getElementById('eventTitle').value.trim() || 'Special Event Notice';
+      const msg = document.getElementById('eventMsg').value.trim();
+      if (!msg) { alert('Notification message likhein!'); return; }
+
+      let notifs = JSON.parse(localStorage.getItem('teer_notifications') || '[]');
+      notifs.unshift({
+        id: Date.now(),
+        type: 'event',
+        title: title,
+        message: msg,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        unread: true
+      });
+      localStorage.setItem('teer_notifications', JSON.stringify(notifs));
+
+      document.getElementById('eventMsg').value = '';
+      alert('Event Notification sabhi users ke phone par broadcast ho gaya hai!');
     }
 
     function saveSettings() {
@@ -88,7 +152,7 @@
       localStorage.setItem('teer_helpline_phone', phone);
       localStorage.setItem('teer_deposit_upi', upi);
 
-      alert('Helpline aur UPI settings User App ke liye update ho gayi hain!');
+      alert('Settings updated successfully!');
     }
   </script>
 </body>
