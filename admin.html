@@ -18,10 +18,6 @@
       color: #e2e8f0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
-    .admin-nav {
-      background: #111827;
-      border-bottom: 1px solid var(--border);
-    }
     .stat-card {
       background: var(--card);
       border: 1px solid var(--border);
@@ -65,6 +61,8 @@
       font-size: 0.75rem;
     }
   </style>
+
+  <!-- FIREBASE SCRIPTS -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -129,14 +127,14 @@
         <div class="col-md-3">
           <div class="stat-card">
             <span class="text-secondary small">Total Pool Collection</span>
-            <h3 class="text-success fw-bold mt-1" id="totalPoolDisplay">₹0</h3>
+            <h3 class="text-success fw-bold mt-1" id="totalPoolDisplay">₹0.00</h3>
             <small class="text-muted" id="totalBetCount">0 total bets</small>
           </div>
         </div>
         <div class="col-md-3">
           <div class="stat-card">
             <span class="text-secondary small">Max Liability (1:90 Rate)</span>
-            <h3 class="text-danger fw-bold mt-1" id="maxLiabilityDisplay">₹0</h3>
+            <h3 class="text-danger fw-bold mt-1" id="maxLiabilityDisplay">₹0.00</h3>
             <small class="text-muted">Single highest payout risk</small>
           </div>
         </div>
@@ -160,7 +158,7 @@
       <div class="stat-card">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="fw-bold mb-0"><i class="fas fa-list-ol text-warning me-2"></i>Guti Stake & Liability Matrix (00–99)</h5>
-          <span class="text-secondary small">Sort by: Heaviest Risk First</span>
+          <span class="text-secondary small">Sort: Heaviest Liability First</span>
         </div>
         <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
           <table class="table table-dark table-hover table-dark-custom align-middle mb-0">
@@ -176,7 +174,7 @@
             </thead>
             <tbody id="riskTableBody">
               <tr>
-                <td colspan="6" class="text-center text-secondary py-4">Select market and round to preview bet distribution</td>
+                <td colspan="6" class="text-center text-secondary py-4">No bets recorded yet.</td>
               </tr>
             </tbody>
           </table>
@@ -190,7 +188,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
           <div>
             <h5 class="fw-bold text-warning mb-0"><i class="fas fa-clock me-2"></i>Market Timers & Cutoff Editor</h5>
-            <small class="text-secondary">Ye settings live app par user countdown timer ko real-time synchronize karti hain.</small>
+            <small class="text-secondary">Timings update karte hi live user app par timers real-time synchronize ho jate hain.</small>
           </div>
         </div>
         <div class="table-responsive">
@@ -206,9 +204,7 @@
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody id="scheduleTableBody">
-              <!-- Dynamically Populated -->
-            </tbody>
+            <tbody id="scheduleTableBody"></tbody>
           </table>
         </div>
       </div>
@@ -220,7 +216,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
           <div>
             <h5 class="fw-bold text-warning mb-0"><i class="fas fa-user-lock me-2"></i>User Access & Password Controls</h5>
-            <small class="text-secondary">Instant block/unblock switch and direct panel password update.</small>
+            <small class="text-secondary">Instant block/unblock switch aur direct panel se password/PIN update.</small>
           </div>
           <button class="btn btn-outline-warning btn-sm" onclick="loadUsersList()"><i class="fas fa-sync"></i> Refresh Users</button>
         </div>
@@ -236,9 +232,7 @@
                 <th>Reset Password</th>
               </tr>
             </thead>
-            <tbody id="userTableBody">
-              <!-- Dynamically populated -->
-            </tbody>
+            <tbody id="userTableBody"></tbody>
           </table>
         </div>
       </div>
@@ -309,7 +303,7 @@
           <p class="text-secondary small">Reset credentials for user: <b id="resetTargetUid" class="text-light"></b></p>
           <div class="mb-3">
             <label class="form-label text-secondary small">New Password / Security PIN:</label>
-            <input type="text" id="newPasswordInput" class="form-control bg-secondary text-white border-0" placeholder="Minimum 6 characters">
+            <input type="text" id="newPasswordInput" class="form-control bg-secondary text-white border-0" placeholder="Minimum 4 characters">
           </div>
         </div>
         <div class="modal-footer border-secondary">
@@ -320,7 +314,279 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="js/firebase-config.js"></script>
-  <script src="js/admin.js"></script>
+  
+  <script>
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCn-AKygN3yIvaXN9-TkDqoitoJRMKIDho",
+    authDomain: "teer-online-e0d9d.firebaseapp.com",
+    databaseURL: "https://teer-online-e0d9d-default-rtdb.firebaseio.com",
+    projectId: "teer-online-e0d9d",
+    storageBucket: "teer-online-e0d9d.firebasestorage.app",
+    messagingSenderId: "178122817204",
+    appId: "1:178122817204:web:98820cc4fa354bab0e21e1",
+    measurementId: "G-0WV58DNLER"
+  };
+
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  const db = firebase.database();
+  const auth = firebase.auth();
+
+
+  let allBets = {};
+  let allUsers = {};
+  let activeMarkets = {
+    shillong: { name: 'Shillong Teer', frCutoff: '15:30', frResult: '15:45', srCutoff: '16:30', srResult: '16:45', active: true },
+    khanapara: { name: 'Khanapara Teer', frCutoff: '15:55', frResult: '16:15', srCutoff: '16:25', srResult: '16:45', active: true },
+    juwai: { name: 'Juwai Teer', frCutoff: '14:00', frResult: '14:15', srCutoff: '15:00', srResult: '15:15', active: true }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderScheduleEditor();
+    initRealtimeSync();
+  });
+
+  function initRealtimeSync() {
+    db.ref('markets').on('value', (snap) => {
+      const val = snap.val();
+      if (val) activeMarkets = val;
+      renderScheduleEditor();
+    });
+
+    db.ref('bets').on('value', (snap) => {
+      allBets = snap.val() || {};
+      loadRiskAnalytics();
+    });
+
+    db.ref('users').on('value', (snap) => {
+      allUsers = snap.val() || {};
+      loadUsersList();
+    });
+
+    db.ref('settings').on('value', (snap) => {
+      const s = snap.val() || {};
+      document.getElementById('settingUpiId').value = s.upiId || 'teerpay@upi';
+      document.getElementById('settingPayeeName').value = s.payeeName || 'Teer Online';
+      document.getElementById('settingHelpline').value = s.helpline || '919876543210';
+      document.getElementById('settingMarqueeText').value = s.marqueeText || 'Welcome to Teer Online!';
+      document.getElementById('settingMarqueeActive').checked = s.marqueeActive !== false;
+      updateAdminQrPreview(s.upiId, s.payeeName);
+    });
+  }
+
+  function loadRiskAnalytics() {
+    const market = document.getElementById('riskMarketSelect').value;
+    const round = document.getElementById('riskRoundSelect').value;
+
+    const gutiMatrix = {};
+    for (let i = 0; i <= 99; i++) {
+      const num = i < 10 ? '0' + i : '' + i;
+      gutiMatrix[num] = { count: 0, totalAmount: 0 };
+    }
+
+    let totalPool = 0;
+    let totalBetCount = 0;
+
+    Object.values(allBets).forEach(b => {
+      if (b.marketId === market && b.round === round) {
+        const amt = (parseFloat(b.amount) || 0);
+        totalPool += amt;
+        totalBetCount++;
+        if (gutiMatrix[b.guti]) {
+          gutiMatrix[b.guti].count++;
+          gutiMatrix[b.guti].totalAmount += amt;
+        }
+      }
+    });
+
+    const sortedGutis = Object.entries(gutiMatrix).sort((a, b) => b[1].totalAmount - a[1].totalAmount);
+    const highestBetGuti = sortedGutis[0];
+    const maxLiability = highestBetGuti[1].totalAmount * 90;
+
+    document.getElementById('totalPoolDisplay').innerText = `₹${totalPool.toFixed(2)}`;
+    document.getElementById('totalBetCount').innerText = `${totalBetCount} total bets placed`;
+    document.getElementById('maxLiabilityDisplay').innerText = `₹${maxLiability.toFixed(2)}`;
+    document.getElementById('topGutiDisplay').innerText = highestBetGuti[1].totalAmount > 0 ? highestBetGuti[0] : 'None';
+    document.getElementById('topGutiStakeDisplay').innerText = `₹${highestBetGuti[1].totalAmount.toFixed(2)} wagered`;
+
+    const badge = document.getElementById('riskStatusBadge');
+    if (maxLiability > totalPool && highestBetGuti[1].totalAmount > 0) {
+      badge.innerHTML = `<span class="badge-risk"><i class="fas fa-triangle-exclamation me-1"></i>HIGH RISK (Exposure: -₹${(maxLiability - totalPool).toFixed(2)})</span>`;
+    } else {
+      badge.innerHTML = `<span class="badge-safe"><i class="fas fa-shield me-1"></i>HEALTHY POOL (Profitable)</span>`;
+    }
+
+    const tbody = document.getElementById('riskTableBody');
+    tbody.innerHTML = '';
+
+    sortedGutis.forEach(([num, data]) => {
+      if (data.totalAmount === 0 && totalPool > 0) return;
+      const payout = data.totalAmount * 90;
+      const margin = totalPool - payout;
+      const isRisk = margin < 0 && data.totalAmount > 0;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge bg-warning text-dark fs-6">${num}</span></td>
+        <td>${data.count}</td>
+        <td class="fw-bold">₹${data.totalAmount.toFixed(2)}</td>
+        <td class="text-danger fw-bold">₹${payout.toFixed(2)}</td>
+        <td class="${margin >= 0 ? 'text-success' : 'text-danger'} fw-bold">₹${margin.toFixed(2)}</td>
+        <td>
+          ${isRisk ? '<span class="badge-risk">CRITICAL RISK</span>' : (data.totalAmount > 0 ? '<span class="badge-safe">SAFE</span>' : '<span class="text-muted">No Bets</span>')}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    if (tbody.children.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No bets placed yet for ${market.toUpperCase()} - ${round}.</td></tr>`;
+    }
+  }
+
+  function renderScheduleEditor() {
+    const tbody = document.getElementById('scheduleTableBody');
+    tbody.innerHTML = '';
+
+    Object.entries(activeMarkets).forEach(([id, m]) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><b>${m.name}</b><br><small class="text-muted">${id}</small></td>
+        <td><input type="time" id="frCut_${id}" class="form-control form-control-sm bg-dark text-white border-secondary" value="${m.frCutoff || '15:30'}"></td>
+        <td><input type="time" id="frRes_${id}" class="form-control form-control-sm bg-dark text-white border-secondary" value="${m.frResult || '15:45'}"></td>
+        <td><input type="time" id="srCut_${id}" class="form-control form-control-sm bg-dark text-white border-secondary" value="${m.srCutoff || '16:30'}"></td>
+        <td><input type="time" id="srRes_${id}" class="form-control form-control-sm bg-dark text-white border-secondary" value="${m.srResult || '16:45'}"></td>
+        <td>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="status_${id}" ${m.active ? 'checked' : ''}>
+          </div>
+        </td>
+        <td>
+          <button class="btn btn-warning btn-sm fw-bold" onclick="saveMarketSchedule('${id}')">
+            <i class="fas fa-save me-1"></i> Save
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function saveMarketSchedule(marketId) {
+    const frCut = document.getElementById(`frCut_${marketId}`).value;
+    const frRes = document.getElementById(`frRes_${marketId}`).value;
+    const srCut = document.getElementById(`srCut_${marketId}`).value;
+    const srRes = document.getElementById(`srRes_${marketId}`).value;
+    const isActive = document.getElementById(`status_${marketId}`).checked;
+
+    db.ref('markets/' + marketId).update({
+      frCutoff: frCut,
+      frResult: frRes,
+      srCutoff: srCut,
+      srResult: srRes,
+      active: isActive
+    }).then(() => {
+      alert(`Market "${marketId}" schedule saved and synced live!`);
+    });
+  }
+
+  function loadUsersList() {
+    const tbody = document.getElementById('userTableBody');
+    tbody.innerHTML = '';
+
+    Object.entries(allUsers).forEach(([uid, u]) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><code>${uid}</code><br><small class="text-muted">${u.phone || 'N/A'}</small></td>
+        <td><b>${u.name || 'Anonymous'}</b></td>
+        <td class="text-success fw-bold">₹${(u.balance || 0).toFixed(2)}</td>
+        <td>
+          ${u.isBlocked ? '<span class="badge bg-danger">BLOCKED</span>' : '<span class="badge bg-success">ACTIVE</span>'}
+        </td>
+        <td>
+          <button class="btn ${u.isBlocked ? 'btn-success' : 'btn-danger'} btn-sm fw-bold" onclick="toggleUserBlock('${uid}', ${!u.isBlocked})">
+            <i class="fas ${u.isBlocked ? 'fa-unlock' : 'fa-ban'} me-1"></i> ${u.isBlocked ? 'Unblock' : 'Block'}
+          </button>
+        </td>
+        <td>
+          <button class="btn btn-outline-warning btn-sm" onclick="openResetModal('${uid}')">
+            <i class="fas fa-key me-1"></i> Reset PIN
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    if (tbody.children.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No users registered yet.</td></tr>`;
+    }
+  }
+
+  function toggleUserBlock(uid, blockState) {
+    db.ref('users/' + uid + '/isBlocked').set(blockState).then(() => {
+      alert(`User ${uid} has been ${blockState ? 'BLOCKED' : 'UNBLOCKED'}!`);
+    });
+  }
+
+  let activeResetUid = null;
+  function openResetModal(uid) {
+    activeResetUid = uid;
+    document.getElementById('resetTargetUid').innerText = uid;
+    document.getElementById('newPasswordInput').value = '';
+    const modal = new bootstrap.Modal(document.getElementById('pwdResetModal'));
+    modal.show();
+  }
+
+  function confirmPasswordReset() {
+    const newPwd = document.getElementById('newPasswordInput').value.trim();
+    if (!newPwd || newPwd.length < 4) {
+      alert('Please enter at least 4 characters for security code/password.');
+      return;
+    }
+    db.ref('users/' + activeResetUid + '/password').set(newPwd).then(() => {
+      alert(`Password for user ${activeResetUid} successfully reset to "${newPwd}"!`);
+      bootstrap.Modal.getInstance(document.getElementById('pwdResetModal')).hide();
+    });
+  }
+
+  function updateAdminQrPreview(upi, name) {
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${upi || 'teerpay@upi'}%26pn=${encodeURIComponent(name || 'Teer Online')}%26cu=INR`;
+    document.getElementById('adminQrPreview').src = qrUrl;
+    document.getElementById('qrPayloadString').innerText = `upi://pay?pa=${upi}&pn=${name}&cu=INR`;
+  }
+
+  function saveUpiAndHelplineSettings() {
+    const upi = document.getElementById('settingUpiId').value.trim();
+    const name = document.getElementById('settingPayeeName').value.trim();
+    const helpline = document.getElementById('settingHelpline').value.trim();
+
+    if (!upi) {
+      alert('Enter valid UPI ID!');
+      return;
+    }
+
+    db.ref('settings').update({
+      upiId: upi,
+      payeeName: name,
+      helpline: helpline
+    }).then(() => {
+      updateAdminQrPreview(upi, name);
+      alert('UPI ID and Helpline details successfully updated and broadcast to user app!');
+    });
+  }
+
+  function saveMarqueeSettings() {
+    const text = document.getElementById('settingMarqueeText').value.trim();
+    const active = document.getElementById('settingMarqueeActive').checked;
+
+    db.ref('settings').update({
+      marqueeText: text,
+      marqueeActive: active
+    }).then(() => {
+      alert('Marquee notice broadcast updated live!');
+    });
+  }
+  </script>
 </body>
 </html>

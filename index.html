@@ -40,6 +40,8 @@
       font-weight: 800;
       letter-spacing: 0.5px;
       color: #fbbf24;
+      cursor: pointer;
+      user-select: none;
     }
     .wallet-chip {
       background: rgba(0, 0, 0, 0.4);
@@ -131,7 +133,7 @@
       bottom: 0;
       left: 0;
       right: 0;
-      height: 65px;
+      height: 60px;
       background: #111827;
       display: flex;
       justify-content: space-around;
@@ -142,9 +144,10 @@
     .nav-item {
       text-align: center;
       color: var(--text-muted);
-      font-size: 0.72rem;
+      font-size: 0.75rem;
       cursor: pointer;
       text-decoration: none;
+      flex: 1;
     }
     .nav-item.active, .nav-item:hover {
       color: var(--accent);
@@ -167,6 +170,8 @@
       text-align: center;
     }
   </style>
+
+  <!-- FIREBASE SCRIPTS -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -174,16 +179,16 @@
 <body>
 
   <!-- Notice / Marquee Bar -->
-  <div class="marquee-container" id="marqueeWrapper" style="display: none;">
+  <div class="marquee-container" id="marqueeWrapper">
     <i class="fas fa-bullhorn me-2 text-warning"></i>
-    <div class="marquee-text" id="marqueeText">Welcome to Teer Online! Play Responsibly.</div>
+    <div class="marquee-text" id="marqueeText">Welcome to Teer Online! Live Betting active for FR & SR.</div>
   </div>
 
   <!-- Header -->
   <div class="header-bar">
     <div>
-      <div class="brand-title"><i class="fas fa-bullseye me-1"></i> TEER LIVE</div>
-      <small class="text-secondary" id="userDisplayName">Guest</small>
+      <div class="brand-title" id="brandLogo" onclick="handleBrandClicks()"><i class="fas fa-bullseye me-1"></i> TEER LIVE</div>
+      <small class="text-secondary" id="userDisplayName">Player</small>
     </div>
     <div class="d-flex align-items-center gap-2">
       <div class="wallet-chip">₹<span id="userBalance">0.00</span></div>
@@ -192,15 +197,8 @@
   </div>
 
   <div class="container py-3">
-
-    <!-- Market List -->
-    <div id="marketsContainer">
-      <div class="text-center py-5 text-secondary">
-        <div class="spinner-border text-warning spinner-border-sm mb-2"></div>
-        <div>Loading live markets and schedules...</div>
-      </div>
-    </div>
-
+    <!-- Live Markets Container -->
+    <div id="marketsContainer"></div>
   </div>
 
   <!-- Deposit Modal -->
@@ -233,7 +231,7 @@
           </a>
         </div>
         <div class="modal-footer border-secondary">
-          <button class="btn btn-secondary w-100" onclick="submitDepositRequest()">Submit Payment Request</button>
+          <button class="btn btn-warning w-100 fw-bold" onclick="submitDepositRequest()">Submit Payment Request</button>
         </div>
       </div>
     </div>
@@ -282,15 +280,362 @@
     <a id="blockHelplineBtn" href="#" class="btn btn-success mt-2"><i class="fab fa-whatsapp me-2"></i>Contact Admin Support</a>
   </div>
 
-  <!-- Bottom Navigation -->
+  <!-- Bottom Navigation (Cleaned: Admin tab completely removed from users) -->
   <div class="bottom-nav">
     <a href="index.html" class="nav-item active"><i class="fas fa-home"></i>Home</a>
-    <a href="#" onclick="openDepositModal()" class="nav-item"><i class="fas fa-wallet"></i>Wallet</a>
-    <a href="admin.html" class="nav-item"><i class="fas fa-user-shield"></i>Admin</a>
+    <a href="#" onclick="openDepositModal()" class="nav-item"><i class="fas fa-wallet"></i>Wallet / Deposit</a>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="js/firebase-config.js"></script>
-  <script src="js/app.js"></script>
+  
+  <script>
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCn-AKygN3yIvaXN9-TkDqoitoJRMKIDho",
+    authDomain: "teer-online-e0d9d.firebaseapp.com",
+    databaseURL: "https://teer-online-e0d9d-default-rtdb.firebaseio.com",
+    projectId: "teer-online-e0d9d",
+    storageBucket: "teer-online-e0d9d.firebasestorage.app",
+    messagingSenderId: "178122817204",
+    appId: "1:178122817204:web:98820cc4fa354bab0e21e1",
+    measurementId: "G-0WV58DNLER"
+  };
+
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  const db = firebase.database();
+  const auth = firebase.auth();
+
+
+  let currentUser = null;
+  let selectedGuti = null;
+  let currentMarketId = null;
+  let currentRound = null;
+  let appSettings = {
+    upiId: 'teerpay@upi',
+    payeeName: 'Teer Online Official',
+    helpline: '919876543210',
+    marqueeText: 'Welcome to Teer Online! Live Betting active for FR & SR.',
+    marqueeActive: true
+  };
+
+  // Immediate initial markets data (Never stays blank/loading)
+  let markets = {
+    shillong: { name: 'Shillong Teer', frCutoff: '15:30', frResult: '15:45', srCutoff: '16:30', srResult: '16:45', active: true },
+    khanapara: { name: 'Khanapara Teer', frCutoff: '15:55', frResult: '16:15', srCutoff: '16:25', srResult: '16:45', active: true },
+    juwai: { name: 'Juwai Teer', frCutoff: '14:00', frResult: '14:15', srCutoff: '15:00', srResult: '15:15', active: true }
+  };
+
+  // Secret shortcut for owner: 5 taps on TEER LIVE opens admin.html
+  let brandTapCount = 0;
+  let brandTapTimer = null;
+  function handleBrandClicks() {
+    brandTapCount++;
+    clearTimeout(brandTapTimer);
+    brandTapTimer = setTimeout(() => { brandTapCount = 0; }, 2000);
+    if (brandTapCount >= 5) {
+      window.location.href = 'admin.html';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initGutiPicker();
+    renderMarkets(); // Instant render
+    renderMarquee();
+    updateQrCode();
+    
+    // Connect to Firebase in background
+    if (typeof db !== 'undefined') {
+      listenSettings();
+      listenMarkets();
+      initMockAuth();
+    }
+  });
+
+  function initGutiPicker() {
+    const container = document.getElementById('gutiPickerGrid');
+    if (!container) return;
+    container.innerHTML = '';
+    for (let i = 0; i <= 99; i++) {
+      const formatted = i < 10 ? '0' + i : '' + i;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'guti-btn';
+      btn.innerText = formatted;
+      btn.onclick = () => selectGuti(formatted, btn);
+      container.appendChild(btn);
+    }
+  }
+
+  function selectGuti(num, element) {
+    document.querySelectorAll('.guti-btn').forEach(b => b.classList.remove('active'));
+    element.classList.add('active');
+    selectedGuti = num;
+    document.getElementById('selectedGutiDisplay').innerText = num;
+    calculateExpectedPayout();
+  }
+
+  function calculateExpectedPayout() {
+    const amt = parseFloat(document.getElementById('betAmountInput').value) || 0;
+    document.getElementById('expectedPayout').innerText = (amt * 90).toFixed(2);
+  }
+
+  function listenSettings() {
+    db.ref('settings').on('value', (snap) => {
+      const val = snap.val();
+      if (val) {
+        appSettings = { ...appSettings, ...val };
+        renderMarquee();
+        updateQrCode();
+      }
+    }, (err) => console.log('Settings error:', err));
+  }
+
+  function renderMarquee() {
+    const wrapper = document.getElementById('marqueeWrapper');
+    const textElem = document.getElementById('marqueeText');
+    if (!wrapper || !textElem) return;
+    if (appSettings.marqueeActive && appSettings.marqueeText) {
+      wrapper.style.display = 'flex';
+      textElem.innerText = appSettings.marqueeText;
+    } else {
+      wrapper.style.display = 'none';
+    }
+  }
+
+  function updateQrCode() {
+    const upi = appSettings.upiId || 'teerpay@upi';
+    const name = encodeURIComponent(appSettings.payeeName || 'Teer Online');
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${upi}%26pn=${name}%26cu=INR`;
+    
+    const qrImg = document.getElementById('dynamicQrImage');
+    if (qrImg) qrImg.src = qrUrl;
+
+    const upiDisp = document.getElementById('upiIdDisplay');
+    if (upiDisp) upiDisp.value = upi;
+
+    const hlBtn = document.getElementById('helplineBtn');
+    const blkHl = document.getElementById('blockHelplineBtn');
+    const hlLink = `https://wa.me/${appSettings.helpline || '919876543210'}?text=Hello%20Support`;
+    if (hlBtn) hlBtn.href = hlLink;
+    if (blkHl) blkHl.href = hlLink;
+  }
+
+  function copyUpi() {
+    const upi = document.getElementById('upiIdDisplay').value;
+    navigator.clipboard.writeText(upi);
+    alert('UPI ID copied: ' + upi);
+  }
+
+  function listenMarkets() {
+    db.ref('markets').on('value', (snap) => {
+      const val = snap.val();
+      if (val && Object.keys(val).length > 0) {
+        markets = val;
+      } else {
+        db.ref('markets').set(markets);
+      }
+      renderMarkets();
+    }, (err) => {
+      console.log('Firebase sync error, fallback active:', err);
+      renderMarkets();
+    });
+  }
+
+  function renderMarkets() {
+    const container = document.getElementById('marketsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    Object.entries(markets).forEach(([id, m]) => {
+      const card = document.createElement('div');
+      card.className = 'market-card';
+      card.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="fw-bold mb-0 text-warning">${m.name}</h5>
+          <span class="market-badge ${m.active ? 'bg-success text-white' : 'bg-danger text-white'}">${m.active ? 'LIVE' : 'CLOSED'}</span>
+        </div>
+        
+        <div class="row g-2 mt-1">
+          <div class="col-6">
+            <div class="round-pill">
+              <div class="fw-bold text-light">FR Round</div>
+              <div class="small text-secondary">Cutoff: ${m.frCutoff || '15:30'}</div>
+              <div class="timer-display my-1" id="timer-${id}-FR">--:--:--</div>
+              <button class="btn btn-warning btn-sm w-100 fw-bold mt-1" id="btn-${id}-FR" onclick="openBetModal('${id}', '${m.name}', 'FR')">
+                <i class="fas fa-crosshairs me-1"></i> Play FR
+              </button>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="round-pill">
+              <div class="fw-bold text-light">SR Round</div>
+              <div class="small text-secondary">Cutoff: ${m.srCutoff || '16:30'}</div>
+              <div class="timer-display my-1" id="timer-${id}-SR">--:--:--</div>
+              <button class="btn btn-warning btn-sm w-100 fw-bold mt-1" id="btn-${id}-SR" onclick="openBetModal('${id}', '${m.name}', 'SR')">
+                <i class="fas fa-crosshairs me-1"></i> Play SR
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+
+    updateCutoffCountdowns();
+  }
+
+  setInterval(updateCutoffCountdowns, 1000);
+
+  function updateCutoffCountdowns() {
+    if (!markets) return;
+    const now = new Date();
+
+    Object.entries(markets).forEach(([id, m]) => {
+      ['FR', 'SR'].forEach(round => {
+        const cutoffStr = round === 'FR' ? m.frCutoff : m.srCutoff;
+        const timerElem = document.getElementById(`timer-${id}-${round}`);
+        const btnElem = document.getElementById(`btn-${id}-${round}`);
+        if (!timerElem || !cutoffStr) return;
+
+        const [hours, minutes] = cutoffStr.split(':').map(Number);
+        const target = new Date();
+        target.setHours(hours, minutes, 0, 0);
+
+        const diff = target - now;
+        if (diff > 0) {
+          const hrs = Math.floor(diff / (1000 * 60 * 60));
+          const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const secs = Math.floor((diff % (1000 * 60)) / 1000);
+          timerElem.innerText = `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+          timerElem.style.color = "#fbbf24";
+          if (btnElem) {
+            btnElem.disabled = false;
+            btnElem.innerHTML = `<i class="fas fa-crosshairs me-1"></i> Play ${round}`;
+          }
+        } else {
+          timerElem.innerText = "CLOSED";
+          timerElem.style.color = "#ef4444";
+          if (btnElem) {
+            btnElem.disabled = true;
+            btnElem.innerHTML = `<i class="fas fa-lock me-1"></i> Closed`;
+          }
+        }
+      });
+    });
+  }
+
+  function pad(n) { return n < 10 ? '0' + n : n; }
+
+  function initMockAuth() {
+    const storedUid = localStorage.getItem('teer_demo_uid') || 'USR_' + Math.floor(100000 + Math.random() * 900000);
+    localStorage.setItem('teer_demo_uid', storedUid);
+
+    db.ref('users/' + storedUid).on('value', (snap) => {
+      let data = snap.val();
+      if (!data) {
+        data = {
+          name: 'Player ' + storedUid.slice(-4),
+          phone: '987654' + storedUid.slice(-4),
+          balance: 500,
+          isBlocked: false,
+          password: 'password123'
+        };
+        db.ref('users/' + storedUid).set(data);
+      }
+      currentUser = { uid: storedUid, ...data };
+      document.getElementById('userDisplayName').innerText = currentUser.name;
+      document.getElementById('userBalance').innerText = (currentUser.balance || 0).toFixed(2);
+
+      const blockScreen = document.getElementById('blockedScreen');
+      if (blockScreen) {
+        if (currentUser.isBlocked) {
+          blockScreen.style.display = 'flex';
+        } else {
+          blockScreen.style.display = 'none';
+        }
+      }
+    });
+  }
+
+  function openBetModal(marketId, marketName, round) {
+    currentMarketId = marketId;
+    currentRound = round;
+    document.getElementById('betMarketTitle').innerText = marketName;
+    document.getElementById('betRoundTitle').innerText = `Round: ${round}`;
+    const modal = new bootstrap.Modal(document.getElementById('betModal'));
+    modal.show();
+  }
+
+  function openDepositModal() {
+    const modal = new bootstrap.Modal(document.getElementById('depositModal'));
+    modal.show();
+  }
+
+  function placeBet() {
+    if (!selectedGuti) {
+      alert('Please select a number (00-99) first!');
+      return;
+    }
+    const amt = parseFloat(document.getElementById('betAmountInput').value);
+    if (!amt || amt <= 0) {
+      alert('Please enter valid amount!');
+      return;
+    }
+    if (!currentUser) {
+      alert('User session loading. Please try in a moment!');
+      return;
+    }
+    if (currentUser.balance < amt) {
+      alert('Insufficient balance! Please add funds.');
+      return;
+    }
+
+    const newBal = currentUser.balance - amt;
+    db.ref('users/' + currentUser.uid + '/balance').set(newBal);
+
+    const betKey = db.ref('bets').push().key;
+    const betRecord = {
+      id: betKey,
+      uid: currentUser.uid,
+      userName: currentUser.name,
+      marketId: currentMarketId,
+      round: currentRound,
+      guti: selectedGuti,
+      amount: amt,
+      potentialWin: amt * 90,
+      timestamp: Date.now()
+    };
+    db.ref('bets/' + betKey).set(betRecord);
+
+    alert(`Bet of ₹${amt} placed successfully on [${selectedGuti}]!`);
+    bootstrap.Modal.getInstance(document.getElementById('betModal')).hide();
+  }
+
+  function submitDepositRequest() {
+    const utr = document.getElementById('depositUtrInput').value.trim();
+    const amt = parseFloat(document.getElementById('depositAmountInput').value);
+    if (!utr || utr.length < 6) {
+      alert('Enter valid 12-digit UTR transaction reference!');
+      return;
+    }
+    if (!amt || amt <= 0) {
+      alert('Enter valid deposit amount!');
+      return;
+    }
+    if (!currentUser) return;
+    db.ref('deposits').push({
+      uid: currentUser.uid,
+      userName: currentUser.name,
+      amount: amt,
+      utr: utr,
+      status: 'PENDING',
+      timestamp: Date.now()
+    });
+    alert('Deposit request submitted! Admin will verify and credit balance shortly.');
+    bootstrap.Modal.getInstance(document.getElementById('depositModal')).hide();
+  }
+  </script>
 </body>
 </html>
