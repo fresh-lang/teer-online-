@@ -2,2536 +2,295 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>TEER ONLINE</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel:wght@700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- FIREBASE REALTIME DATABASE SDK (FREE) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Teer Online - Official Gaming App</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
   <style>
-    * { -webkit-tap-highlight-color: transparent; }
-    body { font-family: 'Poppins', sans-serif; background-color: #021a1c; color: #1e293b; user-select: none; }
-    .font-decorative { font-family: 'Caveat', cursive; }
-    .font-cinzel { font-family: 'Cinzel', serif; }
-    .gold-gradient-text { background: linear-gradient(135deg, #fce088 0%, #dfa539 50%, #996e1b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .gold-btn { background: linear-gradient(180deg, #ffd768 0%, #cf972d 100%); color: #022326; font-weight: 700; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    .app-screen { display: none; }
-    .app-screen.active { display: block; }
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --accent: #f59e0b;
+      --accent-hover: #d97706;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding-bottom: 75px;
+    }
+    .header-bar {
+      background: linear-gradient(135deg, #1e1b4b, #312e81);
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #fbbf24;
+    }
+    .wallet-chip {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #34d399;
+    }
+    .marquee-container {
+      background: #7c2d12;
+      color: #fef08a;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      overflow: hidden;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+    }
+    .marquee-text {
+      display: inline-block;
+      animation: marquee 16s linear infinite;
+    }
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    .market-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    }
+    .market-badge {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .timer-display {
+      font-family: monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fbbf24;
+      background: rgba(0,0,0,0.35);
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+    .round-pill {
+      background: #334155;
+      padding: 8px 12px;
+      border-radius: 8px;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .guti-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 6px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 8px;
+    }
+    .guti-btn {
+      background: #334155;
+      color: #fff;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      font-weight: 700;
+      padding: 8px 0;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .guti-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-color: #f59e0b;
+    }
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 65px;
+      background: #111827;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      z-index: 1000;
+    }
+    .nav-item {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .nav-item.active, .nav-item:hover {
+      color: var(--accent);
+    }
+    .nav-item i {
+      font-size: 1.3rem;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .blocked-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.98);
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 </head>
-<body class="flex justify-center bg-black min-h-screen">
-  <div id="appContainer" class="w-full max-w-[480px] min-h-screen bg-[#f3f7f8] flex flex-col relative pb-20 shadow-2xl overflow-x-hidden">
+<body>
 
-    <!-- Top Header -->
-    <header class="bg-[#032427] text-white px-3.5 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-md">
-      <div class="flex items-center gap-2">
-        <button onclick="toggleDrawer()" class="p-1 text-teal-100 hover:text-white">
-          <i class="fa-solid fa-bars text-xl"></i>
-        </button>
-        <div class="flex items-center gap-1.5 cursor-pointer" onclick="switchTab('home')">
-          <div class="w-7 h-7 rounded-full border border-amber-400/40 bg-teal-950 flex items-center justify-center p-0.5">
-            <svg viewBox="0 0 100 100" class="w-full h-full fill-current text-amber-400">
-              <circle cx="50" cy="50" r="44" stroke="currentColor" stroke-width="3" fill="none" />
-              <path d="M 30,50 L 70,50 M 50,30 L 70,50 L 50,70" stroke="currentColor" stroke-width="4" fill="none"/>
-            </svg>
-          </div>
-          <div class="flex flex-col leading-none">
-            <span class="font-cinzel font-black tracking-wider text-xs gold-gradient-text">TEER</span>
-            <span class="text-[8px] font-bold tracking-widest text-teal-200">ONLINE</span>
-          </div>
-        </div>
-      </div>
+  <!-- Notice / Marquee Bar -->
+  <div class="marquee-container" id="marqueeWrapper" style="display: none;">
+    <i class="fas fa-bullhorn me-2 text-warning"></i>
+    <div class="marquee-text" id="marqueeText">Welcome to Teer Online! Play Responsibly.</div>
+  </div>
 
-      <div class="flex items-center gap-1.5">
-        <div onclick="switchTab('wallet')" class="bg-teal-900/80 border border-teal-700/60 rounded-full px-2.5 py-1 flex items-center gap-1.5 cursor-pointer shadow-inner">
-          <i class="fa-solid fa-wallet text-amber-400 text-xs"></i>
-          <span id="headerBalance" class="text-xs font-bold text-white tracking-wide">₹0.00</span>
-        </div>
-        <button onclick="refreshBalance()" class="w-7 h-7 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-teal-200 active:rotate-180 transition-transform">
-          <i class="fa-solid fa-rotate text-xs"></i>
-        </button>
-        <button onclick="openNotificationModal()" class="w-7 h-7 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-amber-400 text-xs relative">
-          <i class="fa-solid fa-bell text-[11px]"></i>
-          <span id="notifBadge" class="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] font-bold flex items-center justify-center hidden">0</span>
-        </button>
-        <a href="admin.html" class="w-7 h-7 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-amber-400 text-xs">
-          <i class="fa-solid fa-lock text-[11px]"></i>
-        </a>
-      </div>
-    </header>
-
-    <!-- Marquee Ticker -->
-    <div class="bg-[#02181a] border-b border-teal-900/40 py-1.5 px-2 flex items-center gap-2 overflow-hidden text-[11px] text-amber-300 font-semibold shadow-inner">
-      <i class="fa-solid fa-bullhorn text-amber-400 animate-pulse text-xs shrink-0"></i>
-      <marquee behavior="scroll" direction="left" scrollamount="4">
-        WINNING AUTO-CREDIT WALLET &bull; 6 DAYS OPEN (SUNDAY OFF) &bull; 10 MIN CUTOFF &bull; HELPLINE +918134834380
-      </marquee>
+  <!-- Header -->
+  <div class="header-bar">
+    <div>
+      <div class="brand-title"><i class="fas fa-bullseye me-1"></i> TEER LIVE</div>
+      <small class="text-secondary" id="userDisplayName">Guest</small>
     </div>
-
-    <!-- PWA Install Prompt Banner -->
-    <div id="pwaBanner" class="bg-gradient-to-r from-amber-500 to-amber-600 text-teal-950 px-3 py-1.5 flex items-center justify-between text-xs font-bold shadow-sm">
-      <div class="flex items-center gap-1.5">
-        <i class="fa-solid fa-cloud-arrow-down text-sm"></i>
-        <span>Install Teer Online APK / Web App</span>
-      </div>
-      <button onclick="alert('Browser ke 3 dots par click karke Install App select karein.')" class="bg-teal-950 text-amber-300 px-2.5 py-0.5 rounded-full text-[11px]">Install</button>
+    <div class="d-flex align-items-center gap-2">
+      <div class="wallet-chip">₹<span id="userBalance">0.00</span></div>
+      <button class="btn btn-warning btn-sm fw-bold" onclick="openDepositModal()"><i class="fas fa-plus"></i> Add</button>
     </div>
+  </div>
 
-    <!-- MAIN SCREENS CONTAINER -->
-    <main class="flex-1 overflow-y-auto no-scrollbar">
+  <div class="container py-3">
 
-      <!-- SCREEN 1: HOME -->
-      <section id="screen-home" class="app-screen active">
-        <!-- Promotional Auto-Slider -->
-        <div class="p-3">
-          <div class="relative w-full aspect-[2.1/1] rounded-2xl overflow-hidden shadow-lg border border-teal-800/40 bg-teal-950">
-            <div id="slide1" class="absolute inset-0 transition-opacity duration-500 opacity-100 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#012528] via-[#05373c] to-[#011c1e]">
-              <div class="flex justify-between items-start">
-                <div>
-                  <div class="inline-block bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-bold mb-1">
-                    ⚡ LOGIN BONUS ₹10 FREE
-                  </div>
-                  <h3 class="font-cinzel text-lg font-black text-white leading-tight">ONLINE <span class="gold-gradient-text">TEER</span></h3>
-                  <p class="text-[11px] text-teal-200 font-medium">Shillong &bull; Khanapara &bull; Juwai</p>
-                </div>
-                <div class="flex gap-1">
-                  <span class="w-6 h-6 rounded-full bg-amber-400 text-teal-950 font-bold flex items-center justify-center text-xs shadow-md">7</span>
-                  <span class="w-6 h-6 rounded-full bg-amber-400 text-teal-950 font-bold flex items-center justify-center text-xs shadow-md">3</span>
-                  <span class="w-6 h-6 rounded-full bg-amber-400 text-teal-950 font-bold flex items-center justify-center text-xs shadow-md">9</span>
-                </div>
-              </div>
-              <div class="flex items-center justify-between bg-teal-900/60 p-1.5 rounded-xl border border-teal-700/40 text-[10px]">
-                <div class="text-center font-bold text-teal-100">GUTI <span class="text-amber-300">10-900/-</span></div>
-                <div class="w-px h-3 bg-teal-700"></div>
-                <div class="text-center font-bold text-teal-100">HOUSE <span class="text-amber-300">10-90</span></div>
-                <div class="w-px h-3 bg-teal-700"></div>
-                <div class="text-center font-bold text-teal-100">ENDING <span class="text-amber-300">10-90</span></div>
-              </div>
-              <div class="flex gap-2">
-                <button onclick="openDepositModal()" class="flex-1 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px] text-center shadow">
-                  DEPOSIT NOW
-                </button>
-                <button onclick="openPlayModalByName('Shilong Morning Teer')" class="flex-1 py-1.5 rounded-lg gold-btn text-[11px] text-center shadow">
-                  PLAY NOW &gt;
-                </button>
-              </div>
-            </div>
-
-            <div id="slide2" class="absolute inset-0 transition-opacity duration-500 opacity-0 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#2b0808] via-[#4d0b16] to-[#1a0408]">
-              <div class="flex justify-between items-start">
-                <div>
-                  <span class="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold">CRASH 100x</span>
-                  <h3 class="text-xl font-black text-amber-300 italic tracking-wider">AVIATOR</h3>
-                  <p class="text-[11px] text-red-200">Play Now &bull; Instant Win</p>
-                </div>
-                <div class="text-3xl text-amber-400">
-                  <i class="fa-solid fa-plane-departure animate-bounce"></i>
-                </div>
-              </div>
-              <div class="text-[11px] text-zinc-300">3D European Roulette &bull; Multiplier live 24x7</div>
-              <button onclick="alert('Aviator games will be active soon!')" class="w-full py-1.5 bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold rounded-lg text-xs shadow">
-                PLAY CASINO &gt;
-              </button>
-            </div>
-
-            <div class="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-              <span id="dot1" class="w-2 h-1 rounded-full bg-amber-400"></span>
-              <span id="dot2" class="w-1.5 h-1 rounded-full bg-white/40"></span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Action 3 Buttons -->
-        <div class="px-3 grid grid-cols-3 gap-2">
-          <button onclick="openDepositModal()" class="bg-[#032f33] border border-teal-700/40 rounded-xl py-2 px-1 flex items-center justify-center gap-1.5 text-white active:scale-95 shadow-sm">
-            <i class="fa-solid fa-wallet text-emerald-400 text-sm"></i>
-            <span class="text-xs font-semibold">Add Money</span>
-          </button>
-          <button onclick="openWithdrawModal()" class="bg-[#032f33] border border-teal-700/40 rounded-xl py-2 px-1 flex items-center justify-center gap-1.5 text-white active:scale-95 shadow-sm">
-            <i class="fa-solid fa-arrow-up-right-from-square text-rose-400 text-xs"></i>
-            <span class="text-xs font-semibold">Withdrawal</span>
-          </button>
-          <a id="homeWhatsappBtn" href="https://wa.me/918134834380?text=Hello%20Teer%20Online%20Support" target="_blank" class="bg-[#032f33] border border-teal-700/40 rounded-xl py-2 px-1 flex items-center justify-center gap-1.5 text-white active:scale-95 shadow-sm">
-            <i class="fa-brands fa-whatsapp text-emerald-400 text-sm"></i>
-            <span class="text-xs font-semibold">WhatsApp</span>
-          </a>
-        </div>
-
-        <!-- Casino Games Quick Row -->
-        <div class="p-3">
-          <div class="flex items-center justify-between mb-2">
-            <h4 class="font-decorative text-lg font-bold text-teal-950 flex items-center gap-1">
-              <i class="fa-solid fa-dice text-amber-600 text-sm"></i> Casino Games
-            </h4>
-            <span class="text-[10px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full border border-red-200">● LIVE 24x7</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2.5">
-            <div onclick="alert('Opening Aviator...')" class="bg-gradient-to-r from-red-800 to-rose-900 rounded-xl p-2.5 text-white shadow-sm cursor-pointer relative overflow-hidden">
-              <span class="bg-rose-500 text-[9px] font-bold px-1.5 py-0.5 rounded">HOT</span>
-              <div class="font-black text-sm mt-1">Aviator</div>
-              <div class="text-[10px] text-rose-200">Crash • 100x</div>
-              <span class="mt-2 inline-block text-[10px] font-bold bg-white text-rose-900 px-2 py-0.5 rounded">PLAY NOW &gt;</span>
-            </div>
-            <div onclick="alert('Opening 3D Roulette...')" class="bg-gradient-to-r from-teal-800 to-emerald-900 rounded-xl p-2.5 text-white shadow-sm cursor-pointer relative overflow-hidden">
-              <span class="bg-amber-400 text-teal-950 text-[9px] font-bold px-1.5 py-0.5 rounded">3D LIVE</span>
-              <div class="font-black text-sm mt-1">3D Roulette</div>
-              <div class="text-[10px] text-teal-200">European • 500x</div>
-              <span class="mt-2 inline-block text-[10px] font-bold bg-amber-400 text-teal-950 px-2 py-0.5 rounded">PLAY NOW &gt;</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Main Markets Section -->
-        <div class="px-3 pb-4">
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-2">
-              <h4 class="font-decorative text-2xl font-bold text-teal-950">Main Markets</h4>
-              
-            </div>
-            <div id="dayStatusBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-              ● 6 Days Open (Sun Off)
-            </div>
-          </div>
-          <div id="marketCardsContainer" class="space-y-3 pb-6"></div>
-        </div>
-      </section>
-
-      <!-- SCREEN 2: WALLET -->
-      <section id="screen-wallet" class="app-screen p-3 space-y-3">
-        <div class="bg-gradient-to-br from-[#032f33] to-[#011c1e] text-white rounded-2xl p-4 shadow-md border border-teal-700/40 relative">
-          <div class="flex justify-between items-start">
-            <div>
-              <p class="font-decorative text-base text-teal-200">Available Balance</p>
-              <h2 id="walletBalanceBig" class="text-3xl font-black text-amber-300 mt-0.5">₹0.00</h2>
-              <p class="text-[11px] text-teal-300 mt-0.5">Teer Online Safe Wallet</p>
-            </div>
-            <button onclick="refreshBalance()" class="w-9 h-9 rounded-full bg-teal-800/60 border border-teal-600 flex items-center justify-center text-teal-200 active:rotate-180 transition-transform">
-              <i class="fa-solid fa-rotate"></i>
-            </button>
-          </div>
-          <div class="mt-4 pt-3 border-t border-teal-800/80 flex gap-2">
-            <button onclick="openDepositModal()" class="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 font-bold text-xs flex items-center justify-center gap-1.5 shadow">
-              <i class="fa-solid fa-plus-circle"></i> Deposit Money
-            </button>
-            <button onclick="openWithdrawModal()" class="flex-1 py-2 rounded-xl bg-teal-700 hover:bg-teal-600 font-bold text-xs flex items-center justify-center gap-1.5 shadow">
-              <i class="fa-solid fa-arrow-up"></i> Withdraw
-            </button>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 divide-y divide-slate-100 text-sm">
-          <div onclick="openDepositModal()" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
-                <i class="fa-solid fa-plus"></i>
-              </div>
-              <div>
-                <p class="font-bold text-slate-800 leading-tight">Deposit</p>
-                <p class="text-xs text-slate-400">Add money to wallet</p>
-              </div>
-            </div>
-            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
-          </div>
-
-          <div onclick="openWithdrawModal()" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center font-bold">
-                <i class="fa-solid fa-arrow-up"></i>
-              </div>
-              <div>
-                <p class="font-bold text-slate-800 leading-tight">Withdraw</p>
-                <p class="text-xs text-slate-400">Withdraw your winnings</p>
-              </div>
-            </div>
-            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
-          </div>
-
-          <div onclick="openTransactionModal()" class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                <i class="fa-solid fa-clock-rotate-left"></i>
-              </div>
-              <div>
-                <p class="font-bold text-slate-800 leading-tight">Transaction History</p>
-                <p class="text-xs text-slate-400">All credits & debits</p>
-              </div>
-            </div>
-            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
-          </div>
-        </div>
-      </section>
-
-      <!-- SCREEN 3: MY BIDS / BETS (ALL, ACTIVE, WON, LOSS) -->
-      <section id="screen-bids" class="app-screen p-3 space-y-3">
-        <div class="flex justify-between items-center">
-          <div>
-            <h3 class="font-decorative text-xl font-bold text-teal-950 flex items-center gap-1.5">
-              <i class="fa-solid fa-ticket text-teal-800"></i> My Bets History
-            </h3>
-            <p class="text-xs text-slate-500">Track active bets, winning payouts &amp; losses</p>
-          </div>
-          <span id="bidsCountBadge" class="text-xs bg-teal-100 text-teal-800 font-bold px-2.5 py-0.5 rounded-full">0 Bets</span>
-        </div>
-
-        <!-- Filter Tabs: All, Active, Won, Loss -->
-        <div class="flex gap-1.5 bg-slate-200/80 p-1 rounded-2xl text-xs font-bold shadow-inner">
-          <button onclick="setBetFilter('all')" id="betTab_all" class="bet-tab-btn flex-1 py-1.5 rounded-xl bg-teal-950 text-white shadow-sm transition">
-            All (<span id="countBetAll">0</span>)
-          </button>
-          <button onclick="setBetFilter('active')" id="betTab_active" class="bet-tab-btn flex-1 py-1.5 rounded-xl text-slate-700 hover:text-amber-800 transition">
-            Active (<span id="countBetActive" class="text-amber-600">0</span>)
-          </button>
-          <button onclick="setBetFilter('won')" id="betTab_won" class="bet-tab-btn flex-1 py-1.5 rounded-xl text-slate-700 hover:text-emerald-800 transition">
-            Won (<span id="countBetWon" class="text-emerald-600">0</span>)
-          </button>
-          <button onclick="setBetFilter('loss')" id="betTab_loss" class="bet-tab-btn flex-1 py-1.5 rounded-xl text-slate-700 hover:text-rose-800 transition">
-            Loss (<span id="countBetLoss" class="text-rose-600">0</span>)
-          </button>
-        </div>
-
-        <div id="bidsListContainer" class="space-y-2">
-          <div class="p-8 text-center text-slate-400">No bets placed yet.</div>
-        </div>
-      </section>
-
-      <!-- SCREEN 4: PROFILE -->
-      <section id="screen-profile" class="app-screen p-3 space-y-3">
-        <div class="bg-gradient-to-r from-[#032427] to-[#063f45] text-white p-4 rounded-2xl flex items-center gap-3.5 shadow-md">
-          <div id="profileAvatar" class="w-14 h-14 rounded-full bg-teal-800 border-2 border-amber-400 flex items-center justify-center text-xl font-black text-amber-300">8</div>
-          <div class="flex-1">
-            <h3 id="profileName" class="font-bold text-base text-white">Guest User</h3>
-            <p id="profilePhone" class="text-xs text-teal-200">Not Logged In</p>
-            <div id="profileBadge" class="inline-block mt-1 bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-semibold">Guest Account</div>
-          </div>
-          <button id="profileAuthBtn" onclick="openAuthModal()" class="text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg shadow">Login</button>
-        </div>
-
-        <!-- Refer & Agent Rules Card -->
-        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 text-slate-800 space-y-2">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2 text-amber-900 font-black text-sm">
-              <i class="fa-solid fa-crown text-amber-600"></i> Refer &amp; Agent Rules
-            </div>
-            <span class="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">Official Agent</span>
-          </div>
-          <div class="bg-white/90 p-2.5 rounded-xl border border-amber-200 text-xs space-y-1.5">
-            <p class="font-bold text-teal-950 flex items-center gap-1.5"><i class="fa-solid fa-gift text-emerald-600"></i> Friend Deposit Bonus:</p>
-            <p class="text-[11px] text-slate-700 leading-tight">Aapka refer kiya hua friend agar <b>₹1,000</b> ka deposit karega to aapko <b>₹100</b> bonus milega!</p>
-            <div class="border-t border-slate-100 pt-1.5"></div>
-            <p class="font-bold text-teal-950 flex items-center gap-1.5"><i class="fa-solid fa-coins text-amber-600"></i> Friend Betting Turnover Commission:</p>
-            <p class="text-[11px] text-slate-700 leading-tight">Aapka friend har <b>₹1,000</b> ki game bet lagayega to aapko seedha <b>₹100</b> agent commission diya jayega!</p>
-            <div class="mt-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2 flex justify-between items-center">
-              <div>
-                <span class="text-[10px] text-emerald-800 font-bold block">Aapki Total Referral Kamai:</span>
-                <span id="myAgentEarnedText" class="text-sm font-black text-emerald-950">₹0.00</span>
-              </div>
-              <button onclick="claimAgentCommission()" class="px-2.5 py-1 bg-emerald-700 text-white font-bold rounded-lg text-[10px] shadow">Wallet Me Transfer</button>
-            </div>
-          </div>
-          <div class="bg-amber-100/70 p-2.5 rounded-xl flex items-center justify-between border border-amber-300">
-            <div>
-              <span class="text-[11px] font-bold text-amber-950 block">👥 My Referral Team:</span>
-              <span id="cardJoinedCountText" class="text-xs text-amber-900 font-extrabold">0 Friends Joined</span>
-            </div>
-            <button onclick="openMyReferralsModal()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-teal-950 font-black rounded-lg text-[11px] shadow">
-              View All Referrals
-            </button>
-          </div>
-          <div class="pt-1 flex gap-2">
-            <button onclick="shareReferralWhatsApp()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
-              <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Share
-            </button>
-            <button onclick="copyReferralLink()" class="px-3 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs font-bold">Copy Link</button>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 divide-y divide-slate-100 text-sm">
-          <div onclick="openChartModal('Shilong Morning Teer')" class="p-3 flex justify-between items-center cursor-pointer">
-            <span class="text-slate-700 font-medium"><i class="fa-solid fa-chart-simple w-5 text-teal-700"></i> Teer Results Chart</span>
-            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
-          </div>
-          <div onclick="switchTab('support')" class="p-3 flex justify-between items-center cursor-pointer">
-            <span class="text-slate-700 font-medium"><i class="fa-solid fa-headset w-5 text-teal-700"></i> Customer Support</span>
-            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
-          </div>
-          <div onclick="openNotificationModal()" class="p-3 flex justify-between items-center cursor-pointer">
-            <span class="text-slate-700 font-medium"><i class="fa-solid fa-bell w-5 text-teal-700"></i> Notifications</span>
-            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
-          </div>
-          <div onclick="logoutUser()" class="p-3 flex justify-between items-center cursor-pointer text-red-600 font-semibold">
-            <span><i class="fa-solid fa-arrow-right-from-bracket w-5"></i> Logout Account</span>
-            <i class="fa-solid fa-chevron-right text-xs"></i>
-          </div>
-        </div>
-      </section>
-
-      <!-- SCREEN 5: SUPPORT -->
-      <section id="screen-support" class="app-screen p-3 space-y-3">
-        <div class="bg-[#032427] text-white p-3 rounded-2xl flex items-center justify-between shadow-sm">
-          <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-full bg-teal-800 flex items-center justify-center text-teal-200">
-              <i class="fa-solid fa-headphones"></i>
-            </div>
-            <div>
-              <p class="font-bold text-sm leading-tight">Live Chat Support</p>
-              <p class="text-[11px] text-emerald-300">Online &bull; typically replies instantly</p>
-            </div>
-          </div>
-          <button onclick="resetChat()" class="text-teal-200 hover:text-white p-1">
-            <i class="fa-solid fa-rotate-right text-sm"></i>
-          </button>
-        </div>
-
-        <div class="flex gap-2">
-          <a href="https://wa.me/918134834380?text=Hello%20Teer%20Online%20Support" target="_blank" class="flex-1 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold py-1.5 rounded-full text-center text-xs shadow-sm flex items-center justify-center gap-1">
-            <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Support
-          </a>
-          <a href="tel:+918134834380" class="flex-1 bg-teal-50 border border-teal-200 text-teal-800 font-bold py-1.5 rounded-full text-center text-xs shadow-sm flex items-center justify-center gap-1">
-            <i class="fa-solid fa-phone text-xs"></i> Call Support
-          </a>
-        </div>
-
-        <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[340px]">
-          <div id="chatMessages" class="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
-            <div class="bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">
-              Hello! Welcome to <b>TEER ONLINE</b>. Kaise help kar sakte hain aapki?
-            </div>
-          </div>
-
-          <form onsubmit="handleSendChat(event)" class="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1.5">
-            <input type="text" id="chatInput" placeholder="Type a message..." class="flex-1 bg-slate-50 border border-slate-200 rounded-full px-3.5 py-1.5 text-xs outline-none focus:border-teal-700" required>
-            <button type="submit" class="w-8 h-8 rounded-full bg-[#032427] text-amber-400 flex items-center justify-center shadow">
-              <i class="fa-solid fa-paper-plane text-xs"></i>
-            </button>
-          </form>
-        </div>
-      </section>
-
-    </main>
-
-    <!-- FOOTER NAVIGATION -->
-    <nav class="bg-white border-t border-slate-200 px-2 py-1.5 flex justify-around items-center fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-30 shadow-lg">
-      <button onclick="switchTab('home')" class="nav-btn active flex flex-col items-center text-teal-900 group" data-tab="home">
-        <i class="fa-solid fa-house text-base"></i>
-        <span class="text-[10px] font-bold mt-0.5">Home</span>
-      </button>
-      <button onclick="switchTab('wallet')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="wallet">
-        <i class="fa-solid fa-wallet text-base"></i>
-        <span class="text-[10px] font-bold mt-0.5">Wallet</span>
-      </button>
-      <button onclick="switchTab('bids')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="bids">
-        <i class="fa-solid fa-clock-rotate-left text-base"></i>
-        <span class="text-[10px] font-bold mt-0.5">My Bids</span>
-      </button>
-      <button onclick="switchTab('profile')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="profile">
-        <i class="fa-solid fa-user text-base"></i>
-        <span class="text-[10px] font-bold mt-0.5">Profile</span>
-      </button>
-      <button onclick="switchTab('support')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="support">
-        <i class="fa-solid fa-comment-dots text-base"></i>
-        <span class="text-[10px] font-bold mt-0.5">Support</span>
-      </button>
-    </nav>
-
-    <!-- SIDEBAR DRAWER -->
-    <div id="drawerOverlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black/60 z-40 hidden transition-opacity"></div>
-    <aside id="sideDrawer" class="fixed top-0 left-0 bottom-0 w-[280px] bg-white z-50 transform -translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
-      <div class="bg-[#032427] text-white p-4 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div id="drawerAvatar" class="w-11 h-11 rounded-full bg-teal-800 border border-amber-400 flex items-center justify-center font-bold text-amber-300"><i class="fa-solid fa-user text-sm"></i></div>
-          <div>
-            <p id="drawerPhone" class="font-bold text-sm leading-tight text-white">Guest User</p>
-            <p id="drawerSub" class="text-xs text-teal-200">Please Login</p>
-            <p id="drawerBal" class="text-xs font-bold text-amber-400">₹0.00</p>
-          </div>
-        </div>
-        <button onclick="toggleDrawer()" class="text-teal-200 hover:text-white p-1">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
-
-      <div class="flex-1 overflow-y-auto divide-y divide-slate-100 text-xs text-slate-700">
-        <a onclick="switchTab('home'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
-          <span class="flex items-center gap-3"><i class="fa-solid fa-house w-4 text-teal-800"></i> Home</span>
-          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
-        </a>
-        <a onclick="openChartModal('Shilong Morning Teer'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
-          <span class="flex items-center gap-3"><i class="fa-solid fa-chart-column w-4 text-teal-800"></i> Result Chart</span>
-          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
-        </a>
-        <a onclick="alert('Rates: Direct Guti 1:90 | House 1:9 | Ending 1:9'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
-          <span class="flex items-center gap-3"><i class="fa-solid fa-chart-line w-4 text-teal-800"></i> Game Rates</span>
-          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
-        </a>
-        <a onclick="switchTab('wallet'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
-          <span class="flex items-center gap-3"><i class="fa-solid fa-wallet w-4 text-teal-800"></i> Wallet</span>
-          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
-        </a>
-        <a onclick="switchTab('profile'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
-          <span class="flex items-center gap-3"><i class="fa-solid fa-gift w-4 text-teal-800"></i> Refer &amp; Agent Rules</span>
-          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
-        </a>
-        <a onclick="openNotificationModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
-          <span class="flex items-center gap-3"><i class="fa-solid fa-bell w-4 text-teal-800"></i> Notifications</span>
-          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
-        </a>
-        <a href="https://wa.me/918134834380" target="_blank" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
-          <span class="flex items-center gap-3"><i class="fa-solid fa-phone w-4 text-teal-800"></i> Contact Us</span>
-          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
-        </a>
-        <div onclick="logoutUser(); toggleDrawer()" class="p-3 flex items-center gap-3 text-red-600 font-bold hover:bg-red-50 cursor-pointer">
-          <i class="fa-solid fa-arrow-right-from-bracket w-4"></i> Logout
-        </div>
-      </div>
-    </aside>
-
-    <!-- MODAL: NOTIFICATIONS -->
-    <div id="notificationModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
-      <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl flex flex-col max-h-[80vh]">
-        <div class="flex justify-between items-center border-b pb-2 mb-2">
-          <div class="flex items-center gap-2">
-            <i class="fa-solid fa-bell text-amber-500"></i>
-            <h3 class="font-bold text-sm text-teal-950">App Notifications</h3>
-          </div>
-          <button onclick="closeNotificationModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-        </div>
-        <div id="notifListContainer" class="flex-1 overflow-y-auto space-y-2 text-xs"></div>
-        <button onclick="clearAllNotifications()" class="mt-3 w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold rounded-xl">Clear All</button>
-      </div>
-    </div>
-
-    <!-- MODAL: PLAY GAME -->
-    <div id="playGameModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-end justify-center">
-      <div class="bg-white w-full max-w-[480px] rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl">
-        <div class="bg-[#032427] text-white p-3.5 rounded-t-3xl flex items-center justify-between">
-          <div>
-            <h3 id="playMarketTitle" class="font-bold text-base text-amber-300">Shillong Teer</h3>
-            <p id="marketCutoffNotice" class="text-[10px] text-amber-300 font-semibold">⚠️ Cutoff: 10 mins before draw time</p>
-          </div>
-          <button onclick="closePlayModal()" class="w-8 h-8 rounded-full bg-teal-900 text-teal-200 flex items-center justify-center">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <div class="p-3.5 overflow-y-auto flex-1 space-y-3 text-xs">
-          <div class="flex gap-2 bg-slate-100 p-1 rounded-xl">
-            <button id="btnRoundFR" onclick="selectRound('FR')" class="flex-1 py-1.5 rounded-lg font-bold text-xs bg-[#032427] text-white shadow">First Round (FR)</button>
-            <button id="btnRoundSR" onclick="selectRound('SR')" class="flex-1 py-1.5 rounded-lg font-bold text-xs text-slate-600">Second Round (SR)</button>
-          </div>
-
-          <div id="roundClosedNotice" class="hidden p-2 rounded-xl bg-red-100 border border-red-300 text-red-800 font-bold text-center text-xs">
-            ⚠️ Time Over! Result aane ke 10 minute pehle is round par bet band ho chuki hai.
-          </div>
-
-          <div class="flex gap-1.5">
-            <button onclick="selectBetMode('direct')" id="modeBtnDirect" class="flex-1 py-1.5 bg-amber-400 text-teal-950 font-bold rounded-lg border border-amber-500 shadow-sm">Direct Guti (1:90)</button>
-            <button onclick="selectBetMode('house')" id="modeBtnHouse" class="flex-1 py-1.5 bg-slate-100 text-slate-700 font-bold rounded-lg border">House (1:9)</button>
-            <button onclick="selectBetMode('ending')" id="modeBtnEnding" class="flex-1 py-1.5 bg-slate-100 text-slate-700 font-bold rounded-lg border">Ending (1:9)</button>
-          </div>
-
-          <!-- Direct Guti 00-99 Grid -->
-          <div id="directGutiSection" class="space-y-2">
-            <div class="flex justify-between items-center">
-              <span class="font-bold text-slate-700">Choose Direct Guti (00 - 99):</span>
-              <button onclick="randomLuckyPick()" class="text-[11px] text-amber-700 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md font-bold">🎲 Lucky Pick</button>
-            </div>
-            <div id="gutiGrid" class="grid grid-cols-10 gap-1 max-h-[170px] overflow-y-auto p-1.5 bg-slate-50 border rounded-xl"></div>
-          </div>
-
-          <!-- Digit Section (0-9) -->
-          <div id="digitSection" class="hidden space-y-2">
-            <span id="digitSectionTitle" class="font-bold text-slate-700">Choose House Digit (0 - 9):</span>
-            <div class="grid grid-cols-5 gap-2">
-              <button onclick="selectSingleDigit(0)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">0</button>
-              <button onclick="selectSingleDigit(1)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">1</button>
-              <button onclick="selectSingleDigit(2)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">2</button>
-              <button onclick="selectSingleDigit(3)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">3</button>
-              <button onclick="selectSingleDigit(4)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">4</button>
-              <button onclick="selectSingleDigit(5)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">5</button>
-              <button onclick="selectSingleDigit(6)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">6</button>
-              <button onclick="selectSingleDigit(7)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">7</button>
-              <button onclick="selectSingleDigit(8)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">8</button>
-              <button onclick="selectSingleDigit(9)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">9</button>
-            </div>
-          </div>
-
-          <div>
-            <span class="text-slate-500 text-[11px] font-semibold">Selected:</span>
-            <div id="selectedPills" class="flex flex-wrap gap-1 mt-1 min-h-[26px]">
-              <span class="text-slate-400 italic text-[11px]">No numbers selected</span>
-            </div>
-          </div>
-
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">Bet Amount per selection (₹):</label>
-            <input type="number" id="betAmountInput" value="20" min="10" step="10" oninput="calculatePayout()" class="w-full border rounded-xl px-3 py-2 font-bold text-base outline-none">
-          </div>
-
-          <div class="bg-teal-50 border border-teal-200 rounded-xl p-2.5 flex justify-between items-center text-xs">
-            <div>
-              <p class="text-slate-500">Total Bet Cost:</p>
-              <p id="totalBetCost" class="text-sm font-bold text-teal-900">₹0.00</p>
-            </div>
-            <div class="text-right">
-              <p class="text-slate-500">Potential Return:</p>
-              <p id="potentialWin" class="text-sm font-black text-amber-600">₹0.00</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="p-3 bg-slate-50 border-t flex gap-2">
-          <button onclick="closePlayModal()" class="flex-1 py-2.5 rounded-xl border font-bold text-slate-600 text-xs">Cancel</button>
-          <button id="btnConfirmBetModal" onclick="confirmPlaceBet()" class="flex-1 py-2.5 rounded-xl gold-btn font-bold text-xs shadow-md">Confirm Bet</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL: DEPOSIT -->
-        <!-- MODAL: DEPOSIT (100% ENGLISH, SCREENSHOT UPLOAD, NO WHATSAPP) -->
-    <div id="depositModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-end justify-center">
-      <div class="bg-white w-full max-w-[480px] rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl p-4 overflow-y-auto space-y-3">
-        <div class="flex justify-between items-center border-b pb-2">
-          <div>
-            <h3 class="font-bold text-base text-teal-950 flex items-center gap-1.5">
-              <i class="fa-solid fa-qrcode text-teal-700"></i> Add Money to Wallet
-            </h3>
-            <p class="text-[10px] text-slate-500">Scan QR &bull; Pay with any UPI &bull; Credited in 1-10 mins</p>
-          </div>
-          <button onclick="closeDepositModal()" class="text-slate-400 p-1 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
-        </div>
-
-        <!-- QR Display Card -->
-        <div class="bg-gradient-to-b from-teal-50 to-emerald-50 border border-teal-200/80 rounded-2xl p-3 text-center shadow-sm">
-          <p class="text-[11px] font-black text-teal-950 uppercase tracking-wide">Scan QR Code to Pay via Any UPI App</p>
-          <p class="text-[10px] text-teal-700 mt-0.5">Google Pay &bull; PhonePe &bull; Paytm &bull; BHIM UPI</p>
-          
-          <div class="w-44 h-44 mx-auto bg-white p-2.5 rounded-2xl border-2 border-teal-600/30 shadow-md my-2 flex items-center justify-center">
-            <img id="depositQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=8134834380@mbk%26pn=TeerOnline" class="w-full h-full rounded-lg">
-          </div>
-
-          <div class="inline-flex items-center gap-1.5 bg-white px-3 py-1 rounded-full border border-teal-300 shadow-sm">
-            <span class="text-[10px] text-slate-500 font-bold">UPI ID:</span>
-            <span id="depositUpiText" class="text-xs font-mono font-bold text-teal-950">8134834380@mbk</span>
-            <button type="button" onclick="navigator.clipboard.writeText('8134834380@mbk'); alert('UPI ID Copied: 8134834380@mbk');" class="text-[10px] bg-teal-800 text-amber-300 font-bold px-2 py-0.5 rounded-full ml-1">Copy</button>
-          </div>
-
-          <div class="mt-2 bg-emerald-100/70 border border-emerald-300 rounded-xl p-1.5 text-[10px] text-emerald-900 font-semibold flex items-center justify-center gap-1.5">
-            <i class="fa-solid fa-bolt text-amber-500 animate-pulse"></i>
-            <span>Instant Credit: Wallet updated within <b>1 to 10 minutes</b> after verification!</span>
-          </div>
-        </div>
-
-        <!-- Deposit Form Fields -->
-        <div class="space-y-2.5 text-xs">
-          <div>
-            <label class="text-xs font-bold text-slate-700 flex justify-between items-center mb-1">
-              <span>Deposit Amount (₹):</span>
-              <span class="text-emerald-600 font-bold text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">+5% Extra Bonus Added</span>
-            </label>
-            <input type="number" id="depositAmountInput" value="500" min="100" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-teal-950 outline-none focus:border-teal-700">
-          </div>
-
-          <div>
-            <label class="text-xs font-bold text-slate-700 block mb-1">Enter 12-Digit UTR / Transaction Ref Number:</label>
-            <input type="text" id="depositUtrInput" placeholder="e.g. 430198234823" maxlength="12" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-mono tracking-wider font-bold text-teal-950 outline-none focus:border-teal-700">
-          </div>
-
-          <div>
-            <label class="text-xs font-bold text-slate-700 block mb-1">Upload Payment Screenshot:</label>
-            <div class="border-2 border-dashed border-teal-300 bg-teal-50/50 rounded-2xl p-3 text-center cursor-pointer hover:bg-teal-50 transition relative">
-              <input type="file" id="depositScreenshotInput" accept="image/*" onchange="handleScreenshotPreview(event)" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10">
-              <div id="screenshotPreviewBox" class="flex flex-col items-center justify-center pointer-events-none">
-                <i class="fa-solid fa-cloud-arrow-up text-teal-700 text-xl mb-1"></i>
-                <p class="font-bold text-teal-950 text-xs" id="screenshotFileName">Tap to choose payment receipt screenshot</p>
-                <p class="text-[10px] text-slate-400">PNG, JPG or JPEG allowed (Direct to Admin)</p>
-              </div>
-              <img id="screenshotImgPreview" class="hidden max-h-32 mx-auto rounded-lg shadow border border-teal-200 mt-1 pointer-events-none">
-            </div>
-          </div>
-        </div>
-
-        <!-- Submit Button (Direct to Admin Panel, WhatsApp removed) -->
-        <button onclick="submitDepositForm()" class="w-full py-3 bg-gradient-to-r from-teal-950 to-[#043338] text-amber-300 hover:text-white font-bold rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-circle-check"></i> Submit Deposit Request (+5% Bonus)
-        </button>
-      </div>
-    </div>
-
-    <!-- MODAL: WITHDRAW -->
-        <!-- MODAL: WITHDRAW (ENGLISH, FAST 1-10 MIN PAYOUT) -->
-    <div id="withdrawModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-end justify-center">
-      <div class="bg-white w-full max-w-[480px] rounded-t-3xl p-4 shadow-2xl space-y-3">
-        <div class="flex justify-between items-center border-b pb-2">
-          <div>
-            <h3 class="font-bold text-base text-teal-950 flex items-center gap-1.5">
-              <i class="fa-solid fa-money-bill-transfer text-teal-700"></i> Withdraw Funds
-            </h3>
-            <p class="text-[10px] text-slate-500">Fast UPI Transfer &bull; Processed in 1-10 minutes</p>
-          </div>
-          <button onclick="closeWithdrawModal()" class="text-slate-400 p-1 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
-        </div>
-
-        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-2.5 text-xs text-amber-900 flex items-center gap-2">
-          <i class="fa-solid fa-clock-rotate-left text-amber-600 text-sm"></i>
-          <span><b>1 to 10 Minutes Payout:</b> Withdrawals are directly transferred to your UPI ID without delay.</span>
-        </div>
-
-        <div class="space-y-2.5 text-xs">
-          <div>
-            <label class="text-xs font-bold text-slate-700 block mb-1">Enter Withdrawal Amount (Min ₹200):</label>
-            <input type="number" id="withdrawAmountInput" placeholder="Minimum ₹200" min="200" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-teal-950 outline-none focus:border-teal-700">
-          </div>
-          <div>
-            <label class="text-xs font-bold text-slate-700 block mb-1">Enter Your UPI ID:</label>
-            <input type="text" id="withdrawUpiInput" placeholder="e.g. mobile@paytm / name@upi" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-mono font-bold text-teal-950 outline-none focus:border-teal-700">
-          </div>
-        </div>
-
-        <button onclick="submitWithdrawForm()" class="w-full py-3 bg-gradient-to-r from-teal-950 to-[#043338] text-amber-300 hover:text-white font-bold rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-arrow-up-right-from-square"></i> Submit Withdrawal Request
-        </button>
-      </div>
-    </div>
-
-    <!-- MODAL: DYNAMIC RESULT CHART (ALL MARKETS PREVIOUS RESULTS) -->
-    <div id="chartModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-4">
-      <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl space-y-3 text-xs max-h-[85vh] flex flex-col">
-        <div class="flex justify-between items-center border-b pb-2">
-          <div>
-            <h3 class="font-bold text-sm text-teal-950">Teer Previous Results Chart</h3>
-            <p class="text-[10px] text-slate-500">Official Past Records (10 to 15 Days)</p>
-          </div>
-          <button onclick="closeChartModal()" class="text-slate-400"><i class="fa-solid fa-xmark text-lg"></i></button>
-        </div>
-
-        <div>
-          <label class="text-[11px] font-bold text-slate-700 block mb-1">Select Market:</label>
-          <select id="chartMarketSelect" onchange="renderSelectedMarketChart()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs font-bold text-teal-950 outline-none"></select>
-        </div>
-
-        <div class="flex-1 overflow-y-auto">
-          <table class="w-full text-center border-collapse">
-            <thead>
-              <tr class="bg-teal-950 text-amber-300 font-bold text-[11px]">
-                <th class="p-2 border border-teal-800">Date</th>
-                <th class="p-2 border border-teal-800">FR Result</th>
-                <th class="p-2 border border-teal-800">SR Result</th>
-              </tr>
-            </thead>
-            <tbody id="chartTableBody" class="divide-y font-mono font-bold text-slate-700 text-xs"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL: AUTHENTICATION (NO SKIP BUTTON + FORGOT PASSWORD WITH WHATSAPP CHAT AUTO MESSAGE) -->
-    <div id="authModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
-      <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl text-slate-800 space-y-3 relative">
-        <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-
-        <div class="text-center pt-1">
-          <div class="w-12 h-12 mx-auto rounded-full bg-teal-950 flex items-center justify-center text-amber-400 text-xl font-cinzel mb-1">T</div>
-          <h3 class="font-cinzel text-lg font-black text-teal-950">TEER ONLINE</h3>
-          <p class="text-[11px] text-emerald-600 font-bold">🎁 Sign Up Karein &amp; Paayein ₹10 Welcome Bonus!</p>
-        </div>
-
-        <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
-          <button onclick="switchAuthTab('login')" id="tabBtnLogin" class="flex-1 py-1.5 rounded-lg text-slate-600">Login</button>
-          <button onclick="switchAuthTab('register')" id="tabBtnRegister" class="flex-1 py-1.5 rounded-lg bg-teal-950 text-white shadow">Register</button>
-        </div>
-
-        <!-- Register Form (No Skip Button) -->
-        <form id="registerForm" onsubmit="handleRegisterSubmit(event)" class="space-y-2.5">
-          <div>
-            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">User Name:</label>
-            <input type="text" id="regName" placeholder="Apna pura naam likhein" required class="w-full border rounded-xl p-2 text-xs font-semibold outline-none focus:border-teal-700">
-          </div>
-          <div>
-            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Mobile Number (1 Number = 1 ID):</label>
-            <input type="tel" id="regPhone" placeholder="10-digit mobile number" maxlength="10" required class="w-full border rounded-xl p-2 text-xs font-semibold outline-none focus:border-teal-700">
-          </div>
-          <div>
-            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Password:</label>
-            <input type="password" id="regPass" placeholder="Kam se kam 4 digit password" minlength="4" required class="w-full border rounded-xl p-2 text-xs outline-none focus:border-teal-700">
-          </div>
-          <div>
-            <label class="text-[11px] font-bold text-slate-600 flex justify-between items-center mb-0.5">
-              <span>Referral Code:</span>
-              <span class="text-amber-600 font-normal text-[10px]">(Optional)</span>
-            </label>
-            <input type="text" id="regReferral" placeholder="e.g. TEER786" class="w-full border border-dashed border-amber-300 bg-amber-50/40 rounded-xl p-2 text-xs font-mono uppercase outline-none focus:border-teal-700">
-          </div>
-          <button type="submit" class="w-full py-2.5 gold-btn rounded-xl font-bold text-xs shadow-md">
-            Register &amp; Claim ₹10 Free
-          </button>
-        </form>
-
-        <!-- Login Form (With Forgot Password -> WhatsApp auto message, No Skip Button) -->
-        <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-2.5 hidden">
-          <div>
-            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Mobile Number:</label>
-            <input type="tel" id="loginPhone" placeholder="10-digit mobile number" maxlength="10" required class="w-full border rounded-xl p-2 text-xs font-semibold outline-none focus:border-teal-700">
-          </div>
-          <div>
-            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Password:</label>
-            <input type="password" id="loginPass" placeholder="Enter password" required class="w-full border rounded-xl p-2 text-xs outline-none focus:border-teal-700">
-          </div>
-          <button type="submit" class="w-full py-2.5 bg-teal-950 text-amber-300 rounded-xl font-bold text-xs shadow-md">
-            Login to Account
-          </button>
-
-          <!-- FORGOT PASSWORD LINK -->
-          <div class="pt-2 text-center">
-            <button type="button" onclick="triggerForgotPasswordWhatsApp()" class="text-xs font-bold text-teal-800 hover:text-teal-950 underline flex items-center justify-center gap-1 mx-auto">
-              <i class="fa-brands fa-whatsapp text-emerald-600 text-sm"></i> Forgot Password? Click to Reset via WhatsApp
-            </button>
-          </div>
-        </form>
+    <!-- Market List -->
+    <div id="marketsContainer">
+      <div class="text-center py-5 text-secondary">
+        <div class="spinner-border text-warning spinner-border-sm mb-2"></div>
+        <div>Loading live markets and schedules...</div>
       </div>
     </div>
 
   </div>
 
-  <script>
-    // ==========================================
-    // 1. FREE FIREBASE CONFIGURATION (REALTIME DB)
-    // ==========================================
-    // Yahan aap apna Firebase credentials replace kar sakte hain:
-    const firebaseConfig = {
-      databaseURL: "https://teer-online-e0d9d-default-rtdb.firebaseio.com"
-    };
-
-    let fbDatabase = null;
-    try {
-      if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-      }
-      fbDatabase = firebase.database();
-      console.log("Firebase initialized successfully!");
-    } catch(err) {
-      console.log("Firebase fallback active:", err.message);
-    }
-
-    // State management
-    const state = {
-      user: null,
-      balance: 0.00,
-      selectedNumbers: [],
-      betMode: 'direct',
-      currentRound: 'FR',
-      currentMarketObj: null,
-      markets: [
-        { name: 'Shilong Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', defaultFr: '76', defaultSr: '15' },
-        { name: 'Khanapara Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', defaultFr: '60', defaultSr: '39' },
-        { name: 'Assam morning teer', frTime: '11:30 AM', srTime: '12:30 PM', defaultFr: '46', defaultSr: '88' },
-        { name: 'Sikkim', frTime: '12:15 PM', srTime: '01:40 PM', defaultFr: '15', defaultSr: '29' },
-        { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM', defaultFr: '58', defaultSr: '24' },
-        { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM', defaultFr: '34', defaultSr: '71' },
-        { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM', defaultFr: '82', defaultSr: '19' },
-        { name: 'Assam teer', frTime: '05:10 PM', srTime: '06:10 PM', defaultFr: '41', defaultSr: '09' },
-        { name: 'Sikkim Night Teer', frTime: '06:50 PM', srTime: '07:50 PM', defaultFr: '23', defaultSr: '**' },
-        { name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM', defaultFr: '**', defaultSr: '**' },
-        { name: 'Assam night teer', frTime: '09:40 PM', srTime: '10:40 PM', defaultFr: '**', defaultSr: '**' }
-      ],
-      bids: [],
-      notifications: []
-    };
-
-    const historicalMarketData = {
-      'Shilong Morning Teer': [
-        { d: '02/11/2026', fr: '76', sr: '15' },
-        { d: '01/11/2026', fr: '38', sr: '82' },
-        { d: '31/10/2026', fr: '47', sr: '64' },
-        { d: '30/10/2026', fr: '19', sr: '51' },
-        { d: '29/10/2026', fr: '85', sr: '04' },
-        { d: '28/10/2026', fr: '32', sr: '91' },
-        { d: '27/10/2026', fr: '64', sr: '18' },
-        { d: '26/10/2026', fr: '05', sr: '59' },
-        { d: '24/10/2026', fr: '71', sr: '40' },
-        { d: '23/10/2026', fr: '92', sr: '33' }
-      ],
-      'Shillong Teer (Evening)': [
-        { d: '02/11/2026', fr: '34', sr: '71' },
-        { d: '01/11/2026', fr: '67', sr: '29' },
-        { d: '31/10/2026', fr: '52', sr: '80' },
-        { d: '30/10/2026', fr: '08', sr: '44' },
-        { d: '29/10/2026', fr: '91', sr: '23' },
-        { d: '28/10/2026', fr: '43', sr: '65' },
-        { d: '27/10/2026', fr: '16', sr: '88' },
-        { d: '26/10/2026', fr: '79', sr: '30' },
-        { d: '24/10/2026', fr: '25', sr: '97' },
-        { d: '23/10/2026', fr: '84', sr: '12' }
-      ],
-      'Shillong Night Teer': [
-        { d: '02/11/2026', fr: '48', sr: '17' },
-        { d: '01/11/2026', fr: '21', sr: '63' },
-        { d: '31/10/2026', fr: '89', sr: '05' },
-        { d: '30/10/2026', fr: '36', sr: '74' },
-        { d: '29/10/2026', fr: '60', sr: '28' },
-        { d: '28/10/2026', fr: '14', sr: '95' },
-        { d: '27/10/2026', fr: '77', sr: '42' },
-        { d: '26/10/2026', fr: '03', sr: '81' },
-        { d: '24/10/2026', fr: '55', sr: '19' },
-        { d: '23/10/2026', fr: '90', sr: '66' }
-      ],
-      'Khanapara Morning Teer': [
-        { d: '02/11/2026', fr: '60', sr: '39' },
-        { d: '01/11/2026', fr: '14', sr: '75' },
-        { d: '31/10/2026', fr: '83', sr: '28' },
-        { d: '30/10/2026', fr: '57', sr: '01' },
-        { d: '29/10/2026', fr: '29', sr: '64' },
-        { d: '28/10/2026', fr: '90', sr: '46' },
-        { d: '27/10/2026', fr: '42', sr: '13' },
-        { d: '26/10/2026', fr: '78', sr: '85' },
-        { d: '24/10/2026', fr: '06', sr: '31' },
-        { d: '23/10/2026', fr: '35', sr: '98' }
-      ],
-      'Khanapara Teer (Evening)': [
-        { d: '02/11/2026', fr: '82', sr: '19' },
-        { d: '01/11/2026', fr: '45', sr: '60' },
-        { d: '31/10/2026', fr: '27', sr: '93' },
-        { d: '30/10/2026', fr: '70', sr: '11' },
-        { d: '29/10/2026', fr: '03', sr: '58' },
-        { d: '28/10/2026', fr: '68', sr: '34' },
-        { d: '27/10/2026', fr: '15', sr: '87' },
-        { d: '26/10/2026', fr: '94', sr: '22' },
-        { d: '24/10/2026', fr: '31', sr: '76' },
-        { d: '23/10/2026', fr: '59', sr: '04' }
-      ],
-      'Assam morning teer': [
-        { d: '02/11/2026', fr: '46', sr: '88' },
-        { d: '01/11/2026', fr: '91', sr: '25' },
-        { d: '31/10/2026', fr: '07', sr: '62' },
-        { d: '30/10/2026', fr: '53', sr: '18' },
-        { d: '29/10/2026', fr: '74', sr: '90' },
-        { d: '28/10/2026', fr: '20', sr: '37' },
-        { d: '27/10/2026', fr: '86', sr: '49' },
-        { d: '26/10/2026', fr: '38', sr: '71' },
-        { d: '24/10/2026', fr: '65', sr: '03' },
-        { d: '23/10/2026', fr: '12', sr: '84' }
-      ],
-      'Assam teer': [
-        { d: '02/11/2026', fr: '41', sr: '09' },
-        { d: '01/11/2026', fr: '87', sr: '54' },
-        { d: '31/10/2026', fr: '23', sr: '98' },
-        { d: '30/10/2026', fr: '69', sr: '31' },
-        { d: '29/10/2026', fr: '15', sr: '76' },
-        { d: '28/10/2026', fr: '58', sr: '20' },
-        { d: '27/10/2026', fr: '02', sr: '67' },
-        { d: '26/10/2026', fr: '93', sr: '45' },
-        { d: '24/10/2026', fr: '36', sr: '12' },
-        { d: '23/10/2026', fr: '70', sr: '89' }
-      ],
-      'Assam night teer': [
-        { d: '02/11/2026', fr: '53', sr: '21' },
-        { d: '01/11/2026', fr: '09', sr: '68' },
-        { d: '31/10/2026', fr: '74', sr: '15' },
-        { d: '30/10/2026', fr: '32', sr: '90' },
-        { d: '29/10/2026', fr: '86', sr: '47' },
-        { d: '28/10/2026', fr: '18', sr: '73' },
-        { d: '27/10/2026', fr: '61', sr: '04' },
-        { d: '26/10/2026', fr: '95', sr: '38' },
-        { d: '24/10/2026', fr: '27', sr: '82' },
-        { d: '23/10/2026', fr: '40', sr: '56' }
-      ],
-      'Juwai Teer (Evening)': [
-        { d: '02/11/2026', fr: '58', sr: '24' },
-        { d: '01/11/2026', fr: '12', sr: '79' },
-        { d: '31/10/2026', fr: '95', sr: '36' },
-        { d: '30/10/2026', fr: '40', sr: '81' },
-        { d: '29/10/2026', fr: '63', sr: '07' },
-        { d: '28/10/2026', fr: '27', sr: '52' },
-        { d: '27/10/2026', fr: '84', sr: '19' },
-        { d: '26/10/2026', fr: '31', sr: '65' },
-        { d: '24/10/2026', fr: '76', sr: '90' },
-        { d: '23/10/2026', fr: '08', sr: '43' }
-      ],
-      'Sikkim': [
-        { d: '02/11/2026', fr: '15', sr: '29' },
-        { d: '01/11/2026', fr: '72', sr: '84' },
-        { d: '31/10/2026', fr: '39', sr: '06' },
-        { d: '30/10/2026', fr: '88', sr: '51' },
-        { d: '29/10/2026', fr: '44', sr: '97' },
-        { d: '28/10/2026', fr: '61', sr: '13' },
-        { d: '27/10/2026', fr: '05', sr: '78' },
-        { d: '26/10/2026', fr: '50', sr: '32' },
-        { d: '24/10/2026', fr: '96', sr: '69' },
-        { d: '23/10/2026', fr: '23', sr: '47' }
-      ],
-      'Sikkim Night Teer': [
-        { d: '02/11/2026', fr: '23', sr: '65' },
-        { d: '01/11/2026', fr: '81', sr: '14' },
-        { d: '31/10/2026', fr: '46', sr: '70' },
-        { d: '30/10/2026', fr: '09', sr: '38' },
-        { d: '29/10/2026', fr: '67', sr: '92' },
-        { d: '28/10/2026', fr: '35', sr: '54' },
-        { d: '27/10/2026', fr: '90', sr: '21' },
-        { d: '26/10/2026', fr: '18', sr: '83' },
-        { d: '24/10/2026', fr: '52', sr: '07' },
-        { d: '23/10/2026', fr: '74', sr: '49' }
-      ]
-    };
-
-    window.addEventListener('DOMContentLoaded', () => {
-      loadStorage();
-      checkSundayHoliday();
-      renderMarkets();
-      renderGutiGrid();
-      startBannerAutoSlider();
-      initChartMarketsDropdown();
-      updateUI();
-      initFirebaseAutoSync(); // Realtime Firebase listener
-      initUserLiveBalanceListener();
-      checkUrlReferral();
-      syncAgentEarningsFromFirebase();
-
-      setInterval(() => {
-        renderMarkets();
-        checkAndCreditWinnings();
-        syncNotifications();
-      }, 4000);
-    });
-
-    // 2. FIREBASE REALTIME LISTENER FOR AUTO-RESULT & AUTO-CREDIT
-    function initFirebaseAutoSync() {
-      if (!fbDatabase) return;
-      fbDatabase.ref('results').on('value', (snapshot) => {
-        const liveData = snapshot.val();
-        if (liveData) {
-          console.log("Firebase Live Teer Result Sync:", liveData);
-          localStorage.setItem('teer_market_results', JSON.stringify(liveData));
-          renderMarkets();
-          checkAndCreditWinnings();
-        }
-      });
-    }
-
-    function getTodayFormattedDate() {
-      const now = new Date();
-      const d = String(now.getDate()).padStart(2, '0');
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const y = now.getFullYear();
-      return `${d}/${m}/${y}`;
-    }
-
-    function checkSundayHoliday() {
-      const isSunday = (new Date().getDay() === 0);
-      const badge = document.getElementById('dayStatusBadge');
-      if (isSunday) {
-        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300";
-        badge.innerText = "● Sunday Off (Closed Today)";
-      } else {
-        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300";
-        badge.innerText = "● 6 Days Open (Sun Off)";
-      }
-      return isSunday;
-    }
-
-    
-    function initUserLiveBalanceListener() {
-      if (!fbDatabase || !state.user) return;
-      fbDatabase.ref('users/' + state.user.phone + '/balance').on('value', (snap) => {
-        if (snap.exists()) {
-          const cloudBal = parseFloat(snap.val());
-          if (cloudBal !== state.balance) {
-            state.balance = cloudBal;
-            localStorage.setItem('teer_balance', state.balance.toFixed(2));
-            updateUI();
-          }
-        }
-      });
-    }
-
-    function loadStorage() {
-      const savedUser = localStorage.getItem('teer_current_user');
-      if (savedUser) {
-        state.user = JSON.parse(savedUser);
-        const savedBal = localStorage.getItem('teer_balance');
-        if (savedBal !== null) state.balance = parseFloat(savedBal);
-        else state.balance = 10.00;
-      } else {
-        state.user = null;
-        state.balance = 0.00;
-      }
-
-      const savedBids = localStorage.getItem('teer_bids');
-      if (savedBids) state.bids = JSON.parse(savedBids);
-
-      const savedNotifs = localStorage.getItem('teer_notifications');
-      if (savedNotifs) state.notifications = JSON.parse(savedNotifs);
-      else {
-        state.notifications = [
-          { id: 1, type: 'event', title: '🎁 Welcome Bonus Credited', message: 'Teer Online me aapka swagat hai! ₹10 Login bonus aapke wallet me add ho chuka hai.', time: 'Today', unread: true },
-          { id: 2, type: 'event', title: '👑 Refer & Agent Commission Active', message: 'Doston ko invite karein aur har deposit & game turnover par instant commission paayein!', time: 'Today', unread: true }
-        ];
-        saveNotifications();
-      }
-    }
-
-    function saveNotifications() {
-      localStorage.setItem('teer_notifications', JSON.stringify(state.notifications));
-    }
-
-    function syncNotifications() {
-      const saved = localStorage.getItem('teer_notifications');
-      if (saved) {
-        state.notifications = JSON.parse(saved);
-        const unreadCount = state.notifications.filter(n => n.unread).length;
-        const badge = document.getElementById('notifBadge');
-        if (unreadCount > 0) {
-          badge.innerText = unreadCount;
-          badge.classList.remove('hidden');
-        } else {
-          badge.classList.add('hidden');
-        }
-      }
-    }
-
-    // Auto Winning Calculation & Instant Wallet Credit
-    function checkAndCreditWinnings() {
-      const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
-      let updated = false;
-
-      state.bids.forEach(bid => {
-        if (bid.status === 'Active' && savedResults[bid.market]) {
-          const resObj = savedResults[bid.market];
-          const announcedNum = (bid.round === 'FR') ? resObj.fr : resObj.sr;
-
-          if (announcedNum && announcedNum !== '**') {
-            let isWin = false;
-            let winAmount = 0;
-
-            const announcedTwoDigit = String(announcedNum).padStart(2, '0');
-            const houseDigit = announcedTwoDigit.charAt(0);
-            const endingDigit = announcedTwoDigit.charAt(1);
-
-            if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
-              isWin = true;
-              winAmount = bid.amount * 90; // 1:90
-            } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
-              isWin = true;
-              winAmount = bid.amount * 9; // 1:9
-            } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
-              isWin = true;
-              winAmount = bid.amount * 9; // 1:9
-            }
-
-            if (isWin) {
-              bid.status = 'WON';
-              bid.payout = winAmount;
-              state.balance += winAmount;
-              updated = true;
-
-              addAppNotification({
-                type: 'win',
-                title: '🎉 Congratulations! You Won!',
-                message: `Aapki ${bid.market} (${bid.round}) ${bid.mode} [${bid.number}] par ₹${winAmount.toFixed(2)} ka winning bonus wallet me auto-credit ho gaya hai!`
-              });
-              playChimeSound();
-            } else {
-              bid.status = 'LOST';
-              bid.payout = 0;
-              updated = true;
-            }
-          }
-        }
-      });
-
-      if (updated) {
-        localStorage.setItem('teer_bids', JSON.stringify(state.bids));
-        localStorage.setItem('teer_balance', state.balance.toFixed(2));
-        updateUI();
-      }
-    }
-
-    function addAppNotification(item) {
-      item.id = Date.now();
-      item.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      item.unread = true;
-      state.notifications.unshift(item);
-      saveNotifications();
-      syncNotifications();
-    }
-
-    function playChimeSound() {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.45);
-      } catch(e) {}
-    }
-
-    function updateUI() {
-      const b = '₹' + state.balance.toFixed(2);
-      document.getElementById('headerBalance').innerText = b;
-      document.getElementById('walletBalanceBig').innerText = b;
-      document.getElementById('drawerBal').innerText = b;
-
-      const pName = document.getElementById('profileName');
-      const pPhone = document.getElementById('profilePhone');
-      const pAvatar = document.getElementById('profileAvatar');
-      const pBadge = document.getElementById('profileBadge');
-      const dPhone = document.getElementById('drawerPhone');
-      const dSub = document.getElementById('drawerSub');
-      const dAvatar = document.getElementById('drawerAvatar');
-
-      const pBtn = document.getElementById('profileAuthBtn');
-      if (state.user) {
-        if (pName) pName.innerText = state.user.name;
-        if (pPhone) pPhone.innerText = '+91 ' + state.user.phone;
-        if (pAvatar) pAvatar.innerHTML = `<span class="font-bold text-amber-300 text-lg">${state.user.name.charAt(0).toUpperCase()}</span>`;
-        if (pBadge) {
-          pBadge.innerText = 'Verified Member';
-          pBadge.className = 'inline-block mt-1 bg-emerald-400/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-semibold';
-        }
-        if (pBtn) {
-          pBtn.innerText = 'Logout';
-          pBtn.className = 'text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg shadow';
-          pBtn.onclick = logoutUser;
-        }
-        if (dPhone) dPhone.innerText = '+91 ' + state.user.phone;
-        if (dSub) dSub.innerText = state.user.name;
-        if (dAvatar) dAvatar.innerHTML = `<span class="font-bold text-amber-300 text-base">${state.user.name.charAt(0).toUpperCase()}</span>`;
-      } else {
-        if (pName) pName.innerText = 'Guest User';
-        if (pPhone) pPhone.innerText = 'Not Logged In';
-        if (pAvatar) pAvatar.innerHTML = '<i class="fa-solid fa-user text-lg text-teal-200"></i>';
-        if (pBadge) {
-          pBadge.innerText = 'Guest Account (Please Login)';
-          pBadge.className = 'inline-block mt-1 bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-semibold';
-        }
-        if (pBtn) {
-          pBtn.innerText = 'Login';
-          pBtn.className = 'text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg shadow';
-          pBtn.onclick = openAuthModal;
-        }
-        if (dPhone) dPhone.innerText = 'Guest User';
-        if (dSub) dSub.innerText = 'Please Login';
-        if (dAvatar) dAvatar.innerHTML = '<i class="fa-solid fa-user text-sm text-teal-200"></i>';
-      }
-      renderBidsList();
-      syncNotifications();
-    }
-
-    function switchTab(t) {
-      document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'));
-      const sc = document.getElementById('screen-' + t);
-      if (sc) sc.classList.add('active');
-
-      document.querySelectorAll('.nav-btn').forEach(btn => {
-        if (btn.dataset.tab === t) {
-          btn.classList.add('text-teal-900');
-          btn.classList.remove('text-slate-400');
-        } else {
-          btn.classList.remove('text-teal-900');
-          btn.classList.add('text-slate-400');
-        }
-      });
-      window.scrollTo(0, 0);
-    }
-
-    function getMinutesRemaining(timeStr) {
-      const parts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
-      if (!parts) return -999;
-      let h = parseInt(parts[1]);
-      const m = parseInt(parts[2]);
-      const ampm = parts[3].toUpperCase();
-      if (ampm === 'PM' && h !== 12) h += 12;
-      if (ampm === 'AM' && h === 12) h = 0;
-
-      const now = new Date();
-      const drawTime = new Date();
-      drawTime.setHours(h, m, 0, 0);
-      return Math.floor((drawTime - now) / 60000);
-    }
-
-    function isRoundBettingOpen(timeStr) {
-      if (new Date().getDay() === 0) return false;
-      return (getMinutesRemaining(timeStr) > 10);
-    }
-
-    function renderMarkets() {
-      const cont = document.getElementById('marketCardsContainer');
-      cont.innerHTML = '';
-      const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
-      const isSunday = (new Date().getDay() === 0);
-      const dynamicDate = getTodayFormattedDate();
-
-      state.markets.forEach(m => {
-        const live = savedResults[m.name] || { fr: m.defaultFr, sr: m.defaultSr };
-        const card = document.createElement('div');
-        card.className = "bg-white rounded-2xl p-3 border border-slate-200/90 shadow-sm space-y-2";
-
-        const frOpen = isRoundBettingOpen(m.frTime);
-        const srOpen = isRoundBettingOpen(m.srTime);
-        const allClosed = (!frOpen && !srOpen);
-
-        let bottomBarHtml = '';
-        if (isSunday) {
-          bottomBarHtml = `
-            <div class="flex justify-between items-center pt-1">
-              <span class="font-decorative text-base text-rose-600 font-bold">Sunday Official Holiday</span>
-              <button class="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-600 font-decorative text-base font-bold">
-                Sunday Off
-              </button>
-            </div>
-          `;
-        } else if (allClosed) {
-          bottomBarHtml = `
-            <div class="flex justify-between items-center pt-1">
-              <span class="font-decorative text-base text-slate-700">Closed for today</span>
-              <div class="flex items-center gap-1.5">
-                <button onclick="openChartModal('${m.name}')" class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800">
-                  <i class="fa-solid fa-chart-simple text-xs"></i>
-                </button>
-                <button onclick="alert('Is market ka draw samay samapt ho chuka hai! Agla draw kal time par open hoga.')" class="px-3.5 py-1.5 rounded-lg bg-[#b91c1c] hover:bg-red-800 text-white font-decorative text-base font-bold tracking-wide shadow-sm cursor-pointer active:scale-95 transition">
-                  Closed
-                </button>
-              </div>
-            </div>
-          `;
-        } else {
-          bottomBarHtml = `
-            <div class="flex justify-between items-center pt-1">
-              <div>
-                <span class="font-decorative text-base text-slate-700">Start your game here</span>
-                <span class="block text-[9px] text-amber-700 font-bold">10 min cutoff apply</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <button onclick="openChartModal('${m.name}')" class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800">
-                  <i class="fa-solid fa-chart-simple text-xs"></i>
-                </button>
-                <button onclick="openPlayModalByName('${m.name}')" class="px-3 py-1.5 rounded-lg bg-[#032f33] text-white font-decorative text-base font-bold tracking-wide shadow-sm">
-                  Play Game &gt;
-                </button>
-              </div>
-            </div>
-          `;
-        }
-
-        const frStatusTag = frOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>';
-        const srStatusTag = srOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>';
-
-        card.innerHTML = `
-          <div class="flex justify-between items-center">
-            <h5 class="font-decorative text-xl font-bold text-slate-800">${m.name}</h5>
-            <span class="font-decorative text-base text-slate-700 font-semibold">${dynamicDate}</span>
+  <!-- Deposit Modal -->
+  <div class="modal fade" id="depositModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title"><i class="fas fa-qrcode text-warning me-2"></i>Add Balance (Instant UPI)</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center">
+          <p class="text-muted small">Scan QR & pay from PhonePe, GPay, Paytm, or BHIM UPI.</p>
+          <div class="bg-white p-3 rounded d-inline-block shadow mb-3">
+            <img id="dynamicQrImage" src="" alt="Dynamic UPI QR" style="width: 210px; height: 210px; display: block;">
           </div>
-
-          <div class="grid grid-cols-2 gap-2 bg-[#f4f9f9] border border-teal-100 rounded-xl p-2.5 text-center">
-            <div class="border-r border-teal-200/60 pr-1">
-              <p class="font-decorative text-base text-slate-800 font-bold">FR (${m.frTime}) ${frStatusTag}</p>
-              <p class="font-decorative text-3xl font-bold text-slate-900 mt-0.5">${live.fr}</p>
-            </div>
-            <div class="pl-1">
-              <p class="font-decorative text-base text-slate-800 font-bold">SR (${m.srTime}) ${srStatusTag}</p>
-              <p class="font-decorative text-3xl font-bold text-slate-900 mt-0.5">${live.sr}</p>
-            </div>
+          <div class="input-group mb-3">
+            <input type="text" id="upiIdDisplay" class="form-control bg-secondary text-white text-center fw-bold" readonly value="Loading...">
+            <button class="btn btn-warning" onclick="copyUpi()"><i class="fas fa-copy"></i> Copy</button>
           </div>
+          <div class="text-start">
+            <label class="form-label small text-secondary">Enter UTR / Transaction Ref No. (12 Digits):</label>
+            <input type="text" id="depositUtrInput" class="form-control bg-secondary text-white border-0" placeholder="e.g. 429188109281">
+          </div>
+          <div class="text-start mt-2">
+            <label class="form-label small text-secondary">Amount Paid (₹):</label>
+            <input type="number" id="depositAmountInput" class="form-control bg-secondary text-white border-0" placeholder="Minimum ₹50">
+          </div>
+          <a id="helplineBtn" href="#" target="_blank" class="btn btn-outline-success btn-sm w-100 mt-3">
+            <i class="fab fa-whatsapp me-1"></i> WhatsApp Helpline Support
+          </a>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button class="btn btn-secondary w-100" onclick="submitDepositRequest()">Submit Payment Request</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-          ${bottomBarHtml}
-        `;
-        cont.appendChild(card);
-      });
-    }
-
-    function renderGutiGrid() {
-      const g = document.getElementById('gutiGrid');
-      g.innerHTML = '';
-      for (let i = 0; i <= 99; i++) {
-        const v = i < 10 ? '0' + i : '' + i;
-        const b = document.createElement('button');
-        b.innerText = v;
-        b.id = 'guti-btn-' + v;
-        b.className = "py-1.5 bg-white border border-slate-200 rounded font-mono text-[11px] font-bold text-slate-700 hover:border-amber-400";
-        b.onclick = () => toggleNumber(v);
-        g.appendChild(b);
-      }
-    }
-
-    function toggleNumber(val) {
-      const idx = state.selectedNumbers.indexOf(val);
-      if (idx > -1) state.selectedNumbers.splice(idx, 1);
-      else state.selectedNumbers.push(val);
-      updateSelectedTray();
-      calculatePayout();
-    }
-
-    function selectSingleDigit(d) {
-      state.selectedNumbers = ['' + d];
-      document.querySelectorAll('.digit-btn').forEach((btn, idx) => {
-        if (idx === d) {
-          btn.className = "digit-btn py-2 rounded-xl bg-amber-400 text-teal-950 font-black text-sm shadow";
-        } else {
-          btn.className = "digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm text-slate-700";
-        }
-      });
-      updateSelectedTray();
-      calculatePayout();
-    }
-
-    function updateSelectedTray() {
-      const tray = document.getElementById('selectedPills');
-      tray.innerHTML = '';
-      if (state.selectedNumbers.length === 0) {
-        tray.innerHTML = '<span class="text-slate-400 italic text-[11px]">No numbers selected</span>';
-      } else {
-        state.selectedNumbers.forEach(n => {
-          const pill = document.createElement('span');
-          pill.className = "bg-amber-100 border border-amber-300 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px]";
-          pill.innerText = n;
-          tray.appendChild(pill);
-        });
-      }
-
-      for (let i = 0; i <= 99; i++) {
-        const v = i < 10 ? '0' + i : '' + i;
-        const b = document.getElementById('guti-btn-' + v);
-        if (b) {
-          if (state.selectedNumbers.includes(v)) {
-            b.className = "py-1.5 bg-amber-400 text-teal-950 border border-amber-500 rounded font-mono text-[11px] font-black shadow";
-          } else {
-            b.className = "py-1.5 bg-white border border-slate-200 rounded font-mono text-[11px] font-bold text-slate-700 hover:border-amber-400";
-          }
-        }
-      }
-    }
-
-    function randomLuckyPick() {
-      const r = Math.floor(Math.random() * 100);
-      const v = r < 10 ? '0' + r : '' + r;
-      if (!state.selectedNumbers.includes(v)) state.selectedNumbers.push(v);
-      updateSelectedTray();
-      calculatePayout();
-    }
-
-    function selectRound(r) {
-      state.currentRound = r;
-      const bFr = document.getElementById('btnRoundFR');
-      const bSr = document.getElementById('btnRoundSR');
-      if (r === 'FR') {
-        bFr.className = "flex-1 py-1.5 rounded-lg font-bold text-xs bg-[#032427] text-white shadow";
-        bSr.className = "flex-1 py-1.5 rounded-lg font-bold text-xs text-slate-600";
-      } else {
-        bSr.className = "flex-1 py-1.5 rounded-lg font-bold text-xs bg-[#032427] text-white shadow";
-        bFr.className = "flex-1 py-1.5 rounded-lg font-bold text-xs text-slate-600";
-      }
-      validateModalRoundStatus();
-      calculatePayout();
-    }
-
-    function validateModalRoundStatus() {
-      if (!state.currentMarketObj) return;
-      const timeStr = (state.currentRound === 'FR') ? state.currentMarketObj.frTime : state.currentMarketObj.srTime;
-      const open = isRoundBettingOpen(timeStr);
-      const notice = document.getElementById('roundClosedNotice');
-      const confirmBtn = document.getElementById('btnConfirmBetModal');
-
-      if (!open) {
-        notice.classList.remove('hidden');
-        confirmBtn.disabled = true;
-        confirmBtn.className = "flex-1 py-2.5 rounded-xl bg-slate-300 text-slate-500 font-bold text-xs cursor-not-allowed";
-        confirmBtn.innerText = "Time Over (10 Min Cutoff)";
-      } else {
-        notice.classList.add('hidden');
-        confirmBtn.disabled = false;
-        confirmBtn.className = "flex-1 py-2.5 rounded-xl gold-btn font-bold text-xs shadow-md";
-        confirmBtn.innerText = "Confirm Bet";
-      }
-    }
-
-    function selectBetMode(m) {
-      state.betMode = m;
-      state.selectedNumbers = [];
-      const mDir = document.getElementById('modeBtnDirect');
-      const mHou = document.getElementById('modeBtnHouse');
-      const mEnd = document.getElementById('modeBtnEnding');
-      const gSec = document.getElementById('directGutiSection');
-      const dSec = document.getElementById('digitSection');
-      const dTitle = document.getElementById('digitSectionTitle');
-
-      [mDir, mHou, mEnd].forEach(b => b.className = "flex-1 py-1.5 bg-slate-100 text-slate-700 font-bold rounded-lg border");
-
-      if (m === 'direct') {
-        mDir.className = "flex-1 py-1.5 bg-amber-400 text-teal-950 font-bold rounded-lg border border-amber-500 shadow-sm";
-        gSec.classList.remove('hidden');
-        dSec.classList.add('hidden');
-      } else if (m === 'house') {
-        mHou.className = "flex-1 py-1.5 bg-amber-400 text-teal-950 font-bold rounded-lg border border-amber-500 shadow-sm";
-        gSec.classList.add('hidden');
-        dSec.classList.remove('hidden');
-        dTitle.innerText = "Choose House Digit (0 - 9):";
-      } else {
-        mEnd.className = "flex-1 py-1.5 bg-amber-400 text-teal-950 font-bold rounded-lg border border-amber-500 shadow-sm";
-        gSec.classList.add('hidden');
-        dSec.classList.remove('hidden');
-        dTitle.innerText = "Choose Ending Digit (0 - 9):";
-      }
-      updateSelectedTray();
-      calculatePayout();
-    }
-
-    function calculatePayout() {
-      const amt = parseFloat(document.getElementById('betAmountInput').value) || 0;
-      const count = state.selectedNumbers.length;
-      const totalCost = amt * count;
-      document.getElementById('totalBetCost').innerText = '₹' + totalCost.toFixed(2);
-
-      let mult = (state.betMode === 'direct') ? 90 : 9;
-      const potential = amt * mult;
-      document.getElementById('potentialWin').innerText = count > 0 ? '₹' + potential.toFixed(2) : '₹0.00';
-    }
-
-    function openPlayModalByName(mName) {
-      if (new Date().getDay() === 0) {
-        alert('Sunday Holiday: Teer game is closed on Sundays!');
-        return;
-      }
-      const mObj = state.markets.find(x => x.name === mName);
-      if (!mObj) return;
-
-      state.currentMarketObj = mObj;
-      document.getElementById('playMarketTitle').innerText = mName;
-
-      const frOpen = isRoundBettingOpen(mObj.frTime);
-      const srOpen = isRoundBettingOpen(mObj.srTime);
-
-      if (frOpen) selectRound('FR');
-      else if (srOpen) selectRound('SR');
-      else {
-        selectRound('FR');
-      }
-
-      state.selectedNumbers = [];
-      updateSelectedTray();
-      calculatePayout();
-      document.getElementById('playGameModal').classList.remove('hidden');
-    }
-
-    function closePlayModal() { document.getElementById('playGameModal').classList.add('hidden'); }
-    function openDepositModal() { document.getElementById('depositModal').classList.remove('hidden'); }
-    function closeDepositModal() { document.getElementById('depositModal').classList.add('hidden'); }
-    function openWithdrawModal() { document.getElementById('withdrawModal').classList.remove('hidden'); }
-    function closeWithdrawModal() { document.getElementById('withdrawModal').classList.add('hidden'); }
-    function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
-    function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
-
-    function initChartMarketsDropdown() {
-      const select = document.getElementById('chartMarketSelect');
-      select.innerHTML = '';
-      state.markets.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.name;
-        opt.innerText = m.name;
-        select.appendChild(opt);
-      });
-      renderSelectedMarketChart();
-    }
-
-    function openChartModal(mName) {
-      if (mName) {
-        const select = document.getElementById('chartMarketSelect');
-        if (select) select.value = mName;
-      }
-      renderSelectedMarketChart();
-      document.getElementById('chartModal').classList.remove('hidden');
-    }
-    function closeChartModal() { document.getElementById('chartModal').classList.add('hidden'); }
-
-    function renderSelectedMarketChart() {
-      const mName = document.getElementById('chartMarketSelect').value || 'Shilong Morning Teer';
-      const tbody = document.getElementById('chartTableBody');
-      tbody.innerHTML = '';
-
-      const records = historicalMarketData[mName] || [
-        { d: '02/11/2026', fr: '45', sr: '82' },
-        { d: '01/11/2026', fr: '30', sr: '19' },
-        { d: '31/10/2026', fr: '67', sr: '53' },
-        { d: '30/10/2026', fr: '12', sr: '94' },
-        { d: '29/10/2026', fr: '88', sr: '37' },
-        { d: '28/10/2026', fr: '54', sr: '20' },
-        { d: '27/10/2026', fr: '91', sr: '66' },
-        { d: '26/10/2026', fr: '23', sr: '48' }
-      ];
-
-      records.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 border-b";
-        tr.innerHTML = `
-          <td class="p-2 border border-slate-200 text-slate-600 font-semibold">${r.d}</td>
-          <td class="p-2 border border-slate-200 text-teal-900 font-black text-sm">${r.fr}</td>
-          <td class="p-2 border border-slate-200 text-amber-700 font-black text-sm">${r.sr}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function toggleDrawer() {
-      const drawer = document.getElementById('sideDrawer');
-      const overlay = document.getElementById('drawerOverlay');
-      if (drawer.classList.contains('-translate-x-full')) {
-        drawer.classList.remove('-translate-x-full');
-        overlay.classList.remove('hidden');
-      } else {
-        drawer.classList.add('-translate-x-full');
-        overlay.classList.add('hidden');
-      }
-    }
-
-    function startBannerAutoSlider() {
-      let isFirst = true;
-      setInterval(() => {
-        isFirst = !isFirst;
-        const s1 = document.getElementById('slide1');
-        const s2 = document.getElementById('slide2');
-        const d1 = document.getElementById('dot1');
-        const d2 = document.getElementById('dot2');
-        if (s1 && s2) {
-          s1.style.opacity = isFirst ? '1' : '0';
-          s2.style.opacity = isFirst ? '0' : '1';
-          d1.className = isFirst ? 'w-2 h-1 rounded-full bg-amber-400' : 'w-1.5 h-1 rounded-full bg-white/40';
-          d2.className = isFirst ? 'w-1.5 h-1 rounded-full bg-white/40' : 'w-2 h-1 rounded-full bg-amber-400';
-        }
-      }, 4000);
-    }
-
-    function openNotificationModal() {
-      const cont = document.getElementById('notifListContainer');
-      cont.innerHTML = '';
-      if (state.notifications.length === 0) {
-        cont.innerHTML = '<div class="text-center p-4 text-slate-400">No new notifications</div>';
-      } else {
-        state.notifications.forEach(n => {
-          const item = document.createElement('div');
-          let iconColor = 'text-blue-500 bg-blue-50';
-          if (n.type === 'win') iconColor = 'text-amber-500 bg-amber-50 border border-amber-200';
-          if (n.type === 'deposit') iconColor = 'text-emerald-500 bg-emerald-50';
-          if (n.type === 'withdraw') iconColor = 'text-purple-500 bg-purple-50';
-
-          item.className = `p-2.5 rounded-xl border ${n.unread ? 'bg-amber-50/40 border-amber-200' : 'bg-slate-50 border-slate-200'} flex gap-2.5 items-start`;
-          item.innerHTML = `
-            <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${iconColor}">
-              <i class="fa-solid ${n.type === 'win' ? 'fa-trophy' : (n.type === 'deposit' ? 'fa-wallet' : (n.type === 'withdraw' ? 'fa-arrow-up' : 'fa-bell'))} text-xs"></i>
-            </div>
-            <div class="flex-1">
-              <div class="flex justify-between items-center">
-                <p class="font-bold text-slate-800 text-[11px]">${n.title}</p>
-                <span class="text-[9px] text-slate-400">${n.time}</span>
-              </div>
-              <p class="text-[10px] text-slate-600 mt-0.5">${n.message}</p>
-            </div>
-          `;
-          cont.appendChild(item);
-        });
-      }
-
-      state.notifications.forEach(n => n.unread = false);
-      saveNotifications();
-      syncNotifications();
-      document.getElementById('notificationModal').classList.remove('hidden');
-    }
-
-    function closeNotificationModal() {
-      document.getElementById('notificationModal').classList.add('hidden');
-    }
-
-    function clearAllNotifications() {
-      state.notifications = [];
-      saveNotifications();
-      syncNotifications();
-      openNotificationModal();
-    }
-
-    function confirmPlaceBet() {
-      if (!state.user) {
-        alert('Kripya pehle Login ya Register karein!');
-        closePlayModal();
-        openAuthModal();
-        return;
-      }
-      if (!state.currentMarketObj) return;
-
-      const targetTimeStr = (state.currentRound === 'FR') ? state.currentMarketObj.frTime : state.currentMarketObj.srTime;
-      if (!isRoundBettingOpen(targetTimeStr)) {
-        alert(`Time Over! Result aane se 10 minute pehle ${state.currentRound} betting band ho gayi hai.`);
-        validateModalRoundStatus();
-        return;
-      }
-
-      const amt = parseFloat(document.getElementById('betAmountInput').value) || 0;
-      if (state.selectedNumbers.length === 0) {
-        alert('Kripya number select karein!');
-        return;
-      }
-      const cost = amt * state.selectedNumbers.length;
-      if (state.balance < cost) {
-        alert('Insufficient Balance! Pehle wallet recharge karein.');
-        closePlayModal();
-        openDepositModal();
-        return;
-      }
-      state.balance -= cost;
-      localStorage.setItem('teer_balance', state.balance.toFixed(2));
-
-      applyAgentBetTurnoverCommission(cost);
-
-      state.selectedNumbers.forEach(n => {
-        state.bids.unshift({
-          market: state.currentMarketObj.name,
-          round: state.currentRound,
-          mode: state.betMode.toUpperCase(),
-          number: n,
-          amount: amt,
-          status: 'Active',
-          payout: 0,
-          date: getTodayFormattedDate(),
-          time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-        });
-      });
-      localStorage.setItem('teer_bids', JSON.stringify(state.bids));
-
-      updateUI();
-      closePlayModal();
-      alert(`Success! ₹${cost} ki bet lag gayi hai (${state.currentRound} - ${state.betMode.toUpperCase()}). Result aane par win amount auto-credit hoga.`);
-    }
-
-
-    // SYNC AGENT EARNINGS FROM FIREBASE SO AGENT SEES COMMISSION LIVE
-    function syncAgentEarningsFromFirebase() {
-      if (!fbDatabase || !state.user) return;
-      const myCode = state.user.phone;
-      fbDatabase.ref('agent_earnings/' + myCode).on('value', (snap) => {
-        const total = snap.val() || 0;
-        const box = document.getElementById('myAgentEarnedText');
-        if (box) box.innerText = '₹' + parseFloat(total).toFixed(2);
-      });
-    }
-
-    // PUSH COMMISSION TO FIREBASE WHEN REFERRED FRIEND PLAYS BET
-    function applyAgentBetTurnoverCommission(betAmount) {
-      if (state.user && state.user.referredBy) {
-        const agentComm = (betAmount / 1000) * 50; // Real ₹50 per 1000 bet
-        const ref = state.user.referredBy;
-        
-        // 1. Local
-        let agentLedger = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
-        agentLedger[ref] = (agentLedger[ref] || 0) + agentComm;
-        localStorage.setItem('teer_agent_earnings', JSON.stringify(agentLedger));
-
-        // 2. Firebase Realtime Cloud Push to Agent's Account
-        if (fbDatabase) {
-          fbDatabase.ref('agent_earnings/' + ref).transaction((current) => {
-            return (current || 0) + agentComm;
-          });
-        }
-      }
-    }
-
-
-    function renderBidsList() {
-      const cont = document.getElementById('bidsListContainer');
-      const countBadge = document.getElementById('bidsCountBadge');
-      countBadge.innerText = `${state.bids.length} Bids`;
-
-      if (state.bids.length === 0) {
-        cont.innerHTML = '<div class="p-8 text-center text-slate-400">No bids placed yet.</div>';
-        return;
-      }
-      cont.innerHTML = '';
-      state.bids.forEach(b => {
-        const item = document.createElement('div');
-        let statusBadge = '<span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded">Active</span>';
-        if (b.status === 'WON') statusBadge = `<span class="text-[10px] bg-emerald-100 text-emerald-800 font-black px-1.5 py-0.2 rounded">WON +₹${b.payout.toFixed(2)}</span>`;
-        if (b.status === 'LOST') statusBadge = '<span class="text-[10px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.2 rounded">Lost</span>';
-
-        item.className = `p-3 rounded-xl border ${b.status === 'WON' ? 'bg-emerald-50/50 border-emerald-200' : 'bg-white border-slate-200'} shadow-sm flex justify-between items-center text-xs`;
-        item.innerHTML = `
+  <!-- Bet Placing Modal -->
+  <div class="modal fade" id="betModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
           <div>
-            <p class="font-bold text-teal-950">${b.market} [${b.round}]</p>
-            <p class="text-slate-500">${b.mode}: <b class="text-amber-600 font-mono text-sm">${b.number}</b> &bull; ${b.date} ${b.time}</p>
+            <h5 class="modal-title text-warning" id="betMarketTitle">Shillong Teer</h5>
+            <small class="text-muted" id="betRoundTitle">Round: FR</small>
           </div>
-          <div class="text-right">
-            <span class="font-bold text-teal-900">₹${b.amount}</span>
-            <div class="mt-0.5">${statusBadge}</div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex justify-content-between mb-2 small text-secondary">
+            <span>Select Number (00-99):</span>
+            <span class="text-warning">Selected: <b id="selectedGutiDisplay">None</b></span>
           </div>
-        `;
-        cont.appendChild(item);
-      });
-    }
-
-        
-    // SCREENSHOT UPLOAD & COMPRESSION HANDLER
-    let currentDepositScreenshotBase64 = null;
-
-    function handleScreenshotPreview(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const fileNameLabel = document.getElementById('screenshotFileName');
-      if (fileNameLabel) fileNameLabel.innerText = file.name;
-
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        const img = new Image();
-        img.onload = function() {
-          // Compress image using canvas so it fits smoothly in Firebase Realtime Database
-          const canvas = document.createElement('canvas');
-          const maxDim = 600;
-          let width = img.width;
-          let height = img.height;
-          if (width > height && width > maxDim) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else if (height > maxDim) {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          // Get compressed Base64
-          currentDepositScreenshotBase64 = canvas.toDataURL('image/jpeg', 0.65);
           
-          const previewImg = document.getElementById('screenshotImgPreview');
-          if (previewImg) {
-            previewImg.src = currentDepositScreenshotBase64;
-            previewImg.classList.remove('hidden');
-          }
-        };
-        img.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
+          <div class="guti-grid mb-3" id="gutiPickerGrid"></div>
 
-    function submitDepositForm() {
-      if (!state.user) {
-        alert('Please login or register to deposit money!');
-        closeDepositModal();
-        openAuthModal();
-        return;
-      }
-      const utr = document.getElementById('depositUtrInput').value.trim();
-      const amt = parseFloat(document.getElementById('depositAmountInput').value) || 0;
-      if (amt < 100) { alert('Minimum deposit amount is ₹100.'); return; }
-      if (utr.length < 10) { alert('Please enter a valid 12-digit UPI / UTR Transaction Reference number!'); return; }
-
-      const depId = 'dep_' + Date.now();
-      const now = new Date();
-      const depRecord = {
-        id: depId,
-        phone: state.user.phone,
-        name: state.user.name,
-        amount: amt,
-        bonus: amt * 0.05,
-        utr: utr,
-        screenshot: currentDepositScreenshotBase64 || null,
-        status: 'pending',
-        date: now.toLocaleDateString(),
-        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        timestamp: Date.now()
-      };
-
-      if (fbDatabase) {
-        fbDatabase.ref('deposits/' + depId).set(depRecord);
-      }
-
-      recordTransaction({
-        id: depId,
-        type: 'deposit',
-        title: `Deposit Request (UTR: ${utr})`,
-        amount: amt,
-        isCredit: true,
-        status: 'Pending'
-      });
-
-      addAppNotification({
-        type: 'deposit',
-        title: 'Deposit Request Submitted',
-        message: `₹${amt} deposit request (UTR: ${utr}) submitted. Admin will verify screenshot & UTR within 1 to 10 minutes.`
-      });
-
-      // Reset form
-      document.getElementById('depositUtrInput').value = '';
-      currentDepositScreenshotBase64 = null;
-      const previewImg = document.getElementById('screenshotImgPreview');
-      if (previewImg) previewImg.classList.add('hidden');
-      const fileNameLabel = document.getElementById('screenshotFileName');
-      if (fileNameLabel) fileNameLabel.innerText = 'Tap to choose payment receipt screenshot';
-
-      closeDepositModal();
-      alert(`Deposit Request Submitted!\nAmount: ₹${amt}\nUTR: ${utr}\n\nAdmin will verify your payment screenshot and UTR code. Balance (+5% Bonus) will be credited to your wallet within 1 to 10 minutes!`);
-    }
-
-    function submitWithdrawForm() {
-      if (!state.user) {
-        alert('Please login or register to withdraw funds!');
-        closeWithdrawModal();
-        openAuthModal();
-        return;
-      }
-      const amt = parseFloat(document.getElementById('withdrawAmountInput').value) || 0;
-      const upi = document.getElementById('withdrawUpiInput').value.trim();
-      if (amt < 200) { alert('Minimum withdrawal amount is ₹200.'); return; }
-      if (state.balance < amt) { alert('Insufficient wallet balance!'); return; }
-      if (!upi || !upi.includes('@')) { alert('Please enter a valid UPI ID (e.g. mobile@paytm or name@upi).'); return; }
-
-      state.balance -= amt;
-      localStorage.setItem('teer_balance', state.balance.toFixed(2));
-
-      // Deduct in Firebase immediately
-      if (fbDatabase) {
-        fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
-      }
-
-      const wthId = 'wth_' + Date.now();
-      const now = new Date();
-      const wthRecord = {
-        id: wthId,
-        phone: state.user.phone,
-        name: state.user.name,
-        amount: amt,
-        upi: upi,
-        status: 'pending',
-        date: now.toLocaleDateString(),
-        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        timestamp: Date.now()
-      };
-
-      if (fbDatabase) {
-        fbDatabase.ref('withdrawals/' + wthId).set(wthRecord);
-      }
-
-      recordTransaction({
-        id: wthId,
-        type: 'withdraw',
-        title: `Withdrawal Request (UPI: ${upi})`,
-        amount: amt,
-        isCredit: false,
-        status: 'Processing'
-      });
-
-      addAppNotification({
-        type: 'withdraw',
-        title: 'Withdrawal Submitted',
-        message: `₹${amt} withdrawal request (UPI: ${upi}) is being processed. Payout will be sent directly to your UPI ID within 1 to 10 minutes.`
-      });
-
-      updateUI();
-      closeWithdrawModal();
-      alert(`Withdrawal Request Submitted!\nAmount: ₹${amt}\nUPI ID: ${upi}\n\nYour payout will be credited directly to your UPI ID within 1 to 10 minutes!`);
-    }
-
-    function switchAuthTab(type) {
-      const regF = document.getElementById('registerForm');
-      const logF = document.getElementById('loginForm');
-      const bReg = document.getElementById('tabBtnRegister');
-      const bLog = document.getElementById('tabBtnLogin');
-
-      if (type === 'register') {
-        regF.classList.remove('hidden');
-        logF.classList.add('hidden');
-        bReg.className = "flex-1 py-1.5 rounded-lg bg-teal-950 text-white shadow";
-        bLog.className = "flex-1 py-1.5 rounded-lg text-slate-600";
-      } else {
-        logF.classList.remove('hidden');
-        regF.classList.add('hidden');
-        bLog.className = "flex-1 py-1.5 rounded-lg bg-teal-950 text-white shadow";
-        bReg.className = "flex-1 py-1.5 rounded-lg text-slate-600";
-      }
-    }
-
-    function handleRegisterSubmit(e) {
-      e.preventDefault();
-      const name = document.getElementById('regName').value.trim();
-      const phone = document.getElementById('regPhone').value.trim();
-      const pass = document.getElementById('regPass').value;
-      const referralCode = document.getElementById('regReferral').value.trim();
-
-      if (phone.length !== 10) {
-        alert('Kripya valid 10-digit mobile number enter karein!');
-        return;
-      }
-
-      const usersDb = JSON.parse(localStorage.getItem('teer_registered_users') || '[]');
-      const exists = usersDb.some(u => u.phone === phone);
-      if (exists) {
-        alert('Yeh mobile number pehle se registered hai! Ak number se do ID nahi ban sakti. Kripya Login karein.');
-        switchAuthTab('login');
-        document.getElementById('loginPhone').value = phone;
-        return;
-      }
-
-      const todayStr = new Date().toLocaleDateString();
-      const newUser = {
-        name,
-        phone,
-        pass,
-        balance: 10.00,
-        referredBy: referralCode ? referralCode : null,
-        createdAt: todayStr
-      };
-
-      usersDb.push(newUser);
-      localStorage.setItem('teer_registered_users', JSON.stringify(usersDb));
-
-      state.user = newUser;
-      state.balance = 10.00;
-      localStorage.setItem('teer_current_user', JSON.stringify(newUser));
-      localStorage.setItem('teer_balance', state.balance.toFixed(2));
-
-      // Push to Firebase so Admin Panel sees user live immediately
-      if (fbDatabase) {
-        fbDatabase.ref('users/' + phone).set(newUser);
-      }
-      initUserLiveBalanceListener();
-
-      addAppNotification({
-        type: 'event',
-        title: '🎁 ₹10 Welcome Bonus Credited',
-        message: `Welcome ${name}! Aapka registration safal hua aur ₹10 Welcome bonus aapke wallet me add ho chuka hai.`
-      });
-
-      updateUI();
-      closeAuthModal();
-      alert(`Welcome ${name}! Aapka account register ho gaya hai aur ₹10 Login Bonus wallet me add ho gaya hai.`);
-    }
-
-    function handleLoginSubmit(e) {
-      e.preventDefault();
-      const phone = document.getElementById('loginPhone').value.trim();
-      const pass = document.getElementById('loginPass').value;
-      const usersDb = JSON.parse(localStorage.getItem('teer_registered_users') || '[]');
-      const found = usersDb.find(u => u.phone === phone && u.pass === pass);
-
-      if (found) {
-        state.user = found;
-        localStorage.setItem('teer_current_user', JSON.stringify(found));
-        // Sync user to Firebase
-        if (fbDatabase) {
-          fbDatabase.ref('users/' + found.phone).once('value', (snap) => {
-            if (snap.exists()) {
-              const uData = snap.val();
-              if (uData.balance !== undefined) {
-                state.balance = parseFloat(uData.balance);
-                localStorage.setItem('teer_balance', state.balance.toFixed(2));
-              }
-            } else {
-              fbDatabase.ref('users/' + found.phone).set({
-                name: found.name,
-                phone: found.phone,
-                balance: state.balance,
-                referredBy: found.referredBy || null,
-                createdAt: new Date().toLocaleDateString()
-              });
-            }
-            updateUI();
-          });
-        }
-        initUserLiveBalanceListener();
-        updateUI();
-        closeAuthModal();
-        alert(`Welcome back, ${found.name}!`);
-      } else {
-        alert('Galat mobile number ya password! Kripya check karein ya Forgot Password par click karein.');
-      }
-    }
-
-    function triggerForgotPasswordWhatsApp() {
-      const enteredPhone = document.getElementById('loginPhone').value.trim();
-      const userPhone = enteredPhone || (state.user ? state.user.phone : 'Not Specified');
-      
-      const message = encodeURIComponent(`Hello Admin, I forgot My password. My registered number is: ${userPhone}. Please reset my account.`);
-      const whatsappUrl = `https://wa.me/918134834380?text=${message}`;
-      
-      window.open(whatsappUrl, '_blank');
-    }
-
-    function handleSendChat(e) {
-      e.preventDefault();
-      const input = document.getElementById('chatInput');
-      const text = input.value.trim();
-      if (!text) return;
-
-      const container = document.getElementById('chatMessages');
-      const userBubble = document.createElement('div');
-      userBubble.className = "bg-[#032427] text-white p-2.5 rounded-2xl rounded-tr-none ml-auto max-w-[85%]";
-      userBubble.innerText = text;
-      container.appendChild(userBubble);
-      input.value = '';
-
-      setTimeout(() => {
-        const reply = document.createElement('div');
-        reply.className = "bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]";
-        reply.innerText = "Aapka message mil gaya hai. Kripya WhatsApp +918134834380 par contact karein direct support ke liye.";
-        container.appendChild(reply);
-        container.scrollTop = container.scrollHeight;
-      }, 700);
-    }
-
-    function resetChat() {
-      document.getElementById('chatMessages').innerHTML = `
-        <div class="bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">
-          Hello! Welcome to <b>TEER ONLINE</b>. Kaise help kar sakte hain aapki?
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Bet Amount (Payout Rate 1 : 90):</label>
+            <div class="input-group">
+              <span class="input-group-text bg-secondary border-0 text-white">₹</span>
+              <input type="number" id="betAmountInput" class="form-control bg-secondary border-0 text-white" value="10" min="5" step="5" oninput="calculateExpectedPayout()">
+            </div>
+            <div class="small text-success mt-1">Expected Win: ₹<span id="expectedPayout">900</span></div>
+          </div>
         </div>
-      `;
-    }
-
-    function getBaseShareUrl() {
-      // Agar APK me chal raha hai ya localhost hai, toh official web link share hoga
-      if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '') {
-        return 'https://fresh-lang.github.io/teer-online/';
-      }
-      return window.location.origin + window.location.pathname;
-    }
-
-    function shareReferralWhatsApp() {
-      const myRefCode = state.user ? state.user.phone : 'TEER786';
-      const baseUrl = getBaseShareUrl();
-      const shareUrl = `${baseUrl}?ref=${myRefCode}`;
-      const text = encodeURIComponent(`🏹 TEER ONLINE Official App!\n🎁 Mere link se register karein aur paayein ₹10 Welcome Bonus bilkul free!\n\n👉 Referral Code: ${myRefCode}\n👉 Link par click karein: ${shareUrl}`);
-      window.open(`https://wa.me/?text=${text}`, '_blank');
-    }
-
-    function copyReferralLink() {
-      const myRefCode = state.user ? state.user.phone : 'TEER786';
-      const baseUrl = getBaseShareUrl();
-      const shareUrl = `${baseUrl}?ref=${myRefCode}`;
-      navigator.clipboard.writeText(shareUrl);
-      alert(`✅ Referral Link Copied!\n${shareUrl}\n\nIse doston ko bhejein, link kholte hi unka referral code automatic fill ho jayega.`);
-    }
-
-    function logoutUser() {
-      if (confirm('Kya aap logout karna chahte hain?')) {
-        state.user = null;
-        state.balance = 0.00;
-        localStorage.removeItem('teer_current_user');
-        localStorage.setItem('teer_balance', '0.00');
-        updateUI();
-        openAuthModal();
-      }
-    }
-
-    function refreshBalance() { alert('Balance updated: ₹' + state.balance.toFixed(2)); }
-  
-
-    // ==========================================
-    // AUTO DETECT REFERRAL LINK (?ref=...)
-    // ==========================================
-    function checkUrlReferral() {
-      try {
-        const urlParams = new URLSearchParams(window.location.search);
-        let refCode = urlParams.get('ref') || urlParams.get('referral');
-        if (refCode) {
-          localStorage.setItem('teer_captured_ref', refCode);
-          if (state.user && state.user.phone === '0000000000') {
-            state.user = null;
-            state.balance = 0.00;
-            localStorage.removeItem('teer_current_user');
-            localStorage.setItem('teer_balance', '0.00');
-            updateUI();
-          }
-        } else {
-          refCode = localStorage.getItem('teer_captured_ref');
-        }
-        if (refCode) {
-          const regInput = document.getElementById('regReferral');
-          if (regInput) {
-            regInput.value = refCode;
-            regInput.classList.add('border-emerald-500', 'bg-emerald-50');
-          }
-          setTimeout(() => {
-            if (!state.user) {
-              openAuthModal();
-              switchAuthTab('register');
-              const input = document.getElementById('regReferral');
-              if (input) input.value = refCode;
-            }
-          }, 600);
-        }
-      } catch(e) {
-        console.log("Referral param error:", e);
-      }
-    }
-
-    // ==========================================
-    // AGENT COMMISSION CLAIM & SYNC
-    // ==========================================
-    function claimAgentCommission() {
-      if (!state.user) {
-        alert('Please login to claim commission!');
-        openAuthModal();
-        return;
-      }
-      const myCode = state.user.phone;
-      if (fbDatabase) {
-        fbDatabase.ref('agent_earnings/' + myCode).once('value', (snap) => {
-          const amt = parseFloat(snap.val()) || 0;
-          if (amt <= 0) {
-            alert('No referral commission available to claim right now.');
-            return;
-          }
-          state.balance += amt;
-          localStorage.setItem('teer_balance', state.balance.toFixed(2));
-          fbDatabase.ref('agent_earnings/' + myCode).set(0);
-          recordTransaction({
-            type: 'commission',
-            title: 'Agent Referral Commission Claim',
-            amount: amt,
-            isCredit: true,
-            status: 'Completed'
-          });
-          updateUI();
-          alert(`Success! ₹${amt.toFixed(2)} referral commission credited to your wallet.`);
-        });
-      }
-    }
-
-    // ==========================================
-    // BETS FILTER SYSTEM (ALL, ACTIVE, WON, LOSS)
-    // ==========================================
-    let currentBetFilter = 'all';
-
-    function setBetFilter(filter) {
-      currentBetFilter = filter;
-      document.querySelectorAll('.bet-tab-btn').forEach(btn => {
-        btn.className = "bet-tab-btn flex-1 py-1.5 rounded-xl text-slate-700 hover:text-teal-900 transition";
-      });
-      const activeBtn = document.getElementById('betTab_' + filter);
-      if (activeBtn) {
-        activeBtn.className = "bet-tab-btn flex-1 py-1.5 rounded-xl bg-teal-950 text-white shadow-sm transition";
-      }
-      renderBidsList();
-    }
-
-    function renderBidsList() {
-      const cont = document.getElementById('bidsListContainer');
-      const countBadge = document.getElementById('bidsCountBadge');
-      
-      const allBids = state.bids || [];
-      const activeBids = allBids.filter(b => b.status === 'Active');
-      const wonBids = allBids.filter(b => b.status === 'WON' || b.status === 'Won');
-      const lossBids = allBids.filter(b => b.status === 'LOST' || b.status === 'Lost' || b.status === 'LOSS' || b.status === 'Loss');
-
-      if (countBadge) countBadge.innerText = `${allBids.length} Bets`;
-
-      const cAll = document.getElementById('countBetAll');
-      const cActive = document.getElementById('countBetActive');
-      const cWon = document.getElementById('countBetWon');
-      const cLoss = document.getElementById('countBetLoss');
-
-      if (cAll) cAll.innerText = allBids.length;
-      if (cActive) cActive.innerText = activeBids.length;
-      if (cWon) cWon.innerText = wonBids.length;
-      if (cLoss) cLoss.innerText = lossBids.length;
-
-      let filteredBids = allBids;
-      if (currentBetFilter === 'active') filteredBids = activeBids;
-      else if (currentBetFilter === 'won') filteredBids = wonBids;
-      else if (currentBetFilter === 'loss') filteredBids = lossBids;
-
-      if (!cont) return;
-
-      if (filteredBids.length === 0) {
-        let emptyMsg = 'No bets placed yet.';
-        if (currentBetFilter === 'active') emptyMsg = 'No active bets right now.';
-        else if (currentBetFilter === 'won') emptyMsg = 'No winning bets yet. Best of luck for next draw!';
-        else if (currentBetFilter === 'loss') emptyMsg = 'No loss bets recorded.';
-        cont.innerHTML = `<div class="p-8 text-center text-slate-400">${emptyMsg}</div>`;
-        return;
-      }
-
-      cont.innerHTML = '';
-      filteredBids.forEach(b => {
-        const item = document.createElement('div');
-        const isWon = (b.status === 'WON' || b.status === 'Won');
-        const isLoss = (b.status === 'LOST' || b.status === 'Lost' || b.status === 'LOSS' || b.status === 'Loss');
-
-        let statusBadge = '<span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-300">Active (Waiting Draw)</span>';
-        let cardBg = 'bg-white border-slate-200';
-
-        if (isWon) {
-          statusBadge = `<span class="text-[10px] bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1"><i class="fa-solid fa-trophy text-amber-600"></i> WON +₹${parseFloat(b.payout).toFixed(2)}</span>`;
-          cardBg = 'bg-emerald-50/70 border-emerald-300';
-        } else if (isLoss) {
-          statusBadge = '<span class="text-[10px] bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded-full border border-rose-200">Loss</span>';
-          cardBg = 'bg-slate-50/60 border-slate-200 opacity-90';
-        }
-
-        item.className = `p-3 rounded-2xl border ${cardBg} shadow-sm flex justify-between items-center text-xs transition`;
-        item.innerHTML = `
-          <div>
-            <div class="flex items-center gap-2">
-              <p class="font-bold text-teal-950 text-xs">${b.market} [${b.round}]</p>
-            </div>
-            <p class="text-slate-500 mt-0.5">
-              ${b.mode}: <b class="text-amber-700 font-mono text-sm font-black">${b.number}</b> &bull; ${b.date} ${b.time}
-            </p>
-          </div>
-          <div class="text-right flex flex-col items-end gap-1">
-            <span class="font-extrabold text-slate-800">₹${parseFloat(b.amount).toFixed(2)}</span>
-            ${statusBadge}
-          </div>
-        `;
-        cont.appendChild(item);
-      });
-    }
-
-    // ==========================================
-    // TRANSACTION HISTORY LEDGER SYSTEM
-    // ==========================================
-    let currentTxFilter = 'all';
-
-    function getTransactions() {
-      return JSON.parse(localStorage.getItem('teer_transactions') || '[]');
-    }
-
-    function recordTransaction(tx) {
-      const list = getTransactions();
-      const newTx = {
-        id: tx.id || ('tx_' + Date.now()),
-        type: tx.type,
-        title: tx.title,
-        amount: parseFloat(tx.amount),
-        isCredit: tx.isCredit,
-        status: tx.status || 'Completed',
-        date: tx.date || new Date().toLocaleDateString(),
-        time: tx.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        timestamp: Date.now()
-      };
-      list.unshift(newTx);
-      localStorage.setItem('teer_transactions', JSON.stringify(list));
-      if (fbDatabase && state.user) {
-        fbDatabase.ref('user_transactions/' + state.user.phone + '/' + newTx.id).set(newTx);
-      }
-    }
-
-    function openTransactionModal() {
-      document.getElementById('txModal').classList.remove('hidden');
-      renderTransactions();
-    }
-
-    function closeTransactionModal() {
-      document.getElementById('txModal').classList.add('hidden');
-    }
-
-    function filterTransactions(type) {
-      currentTxFilter = type;
-      document.querySelectorAll('.tx-tab-btn').forEach(b => {
-        b.className = "tx-tab-btn flex-1 py-1 rounded-lg text-slate-600";
-      });
-      const activeBtn = document.getElementById('txTab_' + type);
-      if (activeBtn) activeBtn.className = "tx-tab-btn flex-1 py-1 rounded-lg bg-teal-950 text-white font-bold";
-      renderTransactions();
-    }
-
-    function renderTransactions() {
-      const cont = document.getElementById('txListContainer');
-      const allTx = getTransactions();
-      
-      let filtered = allTx;
-      if (currentTxFilter === 'deposit') filtered = allTx.filter(t => t.type === 'deposit');
-      else if (currentTxFilter === 'withdraw') filtered = allTx.filter(t => t.type === 'withdraw');
-      else if (currentTxFilter === 'game') filtered = allTx.filter(t => t.type === 'bet' || t.type === 'win');
-
-      if (!cont) return;
-      if (filtered.length === 0) {
-        cont.innerHTML = '<div class="p-8 text-center text-slate-400">No transactions recorded yet.</div>';
-        return;
-      }
-
-      cont.innerHTML = filtered.map(t => {
-        const isPlus = t.isCredit;
-        const colorClass = isPlus ? 'text-emerald-600' : 'text-rose-600';
-        const sign = isPlus ? '+' : '-';
-        let icon = 'fa-receipt';
-        if (t.type === 'deposit') icon = 'fa-arrow-down-long';
-        else if (t.type === 'withdraw') icon = 'fa-arrow-up-long';
-        else if (t.type === 'bet') icon = 'fa-dice';
-        else if (t.type === 'win') icon = 'fa-trophy';
-        else if (t.type === 'bonus' || t.type === 'commission') icon = 'fa-gift';
-
-        let badgeColor = 'bg-slate-100 text-slate-700';
-        if (t.status === 'Completed' || t.status === 'Approved') badgeColor = 'bg-emerald-100 text-emerald-800';
-        else if (t.status === 'Pending' || t.status === 'Processing') badgeColor = 'bg-amber-100 text-amber-800';
-        else if (t.status === 'Rejected' || t.status === 'Failed') badgeColor = 'bg-rose-100 text-rose-800';
-
-        return `
-          <div class="py-2.5 flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-full ${isPlus ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'} flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid ${icon}"></i>
-              </div>
-              <div>
-                <p class="font-bold text-slate-900 leading-tight text-xs">${t.title}</p>
-                <div class="flex items-center gap-2 mt-0.5">
-                  <span class="text-[10px] text-slate-400">${t.date} ${t.time}</span>
-                  <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${badgeColor}">${t.status}</span>
-                </div>
-              </div>
-            </div>
-            <div class="text-right shrink-0">
-              <span class="text-sm font-black ${colorClass}">${sign}₹${t.amount.toFixed(2)}</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // ==========================================
-    // ALL MY REFERRALS SYSTEM
-    // ==========================================
-    let myReferralFriends = [];
-
-    function openMyReferralsModal() {
-      if (!state.user) {
-        alert('Please login or register to view referrals!');
-        openAuthModal();
-        return;
-      }
-      document.getElementById('myReferralsModal').classList.remove('hidden');
-      renderMyReferralsModal();
-    }
-
-    function closeMyReferralsModal() {
-      document.getElementById('myReferralsModal').classList.add('hidden');
-    }
-
-    function syncMyReferralsFromFirebase() {
-      if (!fbDatabase || !state.user) return;
-      const myPhone = state.user.phone;
-      fbDatabase.ref('referrals/' + myPhone).on('value', (snap) => {
-        const val = snap.val() || {};
-        myReferralFriends = Object.values(val);
-        const count = myReferralFriends.length;
-        
-        const countText = document.getElementById('cardJoinedCountText');
-        if (countText) countText.innerText = `${count} Friends Joined`;
-        
-        const modalCount = document.getElementById('modalRefFriendsCount');
-        if (modalCount) modalCount.innerText = `${count} Members`;
-      });
-    }
-
-    function renderMyReferralsModal() {
-      const cont = document.getElementById('myReferralsListContainer');
-      if (!cont) return;
-      if (myReferralFriends.length === 0) {
-        cont.innerHTML = '<div class="p-8 text-center text-slate-400">No friends joined yet. Share your link to start earning!</div>';
-        return;
-      }
-
-      cont.innerHTML = myReferralFriends.map((f, idx) => {
-        return `
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs">
-                ${f.name ? f.name.charAt(0).toUpperCase() : 'U'}
-              </div>
-              <div>
-                <p class="font-bold text-slate-800 text-xs">${f.name || 'Friend'}</p>
-                <p class="text-[10px] text-slate-500 font-mono">+91 ${f.maskedPhone || f.phone}</p>
-              </div>
-            </div>
-            <div class="text-right">
-              <span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">Active Member</span>
-              <p class="text-[9px] text-slate-400 mt-0.5">Joined: ${f.date || 'Recent'}</p>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-</script>
-
-    <!-- MODAL: REALTIME TRANSACTION HISTORY -->
-    <div id="txModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-3">
-      <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl space-y-3 max-h-[85vh] flex flex-col">
-        <div class="flex justify-between items-center border-b pb-2">
-          <div>
-            <h3 class="font-bold text-sm text-teal-950 flex items-center gap-1.5">
-              <i class="fa-solid fa-receipt text-teal-700"></i> Transaction History
-            </h3>
-            <p class="text-[10px] text-slate-500">Deposit, Withdrawal, Bet Debits &amp; Winnings</p>
-          </div>
-          <button onclick="closeTransactionModal()" class="text-slate-400 hover:text-slate-700 p-1">
-            <i class="fa-solid fa-xmark text-lg"></i>
-          </button>
-        </div>
-
-        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl text-[10px] font-bold">
-          <button onclick="filterTransactions('all')" id="txTab_all" class="tx-tab-btn flex-1 py-1 rounded-lg bg-teal-950 text-white font-bold">All</button>
-          <button onclick="filterTransactions('deposit')" id="txTab_deposit" class="tx-tab-btn flex-1 py-1 rounded-lg text-slate-600">Deposit</button>
-          <button onclick="filterTransactions('withdraw')" id="txTab_withdraw" class="tx-tab-btn flex-1 py-1 rounded-lg text-slate-600">Withdraw</button>
-          <button onclick="filterTransactions('game')" id="txTab_game" class="tx-tab-btn flex-1 py-1 rounded-lg text-slate-600">Bets &amp; Wins</button>
-        </div>
-
-        <div id="txListContainer" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs divide-y divide-slate-100 min-h-[220px]">
-          <div class="p-8 text-center text-slate-400">No transactions recorded yet.</div>
-        </div>
-
-        <div class="pt-2 border-t text-center">
-          <button onclick="closeTransactionModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">Close</button>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-warning w-100 fw-bold" onclick="placeBet()">Confirm Bet</button>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- MODAL: MY REFERRAL TEAM -->
-    <div id="myReferralsModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-3">
-      <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl space-y-3 max-h-[85vh] flex flex-col">
-        <div class="flex justify-between items-center border-b pb-2">
-          <div>
-            <h3 class="font-bold text-sm text-teal-950 flex items-center gap-1.5">
-              <i class="fa-solid fa-users-viewfinder text-amber-600"></i> My Referral Team
-            </h3>
-            <p class="text-[10px] text-slate-500">Friends who registered using your referral link</p>
-          </div>
-          <button onclick="closeMyReferralsModal()" class="text-slate-400 hover:text-slate-700 p-1">
-            <i class="fa-solid fa-xmark text-lg"></i>
-          </button>
-        </div>
+  <!-- Blocked User Overlay -->
+  <div class="blocked-screen" id="blockedScreen">
+    <i class="fas fa-ban text-danger mb-3" style="font-size: 3.5rem;"></i>
+    <h3 class="fw-bold text-danger">Account Suspended</h3>
+    <p class="text-muted">Aapka account admin dwara freeze/block kar diya gaya hai. Kripya helpdesk se sampark karein.</p>
+    <a id="blockHelplineBtn" href="#" class="btn btn-success mt-2"><i class="fab fa-whatsapp me-2"></i>Contact Admin Support</a>
+  </div>
 
-        <div class="bg-gradient-to-r from-teal-900 to-[#021d20] text-white p-3 rounded-2xl flex justify-between items-center">
-          <div>
-            <p class="text-[10px] text-teal-300">Total Joined Friends</p>
-            <p id="modalRefFriendsCount" class="text-xl font-black text-amber-300">0 Members</p>
-          </div>
-          <div class="text-right">
-            <p class="text-[10px] text-teal-300">Total Commission Earned</p>
-            <p id="modalRefTotalEarned" class="text-xl font-black text-emerald-400">₹0.00</p>
-          </div>
-        </div>
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <a href="index.html" class="nav-item active"><i class="fas fa-home"></i>Home</a>
+    <a href="#" onclick="openDepositModal()" class="nav-item"><i class="fas fa-wallet"></i>Wallet</a>
+    <a href="admin.html" class="nav-item"><i class="fas fa-user-shield"></i>Admin</a>
+  </div>
 
-        <div id="myReferralsListContainer" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs min-h-[200px]">
-          <div class="p-8 text-center text-slate-400">No friends joined yet. Share your link to start earning!</div>
-        </div>
-
-        <div class="pt-2 border-t">
-          <button onclick="shareReferralWhatsApp()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
-            <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Share
-          </button>
-        </div>
-      </div>
-    </div>
-
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
