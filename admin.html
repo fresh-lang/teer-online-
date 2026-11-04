@@ -1,180 +1,183 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Teer Online - Master Admin Control Panel</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #0b0f19;
-      --card: #151c2e;
-      --border: rgba(255,255,255,0.08);
-      --accent: #f59e0b;
-    }
-    body {
-      background-color: var(--bg);
-      color: #e2e8f0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-    .stat-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-    }
-    .nav-tabs .nav-link {
-      color: #94a3b8;
-      border: none;
-      padding: 10px 18px;
-      font-weight: 600;
-    }
-    .nav-tabs .nav-link.active {
-      color: #fbbf24;
-      background: transparent;
-      border-bottom: 3px solid #fbbf24;
-    }
-    .table-dark-custom {
-      background: var(--card);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    .table-dark-custom th {
-      background: #1e293b;
-      color: #94a3b8;
-      font-size: 0.8rem;
-      text-transform: uppercase;
-    }
-    .badge-risk {
-      background: #7f1d1d;
-      color: #fca5a5;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-    }
-    .badge-safe {
-      background: #064e3b;
-      color: #6ee7b7;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-    }
-  </style>
+  <title>Master Admin Panel - TEER ONLINE</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- FIREBASE SCRIPTS -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <!-- FIREBASE SDK FOR INSTANT TWO-WAY SYNC -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
-<body class="p-2 p-md-4">
+<body class="bg-[#081012] text-slate-100 min-h-screen p-3 md:p-6 font-sans">
 
-  <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom border-secondary">
-    <div>
-      <h3 class="fw-bold text-warning mb-0"><i class="fas fa-shield-halved me-2"></i>Teer Admin Control Panel</h3>
-      <small class="text-secondary">Master Realtime Sync & Risk Analytics</small>
+  <!-- LOCK SCREEN (PASSWORD 8822) -->
+  <div id="lockScreen" class="fixed inset-0 bg-[#050a0b] flex items-center justify-center p-4 z-50">
+    <div class="bg-[#0f1d21] border border-teal-900 p-6 rounded-3xl max-w-sm w-full text-center shadow-2xl space-y-4">
+      <div class="w-16 h-16 rounded-full bg-amber-400/10 border-2 border-amber-400/40 mx-auto flex items-center justify-center text-amber-400 text-2xl">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <div>
+        <h2 class="text-xl font-black text-amber-400 tracking-wide">MASTER ADMIN</h2>
+        <p class="text-xs text-slate-400 mt-1">Authorized Access Only</p>
+      </div>
+      <input type="password" id="passInput" placeholder="••••••••" class="w-full p-3 text-center text-xl font-mono bg-black/50 border border-teal-800 rounded-2xl text-white outline-none focus:border-amber-400">
+      <button onclick="checkPass()" class="w-full py-3 bg-amber-400 hover:bg-amber-500 text-teal-950 font-black rounded-2xl text-sm transition shadow-lg">Unlock Panel</button>
+      <p id="err" class="text-xs text-rose-500 font-bold hidden">Galat Password! Kripya sahi password enter karein.</p>
     </div>
-    <a href="index.html" class="btn btn-outline-warning btn-sm"><i class="fas fa-eye me-1"></i> Open User App</a>
   </div>
 
-  <!-- Navigation Tabs -->
-  <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
-    <li class="nav-item">
-      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-analytics"><i class="fas fa-chart-line me-1"></i> Live Risk & Bet Analytics</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-schedule"><i class="fas fa-clock me-1"></i> Market Schedule & Timers</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-users"><i class="fas fa-users-gear me-1"></i> User Controls & Block</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-settings"><i class="fas fa-qrcode me-1"></i> UPI QR & Helpline</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-notice"><i class="fas fa-bullhorn me-1"></i> Marquee Notice Editor</button>
-    </li>
-  </ul>
+  <!-- MAIN ADMIN DASHBOARD -->
+  <div id="dash" class="max-w-4xl mx-auto space-y-4 hidden pb-12">
+    <!-- Top Header -->
+    <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 flex flex-wrap justify-between items-center gap-3 shadow-md">
+      <div>
+        <h1 class="font-black text-amber-400 text-lg flex items-center gap-2">
+          <i class="fa-solid fa-bullseye"></i> TEER MASTER ADMIN
+        </h1>
+        <p class="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5 mt-0.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Firebase Realtime Cloud Connected
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="location.reload()" class="px-3 py-1.5 bg-teal-900/50 hover:bg-teal-800 text-teal-200 text-xs font-bold rounded-xl border border-teal-700/50">
+          <i class="fa-solid fa-rotate"></i> Refresh
+        </button>
+        <a href="index.html" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-teal-950 text-xs font-bold rounded-xl shadow">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> Open User App
+        </a>
+      </div>
+    </div>
 
-  <div class="tab-content">
-    
-    <!-- 1. LIVE RISK / BET ANALYTICS TAB -->
-    <div class="tab-pane fade show active" id="tab-analytics">
-      <div class="row g-3 mb-4">
-        <div class="col-md-4">
-          <label class="form-label small text-secondary">Select Market</label>
-          <select id="riskMarketSelect" class="form-select bg-dark text-white border-secondary" onchange="loadRiskAnalytics()">
-            <option value="shillong">Shillong Teer</option>
-            <option value="khanapara">Khanapara Teer</option>
-            <option value="juwai">Juwai Teer</option>
+    <!-- Quick Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+      <div class="bg-[#0f1d21] border border-teal-900/50 p-3 rounded-2xl">
+        <p class="text-[11px] text-slate-400 font-medium">Total Registered Users</p>
+        <p id="statTotalUsers" class="text-2xl font-black text-white mt-1">0</p>
+      </div>
+      <div class="bg-[#0f1d21] border border-teal-900/50 p-3 rounded-2xl">
+        <p class="text-[11px] text-amber-400 font-medium">Pending Deposits (UTR)</p>
+        <p id="statPendingDeposits" class="text-2xl font-black text-amber-400 mt-1">0</p>
+      </div>
+      <div class="bg-[#0f1d21] border border-teal-900/50 p-3 rounded-2xl">
+        <p class="text-[11px] text-rose-400 font-medium">Pending Withdrawals</p>
+        <p id="statPendingWithdrawals" class="text-2xl font-black text-rose-400 mt-1">0</p>
+      </div>
+      <div class="bg-[#0f1d21] border border-teal-900/50 p-3 rounded-2xl">
+        <p class="text-[11px] text-emerald-400 font-medium">Total User Balance</p>
+        <p id="statTotalWallet" class="text-2xl font-black text-emerald-400 mt-1">₹0</p>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex gap-1.5 bg-[#0a1518] p-1.5 rounded-2xl border border-teal-900/60 overflow-x-auto text-xs font-bold">
+      <button onclick="switchTab('results')" id="tabBtn_results" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl bg-amber-400 text-teal-950 transition whitespace-nowrap">
+        <i class="fa-solid fa-award mr-1"></i> Declare Results
+      </button>
+      <button onclick="switchTab('users')" id="tabBtn_users" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
+        <i class="fa-solid fa-users mr-1"></i> All Users (<span id="tabCountUsers">0</span>)
+      </button>
+      <button onclick="switchTab('deposits')" id="tabBtn_deposits" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
+        <i class="fa-solid fa-receipt mr-1"></i> UTR Deposits (<span id="tabCountDeposits" class="text-amber-400">0</span>)
+      </button>
+      <button onclick="switchTab('withdrawals')" id="tabBtn_withdrawals" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
+        <i class="fa-solid fa-money-bill-transfer mr-1"></i> Withdrawals (<span id="tabCountWithdrawals" class="text-rose-400">0</span>)
+      </button>
+      <button onclick="switchTab('analytics')" id="tabBtn_analytics" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
+        <i class="fa-solid fa-chart-pie mr-1"></i> Live Risk Analytics
+      </button>
+      <button onclick="switchTab('schedule')" id="tabBtn_schedule" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
+        <i class="fa-solid fa-clock mr-1"></i> Cutoff Timers
+      </button>
+      <button onclick="switchTab('settings')" id="tabBtn_settings" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
+        <i class="fa-solid fa-gear mr-1"></i> Settings
+      </button>
+    </div>
+
+    <!-- TAB 1: DECLARE RESULTS -->
+    <div id="tabContent_results" class="tab-pane space-y-4">
+      <div class="bg-[#0f1d21] p-4 md:p-5 rounded-2xl border border-teal-900/60 space-y-3.5 shadow-md">
+        <div class="border-b border-teal-900/40 pb-2 flex justify-between items-center">
+          <div>
+            <h3 class="font-bold text-sm text-amber-400">Declare Live Market Result</h3>
+            <p class="text-[11px] text-slate-400">Result declare hote hi sabhi users ke wallet me auto winning credit ho jayegi.</p>
+          </div>
+          <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">Auto Winning 1:90</span>
+        </div>
+        <div>
+          <label class="text-xs text-slate-300 font-bold block mb-1">Select Market:</label>
+          <select id="mkt" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white font-semibold outline-none focus:border-amber-400">
+            <optgroup label="Morning Draws">
+              <option value="Shilong Morning Teer">Shilong Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
+              <option value="Khanapara Morning Teer">Khanapara Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
+              <option value="Assam morning teer">Assam morning teer (FR 11:30 AM | SR 12:30 PM)</option>
+              <option value="Sikkim">Sikkim (FR 12:15 PM | SR 01:40 PM)</option>
+            </optgroup>
+            <optgroup label="Official Evening Draws">
+              <option value="Juwai Teer (Evening)">Juwai Teer Evening (FR 02:00 PM | SR 02:45 PM)</option>
+              <option value="Shillong Teer (Evening)" selected>Shillong Teer Evening (FR 03:45 PM | SR 04:45 PM)</option>
+              <option value="Khanapara Teer (Evening)">Khanapara Teer Evening (FR 04:00 PM | SR 04:40 PM)</option>
+              <option value="Assam teer">Assam teer Evening (FR 05:10 PM | SR 06:10 PM)</option>
+            </optgroup>
+            <optgroup label="Night Draws">
+              <option value="Sikkim Night Teer">Sikkim Night Teer (FR 06:50 PM | SR 07:50 PM)</option>
+              <option value="Shillong Night Teer">Shillong Night Teer (FR 08:10 PM | SR 09:10 PM)</option>
+              <option value="Assam night teer">Assam night teer (FR 09:40 PM | SR 10:40 PM)</option>
+            </optgroup>
           </select>
         </div>
-        <div class="col-md-4">
-          <label class="form-label small text-secondary">Select Round</label>
-          <select id="riskRoundSelect" class="form-select bg-dark text-white border-secondary" onchange="loadRiskAnalytics()">
-            <option value="FR">First Round (FR)</option>
-            <option value="SR">Second Round (SR)</option>
-          </select>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-amber-300 font-bold block mb-1">FR Result (First Round):</label>
+            <input type="text" id="fr" placeholder="e.g. 76" maxlength="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-3 text-center font-black text-white text-2xl outline-none focus:border-amber-400">
+          </div>
+          <div>
+            <label class="text-xs text-amber-300 font-bold block mb-1">SR Result (Second Round):</label>
+            <input type="text" id="sr" placeholder="e.g. 15" maxlength="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-3 text-center font-black text-white text-2xl outline-none focus:border-amber-400">
+          </div>
         </div>
-        <div class="col-md-4 d-flex align-items-end">
-          <button class="btn btn-warning w-100 fw-bold" onclick="loadRiskAnalytics()"><i class="fas fa-rotate me-1"></i> Refresh Realtime Bets</button>
-        </div>
+        <button onclick="saveResultAndBroadcast()" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-xs text-white shadow-lg transition">
+          <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> Save &amp; Broadcast to Firebase (Instant Cloud Sync)
+        </button>
       </div>
 
-      <!-- Stat Widgets -->
-      <div class="row g-3 mb-4">
-        <div class="col-md-3">
-          <div class="stat-card">
-            <span class="text-secondary small">Total Pool Collection</span>
-            <h3 class="text-success fw-bold mt-1" id="totalPoolDisplay">₹0.00</h3>
-            <small class="text-muted" id="totalBetCount">0 total bets</small>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <span class="text-secondary small">Max Liability (1:90 Rate)</span>
-            <h3 class="text-danger fw-bold mt-1" id="maxLiabilityDisplay">₹0.00</h3>
-            <small class="text-muted">Single highest payout risk</small>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <span class="text-secondary small">Most Heavy Number (Top Guti)</span>
-            <h3 class="text-warning fw-bold mt-1" id="topGutiDisplay">None</h3>
-            <small class="text-muted" id="topGutiStakeDisplay">₹0 wagered</small>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="stat-card">
-            <span class="text-secondary small">Net Profit / Risk Status</span>
-            <div class="mt-2" id="riskStatusBadge"><span class="badge-safe">Low Risk</span></div>
-            <small class="text-muted">Calculated against Pool vs Max Win</small>
-          </div>
-        </div>
+      <!-- Broadcast Custom Notification -->
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-2.5">
+        <h3 class="font-bold text-sm text-amber-300">Broadcast Notification to All Users</h3>
+        <input type="text" id="eventTitle" placeholder="Notification Title (e.g. Special Draw Today!)" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">
+        <textarea id="eventMsg" placeholder="Message details..." rows="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none"></textarea>
+        <button onclick="sendEventNotification()" class="w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-teal-950 font-bold rounded-xl text-xs shadow">Broadcast to All Users</button>
       </div>
+    </div>
 
-      <!-- Number Breakdown 00-99 -->
-      <div class="stat-card">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="fw-bold mb-0"><i class="fas fa-list-ol text-warning me-2"></i>Guti Stake & Liability Matrix (00–99)</h5>
-          <span class="text-secondary small">Sort: Heaviest Liability First</span>
+    <!-- TAB 2: ALL REGISTERED USERS -->
+    <div id="tabContent_users" class="tab-pane space-y-3 hidden">
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3 shadow-md">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-teal-900/40 pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-white flex items-center gap-2">
+              <i class="fa-solid fa-users text-amber-400"></i> All Registered Users
+            </h3>
+            <p class="text-[11px] text-slate-400">Har user ka profile khol kar wallet balance edit aur check kar sakte hain.</p>
+          </div>
+          <input type="text" id="userSearchInput" oninput="filterUsersList()" placeholder="Search Name or Mobile..." class="bg-black/50 border border-teal-800 text-xs px-3 py-1.5 rounded-xl text-white outline-none">
         </div>
-        <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
-          <table class="table table-dark table-hover table-dark-custom align-middle mb-0">
-            <thead>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-teal-950/60 text-slate-400 uppercase text-[10px]">
               <tr>
-                <th>Guti No.</th>
-                <th>Total Bets Placed</th>
-                <th>Total Stake Amount</th>
-                <th>Projected 1:90 Payout</th>
-                <th>House Net Margin</th>
-                <th>Risk Alert</th>
+                <th class="p-2.5">User Details</th>
+                <th class="p-2.5">Mobile Number</th>
+                <th class="p-2.5">Wallet Balance</th>
+                <th class="p-2.5">Referred By</th>
+                <th class="p-2.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody id="riskTableBody">
+            <tbody id="usersTableBody" class="divide-y divide-teal-900/30 font-medium">
               <tr>
-                <td colspan="6" class="text-center text-secondary py-4">No bets recorded yet.</td>
+                <td colspan="5" class="p-4 text-center text-slate-500">Loading users from Firebase...</td>
               </tr>
             </tbody>
           </table>
@@ -182,411 +185,799 @@
       </div>
     </div>
 
-    <!-- 2. MARKET SCHEDULE & CUTOFF TIMERS -->
-    <div class="tab-pane fade" id="tab-schedule">
-      <div class="stat-card">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+    <!-- TAB 3: DEPOSITS & UTR VERIFICATION -->
+    <div id="tabContent_deposits" class="tab-pane space-y-3 hidden">
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3 shadow-md">
+        <div class="border-b border-teal-900/40 pb-2 flex justify-between items-center">
           <div>
-            <h5 class="fw-bold text-warning mb-0"><i class="fas fa-clock me-2"></i>Market Timers & Cutoff Editor</h5>
-            <small class="text-secondary">Timings update karte hi live user app par timers real-time synchronize ho jate hain.</small>
+            <h3 class="font-bold text-sm text-amber-400 flex items-center gap-2">
+              <i class="fa-solid fa-receipt"></i> Deposit Requests &amp; UTR Auto-Verification
+            </h3>
+            <p class="text-[11px] text-slate-400">User dwara bheja gaya 12-digit UTR verify karke 1-click me wallet credit karein.</p>
           </div>
+          <span class="text-[10px] bg-amber-400/20 text-amber-300 font-bold px-2 py-0.5 rounded-full">5% Deposit Bonus Included</span>
         </div>
-        <div class="table-responsive">
-          <table class="table table-dark table-hover table-dark-custom align-middle">
-            <thead>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-teal-950/60 text-slate-400 uppercase text-[10px]">
               <tr>
-                <th>Market Name</th>
-                <th>FR Cutoff Time</th>
-                <th>FR Result Time</th>
-                <th>SR Cutoff Time</th>
-                <th>SR Result Time</th>
-                <th>Status</th>
-                <th>Action</th>
+                <th class="p-2.5">Date &amp; Time</th>
+                <th class="p-2.5">User</th>
+                <th class="p-2.5">Amount</th>
+                <th class="p-2.5">12-Digit UTR Code</th>
+                <th class="p-2.5">Receipt Screenshot</th>
+                <th class="p-2.5">Status</th>
+                <th class="p-2.5 text-right">Verification Action</th>
               </tr>
             </thead>
-            <tbody id="scheduleTableBody"></tbody>
+            <tbody id="depositsTableBody" class="divide-y divide-teal-900/30">
+              <tr>
+                <td colspan="7" class="p-4 text-center text-slate-500">No pending deposits.</td>
+              </tr>
+            </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- 3. USER CONTROLS TAB -->
-    <div class="tab-pane fade" id="tab-users">
-      <div class="stat-card">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+    <!-- TAB 4: WITHDRAWALS VERIFICATION -->
+    <div id="tabContent_withdrawals" class="tab-pane space-y-3 hidden">
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3 shadow-md">
+        <div class="border-b border-teal-900/40 pb-2 flex justify-between items-center">
           <div>
-            <h5 class="fw-bold text-warning mb-0"><i class="fas fa-user-lock me-2"></i>User Access & Password Controls</h5>
-            <small class="text-secondary">Instant block/unblock switch aur direct panel se password/PIN update.</small>
+            <h3 class="font-bold text-sm text-rose-400 flex items-center gap-2">
+              <i class="fa-solid fa-money-bill-transfer"></i> Withdrawal Requests &amp; Payouts
+            </h3>
+            <p class="text-[11px] text-slate-400">User ko UPI se pay karne ke baad "Mark as Paid" karein ya Reject karein.</p>
           </div>
-          <button class="btn btn-outline-warning btn-sm" onclick="loadUsersList()"><i class="fas fa-sync"></i> Refresh Users</button>
+          <span class="text-[10px] bg-rose-500/20 text-rose-300 font-bold px-2 py-0.5 rounded-full">Min ₹200</span>
         </div>
-        <div class="table-responsive">
-          <table class="table table-dark table-hover table-dark-custom align-middle">
-            <thead>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-teal-950/60 text-slate-400 uppercase text-[10px]">
               <tr>
-                <th>User UID / Phone</th>
-                <th>Full Name</th>
-                <th>Wallet Balance</th>
-                <th>Account Status</th>
-                <th>1-Click Block/Unblock</th>
-                <th>Reset Password</th>
+                <th class="p-2.5">Date &amp; Time</th>
+                <th class="p-2.5">User</th>
+                <th class="p-2.5">Amount</th>
+                <th class="p-2.5">User UPI ID</th>
+                <th class="p-2.5">Status</th>
+                <th class="p-2.5 text-right">Action</th>
               </tr>
             </thead>
-            <tbody id="userTableBody"></tbody>
+            <tbody id="withdrawalsTableBody" class="divide-y divide-teal-900/30">
+              <tr>
+                <td colspan="7" class="p-4 text-center text-slate-500">No withdrawal requests yet.</td>
+              </tr>
+            </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- 4. UPI QR & HELPLINE SETTINGS -->
-    <div class="tab-pane fade" id="tab-settings">
-      <div class="row g-4">
-        <div class="col-md-6">
-          <div class="stat-card">
-            <h5 class="fw-bold text-warning mb-3"><i class="fas fa-qrcode me-2"></i>Deposit UPI Changer & Dynamic QR</h5>
-            <div class="mb-3">
-              <label class="form-label text-secondary small">Merchant / Admin UPI ID</label>
-              <input type="text" id="settingUpiId" class="form-control bg-dark text-white border-secondary" placeholder="e.g. teerpayment@oksbi">
-            </div>
-            <div class="mb-3">
-              <label class="form-label text-secondary small">Payee Business / Display Name</label>
-              <input type="text" id="settingPayeeName" class="form-control bg-dark text-white border-secondary" placeholder="e.g. Teer Official">
-            </div>
-            <div class="mb-3">
-              <label class="form-label text-secondary small">WhatsApp Helpline Number (with country code)</label>
-              <input type="text" id="settingHelpline" class="form-control bg-dark text-white border-secondary" placeholder="e.g. 919876543210">
-            </div>
-            <button class="btn btn-warning w-100 fw-bold" onclick="saveUpiAndHelplineSettings()"><i class="fas fa-save me-1"></i> Save & Broadcast to App</button>
+    <!-- TAB 5: SETTINGS & AGENTS -->
+    <!-- TAB: LIVE RISK & BET ANALYTICS (1:90 RATE) -->
+    <div id="tabContent_analytics" class="tab-pane space-y-4 hidden">
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3">
+        <div class="flex flex-wrap gap-3 items-center justify-between">
+          <div>
+            <h3 class="font-bold text-sm text-amber-300">Live Risk & Bet Liability Matrix (1:90 Payout)</h3>
+            <p class="text-[11px] text-slate-400">Total pool collection aur 00–99 top gutis ka max payout projection.</p>
+          </div>
+          <div class="flex gap-2">
+            <select id="analyticsMarketSelect" onchange="calculateLiveRiskAnalytics()" class="bg-black/50 border border-teal-800 text-xs p-2 rounded-xl text-white outline-none">
+              <option value="Shilong Morning Teer">Shilong Morning Teer</option>
+              <option value="Khanapara Morning Teer">Khanapara Morning Teer</option>
+              <option value="Juwai Teer (Evening)">Juwai Teer (Evening)</option>
+              <option value="Shillong Teer (Evening)">Shillong Teer (Evening)</option>
+              <option value="Khanapara Teer (Evening)">Khanapara Teer (Evening)</option>
+              <option value="Assam teer">Assam teer</option>
+              <option value="Sikkim Night Teer">Sikkim Night Teer</option>
+              <option value="Shillong Night Teer">Shillong Night Teer</option>
+            </select>
+            <select id="analyticsRoundSelect" onchange="calculateLiveRiskAnalytics()" class="bg-black/50 border border-teal-800 text-xs p-2 rounded-xl text-white outline-none">
+              <option value="FR">First Round (FR)</option>
+              <option value="SR">Second Round (SR)</option>
+            </select>
+            <button onclick="calculateLiveRiskAnalytics()" class="px-3 py-1 bg-amber-400 text-teal-950 font-bold text-xs rounded-xl hover:bg-amber-300"><i class="fa-solid fa-rotate mr-1"></i> Refresh</button>
           </div>
         </div>
 
-        <div class="col-md-6">
-          <div class="stat-card text-center">
-            <h6 class="text-secondary">Live Dynamic QR Preview</h6>
-            <div class="bg-white p-3 rounded d-inline-block my-3 shadow">
-              <img id="adminQrPreview" src="" alt="Dynamic QR Preview" style="width: 200px; height: 200px;">
-            </div>
-            <div class="small text-muted" id="qrPayloadString">upi://pay?pa=...</div>
-            <div class="badge bg-success mt-2">Active on User App</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 pt-2">
+          <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40">
+            <span class="text-[10px] text-slate-400 block">Total Pool Collection</span>
+            <span id="kpiTotalPool" class="text-base font-bold text-emerald-400">₹0.00</span>
           </div>
+          <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40">
+            <span class="text-[10px] text-slate-400 block">1:90 Max Liability</span>
+            <span id="kpiMaxLiability" class="text-base font-bold text-rose-400">₹0.00</span>
+          </div>
+          <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40">
+            <span class="text-[10px] text-slate-400 block">Heaviest Wagered Guti</span>
+            <span id="kpiTopGuti" class="text-base font-bold text-amber-400">--</span>
+          </div>
+          <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40">
+            <span class="text-[10px] text-slate-400 block">House Risk Status</span>
+            <span id="kpiRiskStatus" class="text-xs font-bold text-emerald-400">Safe / Profitable</span>
+          </div>
+        </div>
+
+        <div class="max-h-72 overflow-y-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-teal-950/60 text-slate-400 uppercase text-[10px] sticky top-0">
+              <tr>
+                <th class="p-2">Guti (00-99)</th>
+                <th class="p-2">Total Stake</th>
+                <th class="p-2">1:90 Projected Payout</th>
+                <th class="p-2">Net House Margin</th>
+                <th class="p-2 text-right">Risk Tag</th>
+              </tr>
+            </thead>
+            <tbody id="riskTableRows" class="divide-y divide-teal-900/30">
+              <tr><td colspan="5" class="p-4 text-center text-slate-500">No bets placed yet for this round.</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <!-- 5. NOTICE BAR / MARQUEE TAB -->
-    <div class="tab-pane fade" id="tab-notice">
-      <div class="stat-card">
-        <h5 class="fw-bold text-warning mb-3"><i class="fas fa-bullhorn me-2"></i>Live Scrolling Marquee Broadcast</h5>
-        <div class="mb-3">
-          <label class="form-label text-secondary small">Notice Headline Text</label>
-          <textarea id="settingMarqueeText" rows="3" class="form-control bg-dark text-white border-secondary" placeholder="Enter scrolling announcement text for players..."></textarea>
-        </div>
-        <div class="form-check form-switch mb-3">
-          <input class="form-check-input" type="checkbox" id="settingMarqueeActive" checked>
-          <label class="form-check-label text-light" for="settingMarqueeActive">Enable Marquee on User App</label>
-        </div>
-        <button class="btn btn-warning fw-bold" onclick="saveMarqueeSettings()"><i class="fas fa-paper-plane me-1"></i> Update Live Notice</button>
+    <!-- TAB: MARKET SCHEDULE & CUTOFF TIMERS -->
+    <div id="tabContent_schedule" class="tab-pane space-y-3 hidden">
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3">
+        <h3 class="font-bold text-sm text-amber-300">Market Timings & Cutoff Sync</h3>
+        <p class="text-[11px] text-slate-400">Har market ke FR aur SR timings update karein. User app par dynamic countdown timer sync ho jata hai.</p>
+        <div id="adminScheduleCards" class="space-y-2"></div>
       </div>
     </div>
 
+    <div id="tabContent_settings" class="tab-pane space-y-3 hidden">
+      <!-- Agent Ledger -->
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-2">
+        <h3 class="font-bold text-sm text-amber-300">Agent &amp; Referral Secret Commission Ledger</h3>
+        <p class="text-[11px] text-slate-400">Display: ₹100/₹1000. Actual credited in Firebase: <b>₹5 per ₹1000 deposit</b> aur <b>₹50 per ₹1000 bet</b>.</p>
+        <div id="agentEarningsList" class="bg-black/40 p-3 rounded-xl text-xs font-mono text-emerald-400 max-h-40 overflow-y-auto">
+          No referral transactions recorded yet.
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3">
+        <h3 class="font-bold text-sm text-teal-300">Helpline &amp; Payment Settings</h3>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Helpline / WhatsApp Number:</label>
+          <input type="text" id="cfgPhone" value="+918134834380" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs font-mono text-white outline-none">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Deposit UPI Receiver ID:</label>
+          <input type="text" id="cfgUpi" value="8134834380@mbk" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs font-mono text-white outline-none">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Live Scrolling Marquee Notice / Headline:</label>
+          <textarea id="cfgMarquee" rows="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">WINNING AUTO-CREDIT WALLET • 6 DAYS OPEN (SUNDAY OFF) • 10 MIN CUTOFF • HELPLINE +918134834380</textarea>
+        </div>
+        <button onclick="saveSettings()" class="w-full py-2.5 bg-teal-800 hover:bg-teal-700 text-amber-300 font-bold rounded-xl text-xs transition">Save Settings</button>
+      </div>
+    </div>
   </div>
 
-  <!-- Password Reset Modal -->
-  <div class="modal fade" id="pwdResetModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-dark text-white border-secondary">
-        <div class="modal-header border-secondary">
-          <h5 class="modal-title text-warning"><i class="fas fa-key me-2"></i>Direct Password / PIN Reset</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+  <!-- MODAL: VIEW USER PROFILE & EDIT WALLET -->
+  <div id="userModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-[#0f1d21] border border-teal-800 rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-teal-900/60 pb-2">
+        <h3 class="font-bold text-sm text-amber-400 flex items-center gap-2">
+          <i class="fa-solid fa-user-gear"></i> User Profile &amp; Wallet
+        </h3>
+        <button onclick="closeUserModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="bg-black/40 p-3 rounded-2xl space-y-2 text-xs">
+        <div class="flex justify-between"><span class="text-slate-400">Name:</span> <span id="mUserName" class="font-bold text-white">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Mobile:</span> <span id="mUserPhone" class="font-mono text-amber-300 font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Current Balance:</span> <span id="mUserBalance" class="font-black text-emerald-400 text-sm">₹0.00</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Referred By:</span> <span id="mUserReferredBy" class="text-slate-300">Direct</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Registered Date:</span> <span id="mUserCreatedAt" class="text-slate-400">--</span></div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-amber-300 block">Adjust Wallet Balance (+/-):</label>
+        <div class="flex gap-2">
+          <input type="number" id="adjustAmtInput" placeholder="Amount (e.g. 100)" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">
         </div>
-        <div class="modal-body">
-          <p class="text-secondary small">Reset credentials for user: <b id="resetTargetUid" class="text-light"></b></p>
-          <div class="mb-3">
-            <label class="form-label text-secondary small">New Password / Security PIN:</label>
-            <input type="text" id="newPasswordInput" class="form-control bg-secondary text-white border-0" placeholder="Minimum 4 characters">
-          </div>
-        </div>
-        <div class="modal-footer border-secondary">
-          <button class="btn btn-warning w-100 fw-bold" onclick="confirmPasswordReset()">Confirm Instant Reset</button>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button onclick="adjustUserBalance('add')" class="py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow">
+            <i class="fa-solid fa-plus mr-1"></i> Add Balance
+          </button>
+          <button onclick="adjustUserBalance('deduct')" class="py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow">
+            <i class="fa-solid fa-minus mr-1"></i> Deduct Balance
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  
   <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCn-AKygN3yIvaXN9-TkDqoitoJRMKIDho",
+      authDomain: "teer-online-e0d9d.firebaseapp.com",
+      databaseURL: "https://teer-online-e0d9d-default-rtdb.firebaseio.com",
+      projectId: "teer-online-e0d9d",
+      storageBucket: "teer-online-e0d9d.firebasestorage.app",
+      messagingSenderId: "178122817204",
+      appId: "1:178122817204:web:98820cc4fa354bab0e21e1",
+      measurementId: "G-0WV58DNLER"
+    };
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCn-AKygN3yIvaXN9-TkDqoitoJRMKIDho",
-    authDomain: "teer-online-e0d9d.firebaseapp.com",
-    databaseURL: "https://teer-online-e0d9d-default-rtdb.firebaseio.com",
-    projectId: "teer-online-e0d9d",
-    storageBucket: "teer-online-e0d9d.firebasestorage.app",
-    messagingSenderId: "178122817204",
-    appId: "1:178122817204:web:98820cc4fa354bab0e21e1",
-    measurementId: "G-0WV58DNLER"
-  };
-
-  if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-  }
-  const db = firebase.database();
-  const auth = firebase.auth();
-
-
-  let allBets = {};
-  let allUsers = {};
-  let activeMarkets = {
-    shillong: { name: 'Shillong Teer', frCutoff: '15:30', frResult: '15:45', srCutoff: '16:30', srResult: '16:45', active: true },
-    khanapara: { name: 'Khanapara Teer', frCutoff: '15:55', frResult: '16:15', srCutoff: '16:25', srResult: '16:45', active: true },
-    juwai: { name: 'Juwai Teer', frCutoff: '14:00', frResult: '14:15', srCutoff: '15:00', srResult: '15:15', active: true }
-  };
-
-  document.addEventListener('DOMContentLoaded', () => {
-    renderScheduleEditor();
-    initRealtimeSync();
-  });
-
-  function initRealtimeSync() {
-    db.ref('markets').on('value', (snap) => {
-      const val = snap.val();
-      if (val) activeMarkets = val;
-      renderScheduleEditor();
-    });
-
-    db.ref('bets').on('value', (snap) => {
-      allBets = snap.val() || {};
-      loadRiskAnalytics();
-    });
-
-    db.ref('users').on('value', (snap) => {
-      allUsers = snap.val() || {};
-      loadUsersList();
-    });
-
-    db.ref('settings').on('value', (snap) => {
-      const s = snap.val() || {};
-      document.getElementById('settingUpiId').value = s.upiId || 'teerpay@upi';
-      document.getElementById('settingPayeeName').value = s.payeeName || 'Teer Online';
-      document.getElementById('settingHelpline').value = s.helpline || '919876543210';
-      document.getElementById('settingMarqueeText').value = s.marqueeText || 'Welcome to Teer Online!';
-      document.getElementById('settingMarqueeActive').checked = s.marqueeActive !== false;
-      updateAdminQrPreview(s.upiId, s.payeeName);
-    });
-  }
-
-  function loadRiskAnalytics() {
-    const market = document.getElementById('riskMarketSelect').value;
-    const round = document.getElementById('riskRoundSelect').value;
-
-    const gutiMatrix = {};
-    for (let i = 0; i <= 99; i++) {
-      const num = i < 10 ? '0' + i : '' + i;
-      gutiMatrix[num] = { count: 0, totalAmount: 0 };
+    let fbDatabase = null;
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      fbDatabase = firebase.database();
+    } catch(err) {
+      console.log("Firebase fallback active:", err.message);
     }
 
-    let totalPool = 0;
-    let totalBetCount = 0;
+    let allUsersCache = {};
+    let allDepositsCache = {};
+    let allWithdrawalsCache = {};
+    let activeModalUserPhone = null;
 
-    Object.values(allBets).forEach(b => {
-      if (b.marketId === market && b.round === round) {
-        const amt = (parseFloat(b.amount) || 0);
-        totalPool += amt;
-        totalBetCount++;
-        if (gutiMatrix[b.guti]) {
-          gutiMatrix[b.guti].count++;
-          gutiMatrix[b.guti].totalAmount += amt;
-        }
+    function checkPass() {
+      const p = document.getElementById('passInput').value;
+      if (p === '8822') {
+        document.getElementById('lockScreen').classList.add('hidden');
+        document.getElementById('dash').classList.remove('hidden');
+        initAdminDataSync();
+      } else {
+        document.getElementById('err').classList.remove('hidden');
       }
-    });
-
-    const sortedGutis = Object.entries(gutiMatrix).sort((a, b) => b[1].totalAmount - a[1].totalAmount);
-    const highestBetGuti = sortedGutis[0];
-    const maxLiability = highestBetGuti[1].totalAmount * 90;
-
-    document.getElementById('totalPoolDisplay').innerText = `₹${totalPool.toFixed(2)}`;
-    document.getElementById('totalBetCount').innerText = `${totalBetCount} total bets placed`;
-    document.getElementById('maxLiabilityDisplay').innerText = `₹${maxLiability.toFixed(2)}`;
-    document.getElementById('topGutiDisplay').innerText = highestBetGuti[1].totalAmount > 0 ? highestBetGuti[0] : 'None';
-    document.getElementById('topGutiStakeDisplay').innerText = `₹${highestBetGuti[1].totalAmount.toFixed(2)} wagered`;
-
-    const badge = document.getElementById('riskStatusBadge');
-    if (maxLiability > totalPool && highestBetGuti[1].totalAmount > 0) {
-      badge.innerHTML = `<span class="badge-risk"><i class="fas fa-triangle-exclamation me-1"></i>HIGH RISK (Exposure: -₹${(maxLiability - totalPool).toFixed(2)})</span>`;
-    } else {
-      badge.innerHTML = `<span class="badge-safe"><i class="fas fa-shield me-1"></i>HEALTHY POOL (Profitable)</span>`;
     }
 
-    const tbody = document.getElementById('riskTableBody');
-    tbody.innerHTML = '';
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.admin-tab-btn').forEach(el => {
+        el.className = "admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap";
+      });
 
-    sortedGutis.forEach(([num, data]) => {
-      if (data.totalAmount === 0 && totalPool > 0) return;
-      const payout = data.totalAmount * 90;
-      const margin = totalPool - payout;
-      const isRisk = margin < 0 && data.totalAmount > 0;
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><span class="badge bg-warning text-dark fs-6">${num}</span></td>
-        <td>${data.count}</td>
-        <td class="fw-bold">₹${data.totalAmount.toFixed(2)}</td>
-        <td class="text-danger fw-bold">₹${payout.toFixed(2)}</td>
-        <td class="${margin >= 0 ? 'text-success' : 'text-danger'} fw-bold">₹${margin.toFixed(2)}</td>
-        <td>
-          ${isRisk ? '<span class="badge-risk">CRITICAL RISK</span>' : (data.totalAmount > 0 ? '<span class="badge-safe">SAFE</span>' : '<span class="text-muted">No Bets</span>')}
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-
-    if (tbody.children.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No bets placed yet for ${market.toUpperCase()} - ${round}.</td></tr>`;
+      const pane = document.getElementById('tabContent_' + tabId);
+      const btn = document.getElementById('tabBtn_' + tabId);
+      if (pane) pane.classList.remove('hidden');
+      if (btn) btn.className = "admin-tab-btn flex-1 py-2 px-3 rounded-xl bg-amber-400 text-teal-950 font-bold transition whitespace-nowrap";
     }
-  }
 
-  function renderScheduleEditor() {
-    const tbody = document.getElementById('scheduleTableBody');
-    tbody.innerHTML = '';
+    // INITIALIZE REALTIME SYNC FOR USERS, DEPOSITS, WITHDRAWALS
+    function initAdminDataSync() {
+      if (!fbDatabase) return;
 
-    Object.entries(activeMarkets).forEach(([id, m]) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><b>${m.name}</b><br><small class="text-muted">${id}</small></td>
-        <td><input type="time" id="frCut_${id}" class="form-control form-control-sm bg-dark text-white border-secondary" value="${m.frCutoff || '15:30'}"></td>
-        <td><input type="time" id="frRes_${id}" class="form-control form-control-sm bg-dark text-white border-secondary" value="${m.frResult || '15:45'}"></td>
-        <td><input type="time" id="srCut_${id}" class="form-control form-control-sm bg-dark text-white border-secondary" value="${m.srCutoff || '16:30'}"></td>
-        <td><input type="time" id="srRes_${id}" class="form-control form-control-sm bg-dark text-white border-secondary" value="${m.srResult || '16:45'}"></td>
-        <td>
-          <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="status_${id}" ${m.active ? 'checked' : ''}>
+      // 1. Sync All Users
+      fbDatabase.ref('users').on('value', (snap) => {
+        allUsersCache = snap.val() || {};
+        renderUsersList();
+      });
+
+      // 2. Sync Deposits
+      fbDatabase.ref('deposits').on('value', (snap) => {
+        allDepositsCache = snap.val() || {};
+        renderDepositsList();
+      });
+
+      // 3. Sync Withdrawals
+      fbDatabase.ref('withdrawals').on('value', (snap) => {
+        allWithdrawalsCache = snap.val() || {};
+        renderWithdrawalsList();
+      });
+
+      // 4. Sync Agent earnings
+      renderScheduleCards();
+      fbDatabase.ref('settings').on('value', (snap) => {
+        const s = snap.val();
+        if (s) {
+          if (s.helpline) document.getElementById('cfgPhone').value = s.helpline;
+          if (s.depositUpi) document.getElementById('cfgUpi').value = s.depositUpi;
+          if (s.marqueeText) document.getElementById('cfgMarquee').value = s.marqueeText;
+        }
+      });
+      fbDatabase.ref('agent_earnings').on('value', (snap) => {
+        renderAgentEarnings(snap.val() || {});
+      });
+    }
+
+    // RENDER USERS
+    function renderUsersList() {
+      const tbody = document.getElementById('usersTableBody');
+      const phones = Object.keys(allUsersCache);
+      document.getElementById('statTotalUsers').innerText = phones.length;
+      document.getElementById('tabCountUsers').innerText = phones.length;
+
+      let totalWalletSum = 0;
+      phones.forEach(p => {
+        totalWalletSum += parseFloat(allUsersCache[p].balance || 0);
+      });
+      document.getElementById('statTotalWallet').innerText = '₹' + totalWalletSum.toFixed(0);
+
+      if (phones.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">Abhi tak koi user register nahi hua hai.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = phones.map(p => {
+        const u = allUsersCache[p];
+        const bal = parseFloat(u.balance || 0).toFixed(2);
+        return `
+          <tr class="hover:bg-teal-950/30 transition">
+            <td class="p-2.5">
+              <div class="font-bold text-white">${u.name || 'User'}</div>
+              <div class="text-[10px] text-slate-400">Reg: ${u.createdAt || 'Recent'}</div>
+            </td>
+            <td class="p-2.5 font-mono text-amber-300 font-semibold">+91 ${u.phone}</td>
+            <td class="p-2.5 font-black text-emerald-400">₹${bal}</td>
+            <td class="p-2.5 text-slate-400">${u.referredBy ? u.referredBy : 'Direct'}</td>
+            <td class="p-2.5 text-right">
+              <button onclick="openUserModal('${u.phone}')" class="px-2.5 py-1 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 rounded-lg text-xs font-bold transition">
+                <i class="fa-solid fa-eye mr-1"></i> View / Edit
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterUsersList() {
+      const query = document.getElementById('userSearchInput').value.toLowerCase();
+      const rows = document.querySelectorAll('#usersTableBody tr');
+      rows.forEach(r => {
+        const text = r.innerText.toLowerCase();
+        r.style.display = text.includes(query) ? '' : 'none';
+      });
+    }
+
+    function openUserModal(phone) {
+      const u = allUsersCache[phone];
+      if (!u) return;
+      activeModalUserPhone = phone;
+      document.getElementById('mUserName').innerText = u.name || 'User';
+      document.getElementById('mUserPhone').innerText = '+91 ' + u.phone;
+      document.getElementById('mUserBalance').innerText = '₹' + parseFloat(u.balance || 0).toFixed(2);
+      document.getElementById('mUserReferredBy').innerText = u.referredBy || 'Direct Registration';
+      document.getElementById('mUserCreatedAt').innerText = u.createdAt || 'Recent';
+      document.getElementById('adjustAmtInput').value = '';
+      document.getElementById('userModal').classList.remove('hidden');
+    }
+
+    function closeUserModal() {
+      document.getElementById('userModal').classList.add('hidden');
+      activeModalUserPhone = null;
+    }
+
+    function adjustUserBalance(type) {
+      if (!activeModalUserPhone) return;
+      const amt = parseFloat(document.getElementById('adjustAmtInput').value);
+      if (!amt || amt <= 0) { alert('Valid amount enter karein!'); return; }
+
+      const u = allUsersCache[activeModalUserPhone];
+      let currentBal = parseFloat(u.balance || 0);
+
+      if (type === 'deduct' && currentBal < amt) {
+        alert('User ke paas itna balance nahi hai!');
+        return;
+      }
+
+      const newBal = type === 'add' ? (currentBal + amt) : (currentBal - amt);
+
+      if (fbDatabase) {
+        fbDatabase.ref('users/' + activeModalUserPhone + '/balance').set(newBal).then(() => {
+          alert(`Balance updated! Naya balance: ₹${newBal.toFixed(2)}`);
+          document.getElementById('mUserBalance').innerText = '₹' + newBal.toFixed(2);
+        });
+      }
+    }
+
+    // RENDER DEPOSITS WITH UTR VERIFICATION
+    
+    function viewFullReceipt(depId) {
+      const d = allDepositsCache[depId];
+      if (!d || !d.screenshot) return;
+      document.getElementById('receiptUserMeta').innerText = `User: ${d.name} (${d.phone}) | Amount: ₹${d.amount} | UTR: ${d.utr}`;
+      document.getElementById('fullReceiptImg').src = d.screenshot;
+      document.getElementById('receiptViewerModal').classList.remove('hidden');
+    }
+
+    function closeReceiptViewer() {
+      document.getElementById('receiptViewerModal').classList.add('hidden');
+      document.getElementById('fullReceiptImg').src = '';
+    }
+
+    function renderDepositsList() {
+      const tbody = document.getElementById('depositsTableBody');
+      const depIds = Object.keys(allDepositsCache).reverse();
+      const pendingList = depIds.filter(id => allDepositsCache[id].status === 'pending');
+      
+      document.getElementById('statPendingDeposits').innerText = pendingList.length;
+      document.getElementById('tabCountDeposits').innerText = pendingList.length;
+
+      if (depIds.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">Abhi tak koi deposit request nahi aayi hai.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = depIds.map(id => {
+        const d = allDepositsCache[id];
+        const isPending = d.status === 'pending';
+        const isApproved = d.status === 'approved';
+        const utrValid = d.utr && d.utr.length >= 10;
+        const hasSlip = d.screenshot && d.screenshot.startsWith('data:image');
+
+        return `
+          <tr class="hover:bg-teal-950/30 transition">
+            <td class="p-2.5 text-[11px] text-slate-400">${d.date || ''} ${d.time || ''}</td>
+            <td class="p-2.5">
+              <div class="font-bold text-white">${d.name || 'User'}</div>
+              <div class="text-[10px] text-amber-300 font-mono">+91 ${d.phone}</div>
+            </td>
+            <td class="p-2.5 font-black text-amber-300 text-sm">₹${d.amount}</td>
+            <td class="p-2.5">
+              <div class="font-mono text-xs font-bold text-teal-200 bg-black/40 px-2 py-1 rounded-lg border border-teal-800/50 inline-block">
+                ${d.utr}
+              </div>
+              <div class="text-[9px] ${utrValid ? 'text-emerald-400' : 'text-rose-400'} mt-0.5">
+                ${utrValid ? '● UTR Valid (12-Digit)' : '⚠️ Check UTR Length'}
+              </div>
+            </td>
+            <td class="p-2.5">
+              ${hasSlip ? `
+                <div class="flex items-center gap-1.5">
+                  <img src="${d.screenshot}" onclick="viewFullReceipt('${id}')" class="w-12 h-12 object-cover rounded-lg border border-teal-600 cursor-pointer hover:border-amber-400 hover:scale-105 transition shadow" title="Click to view full screenshot">
+                  <button onclick="viewFullReceipt('${id}')" class="text-[10px] bg-teal-900/60 hover:bg-teal-800 text-teal-200 px-2 py-1 rounded-lg border border-teal-700/50">
+                    <i class="fa-solid fa-expand"></i> View
+                  </button>
+                </div>
+              ` : `
+                <span class="text-[10px] text-slate-500 italic">No image</span>
+              `}
+            </td>
+            <td class="p-2.5">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : (isPending ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-rose-500/20 text-rose-300')}">
+                ${d.status.toUpperCase()}
+              </span>
+            </td>
+            <td class="p-2.5 text-right space-x-1 whitespace-nowrap">
+              ${isPending ? `
+                <button onclick="approveDeposit('${id}')" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow transition">
+                  <i class="fa-solid fa-check mr-1"></i> Verify &amp; Credit
+                </button>
+                <button onclick="rejectDeposit('${id}')" class="px-2 py-1.5 bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white font-bold rounded-lg text-xs transition">
+                  Reject
+                </button>
+              ` : `
+                <span class="text-xs text-slate-500 italic">Completed</span>
+              `}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function approveDeposit(depositId) {
+      const d = allDepositsCache[depositId];
+      if (!d) return;
+
+      const amt = parseFloat(d.amount);
+      const bonus = amt * 0.05; // 5% deposit bonus
+      const totalCredit = amt + bonus;
+
+      if (!confirm(`Deposit Verify Karein?\nUser: ${d.name} (${d.phone})\nAmount: ₹${amt} + ₹${bonus.toFixed(2)} (5% Bonus) = ₹${totalCredit.toFixed(2)}\n\nUser wallet me turant credit ho jayega!`)) return;
+
+      // 1. Update deposit status in Firebase
+      fbDatabase.ref('deposits/' + depositId + '/status').set('approved');
+
+      // 2. Add balance to user in Firebase
+      fbDatabase.ref('users/' + d.phone + '/balance').transaction((curr) => {
+        return (curr || 0) + totalCredit;
+      });
+
+      // 3. Trigger Agent Commission if user was referred
+      if (allUsersCache[d.phone] && allUsersCache[d.phone].referredBy) {
+        const refPhone = allUsersCache[d.phone].referredBy;
+        const realRefBonus = (amt / 1000) * 5; // ₹5 per 1000
+        fbDatabase.ref('agent_earnings/' + refPhone).transaction((curr) => (curr || 0) + realRefBonus);
+      }
+
+      alert(`✅ Deposit Approved! ₹${totalCredit.toFixed(2)} user ke wallet me instant credit ho gaya.`);
+    }
+
+    function rejectDeposit(depositId) {
+      if (!confirm('Kya aap is deposit request ko reject karna chahte hain?')) return;
+      fbDatabase.ref('deposits/' + depositId + '/status').set('rejected');
+      alert('Deposit rejected.');
+    }
+
+    // RENDER WITHDRAWALS
+    function renderWithdrawalsList() {
+      const tbody = document.getElementById('withdrawalsTableBody');
+      const wIds = Object.keys(allWithdrawalsCache).reverse();
+      const pendingList = wIds.filter(id => allWithdrawalsCache[id].status === 'pending');
+
+      document.getElementById('statPendingWithdrawals').innerText = pendingList.length;
+      document.getElementById('tabCountWithdrawals').innerText = pendingList.length;
+
+      if (wIds.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">Abhi tak koi withdrawal request nahi aayi hai.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = wIds.map(id => {
+        const w = allWithdrawalsCache[id];
+        const isPending = w.status === 'pending';
+        const isApproved = w.status === 'approved';
+
+        return `
+          <tr class="hover:bg-teal-950/30 transition">
+            <td class="p-2.5 text-[11px] text-slate-400">${w.date || ''} ${w.time || ''}</td>
+            <td class="p-2.5">
+              <div class="font-bold text-white">${w.name || 'User'}</div>
+              <div class="text-[10px] text-amber-300 font-mono">${w.phone}</div>
+            </td>
+            <td class="p-2.5 font-black text-rose-400 text-sm">₹${w.amount}</td>
+            <td class="p-2.5 font-mono text-xs font-bold text-amber-300">
+              ${w.upi}
+              <button onclick="navigator.clipboard.writeText('${w.upi}'); alert('UPI ID Copied: ${w.upi}');" class="ml-1 text-[10px] bg-teal-900/40 px-1.5 py-0.5 rounded text-teal-300 hover:text-white">Copy</button>
+            </td>
+            <td class="p-2.5">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : (isPending ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-slate-500/20 text-slate-300')}">
+                ${w.status.toUpperCase()}
+              </span>
+            </td>
+            <td class="p-2.5 text-right space-x-1">
+              ${isPending ? `
+                <button onclick="approveWithdrawal('${id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow">
+                  <i class="fa-solid fa-check mr-1"></i> Mark Paid
+                </button>
+                <button onclick="rejectWithdrawal('${id}')" class="px-2 py-1 bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white font-bold rounded-lg text-xs">
+                  Refund
+                </button>
+              ` : `
+                <span class="text-xs text-slate-500 italic">Completed</span>
+              `}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function approveWithdrawal(wId) {
+      if (!confirm('Kya aapne user ko unke UPI par payout bhej diya hai? Is request ko Paid mark karein?')) return;
+      fbDatabase.ref('withdrawals/' + wId + '/status').set('approved');
+      alert('Withdrawal marked as Paid / Approved!');
+    }
+
+    function rejectWithdrawal(wId) {
+      const w = allWithdrawalsCache[wId];
+      if (!w) return;
+      if (!confirm(`Withdrawal Reject karke ₹${w.amount} user ke wallet me refund karein?`)) return;
+
+      // 1. Mark status rejected
+      fbDatabase.ref('withdrawals/' + wId + '/status').set('rejected');
+
+      // 2. Refund balance
+      fbDatabase.ref('users/' + w.phone + '/balance').transaction((curr) => {
+        return (curr || 0) + parseFloat(w.amount);
+      });
+
+      alert(`Withdrawal rejected aur ₹${w.amount} user ke wallet me wapas refund kar diye gaye hain.`);
+    }
+
+    function renderAgentEarnings(earnings) {
+      const box = document.getElementById('agentEarningsList');
+      const keys = Object.keys(earnings);
+      if (keys.length === 0) {
+        box.innerText = 'No referral transactions recorded yet.';
+      } else {
+        box.innerHTML = keys.map(k => `<div>Agent ID: <b>${k}</b> &bull; Real Earned: <b>₹${parseFloat(earnings[k] || 0).toFixed(2)}</b></div>`).join('');
+      }
+    }
+
+    function saveResultAndBroadcast() {
+      const market = document.getElementById('mkt').value;
+      const fr = document.getElementById('fr').value.trim() || '**';
+      const sr = document.getElementById('sr').value.trim() || '**';
+
+      let results = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      results[market] = { fr, sr };
+      localStorage.setItem('teer_market_results', JSON.stringify(results));
+
+      if (fbDatabase) {
+        fbDatabase.ref('results/' + market).set({ fr, sr });
+      }
+
+      alert(`Result saved & broadcasted for ${market}!\nFR: ${fr} | SR: ${sr}\nSabhi users ke screens aur auto-winning sync ho gayi.`);
+    }
+
+    function sendEventNotification() {
+      const title = document.getElementById('eventTitle').value.trim() || 'Notice';
+      const msg = document.getElementById('eventMsg').value.trim();
+      if (!msg) { alert('Notification message likhein!'); return; }
+
+      if (fbDatabase) {
+        fbDatabase.ref('broadcast_notifications').push({
+          title,
+          message: msg,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: Date.now()
+        });
+      }
+
+      document.getElementById('eventMsg').value = '';
+      alert('Event Notification broadcasted to all online users!');
+    }
+
+    
+    // --- LIVE RISK & BET ANALYTICS (1:90) ---
+    function calculateLiveRiskAnalytics() {
+      const market = document.getElementById('analyticsMarketSelect').value;
+      const round = document.getElementById('analyticsRoundSelect').value;
+      const tbody = document.getElementById('riskTableRows');
+      if (!fbDatabase) return;
+
+      fbDatabase.ref('bets').once('value', (snap) => {
+        const bets = snap.val() || {};
+        const gutiTotals = {};
+        for (let i = 0; i <= 99; i++) {
+          const num = i < 10 ? '0' + i : '' + i;
+          gutiTotals[num] = 0;
+        }
+
+        let totalPool = 0;
+        Object.values(bets).forEach(b => {
+          if (b.market === market && b.round === round) {
+            const amt = parseFloat(b.amount) || 0;
+            totalPool += amt;
+            const n = String(b.number).padStart(2, '0');
+            gutiTotals[n] = (gutiTotals[n] || 0) + amt;
+          }
+        });
+
+        const sorted = Object.entries(gutiTotals).sort((a,b) => b[1] - a[1]);
+        const topGuti = sorted[0];
+        const maxLiability = (topGuti[1] || 0) * 90;
+
+        document.getElementById('kpiTotalPool').innerText = '₹' + totalPool.toFixed(2);
+        document.getElementById('kpiMaxLiability').innerText = '₹' + maxLiability.toFixed(2);
+        document.getElementById('kpiTopGuti').innerText = topGuti[1] > 0 ? (topGuti[0] + ' (₹' + topGuti[1].toFixed(0) + ')') : '--';
+
+        const statusEl = document.getElementById('kpiRiskStatus');
+        if (maxLiability > totalPool && topGuti[1] > 0) {
+          statusEl.className = "text-xs font-bold text-rose-400";
+          statusEl.innerText = "HIGH RISK (-₹" + (maxLiability - totalPool).toFixed(0) + ")";
+        } else {
+          statusEl.className = "text-xs font-bold text-emerald-400";
+          statusEl.innerText = "Safe / Profitable";
+        }
+
+        tbody.innerHTML = '';
+        sorted.forEach(([num, amt]) => {
+          if (amt === 0 && totalPool > 0) return;
+          const payout = amt * 90;
+          const net = totalPool - payout;
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-teal-950/20";
+          tr.innerHTML = `
+            <td class="p-2 font-mono font-bold text-amber-300">${num}</td>
+            <td class="p-2 font-semibold">₹${amt.toFixed(2)}</td>
+            <td class="p-2 text-rose-400 font-bold">₹${payout.toFixed(2)}</td>
+            <td class="p-2 ${net >= 0 ? 'text-emerald-400' : 'text-rose-500'} font-bold">₹${net.toFixed(2)}</td>
+            <td class="p-2 text-right">${net < 0 && amt > 0 ? '<span class="bg-rose-900/80 text-rose-300 px-1.5 py-0.5 rounded text-[10px] font-bold">CRITICAL RISK</span>' : (amt > 0 ? '<span class="bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded text-[10px]">SAFE</span>' : '<span class="text-slate-500 text-[10px]">--</span>')}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        if (tbody.children.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">No bets placed yet for this round.</td></tr>';
+        }
+      });
+    }
+
+    // --- MARKET SCHEDULE & CUTOFF EDITOR ---
+    const defaultMarketList = [
+      { name: 'Shilong Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM' },
+      { name: 'Khanapara Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM' },
+      { name: 'Assam morning teer', frTime: '11:30 AM', srTime: '12:30 PM' },
+      { name: 'Sikkim', frTime: '12:15 PM', srTime: '01:40 PM' },
+      { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM' },
+      { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM' },
+      { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM' },
+      { name: 'Assam teer', frTime: '05:10 PM', srTime: '06:10 PM' },
+      { name: 'Sikkim Night Teer', frTime: '06:50 PM', srTime: '07:50 PM' },
+      { name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM' },
+      { name: 'Assam night teer', frTime: '09:40 PM', srTime: '10:40 PM' }
+    ];
+
+    function renderScheduleCards() {
+      const container = document.getElementById('adminScheduleCards');
+      if (!container) return;
+      container.innerHTML = defaultMarketList.map((m, idx) => `
+        <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40 flex flex-wrap justify-between items-center gap-2">
+          <div>
+            <div class="font-bold text-white text-xs">${m.name}</div>
+            <div class="text-[10px] text-slate-400">FR Draw: ${m.frTime} | SR Draw: ${m.srTime}</div>
           </div>
-        </td>
-        <td>
-          <button class="btn btn-warning btn-sm fw-bold" onclick="saveMarketSchedule('${id}')">
-            <i class="fas fa-save me-1"></i> Save
-          </button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  function saveMarketSchedule(marketId) {
-    const frCut = document.getElementById(`frCut_${marketId}`).value;
-    const frRes = document.getElementById(`frRes_${marketId}`).value;
-    const srCut = document.getElementById(`srCut_${marketId}`).value;
-    const srRes = document.getElementById(`srRes_${marketId}`).value;
-    const isActive = document.getElementById(`status_${marketId}`).checked;
-
-    db.ref('markets/' + marketId).update({
-      frCutoff: frCut,
-      frResult: frRes,
-      srCutoff: srCut,
-      srResult: srRes,
-      active: isActive
-    }).then(() => {
-      alert(`Market "${marketId}" schedule saved and synced live!`);
-    });
-  }
-
-  function loadUsersList() {
-    const tbody = document.getElementById('userTableBody');
-    tbody.innerHTML = '';
-
-    Object.entries(allUsers).forEach(([uid, u]) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><code>${uid}</code><br><small class="text-muted">${u.phone || 'N/A'}</small></td>
-        <td><b>${u.name || 'Anonymous'}</b></td>
-        <td class="text-success fw-bold">₹${(u.balance || 0).toFixed(2)}</td>
-        <td>
-          ${u.isBlocked ? '<span class="badge bg-danger">BLOCKED</span>' : '<span class="badge bg-success">ACTIVE</span>'}
-        </td>
-        <td>
-          <button class="btn ${u.isBlocked ? 'btn-success' : 'btn-danger'} btn-sm fw-bold" onclick="toggleUserBlock('${uid}', ${!u.isBlocked})">
-            <i class="fas ${u.isBlocked ? 'fa-unlock' : 'fa-ban'} me-1"></i> ${u.isBlocked ? 'Unblock' : 'Block'}
-          </button>
-        </td>
-        <td>
-          <button class="btn btn-outline-warning btn-sm" onclick="openResetModal('${uid}')">
-            <i class="fas fa-key me-1"></i> Reset PIN
-          </button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-
-    if (tbody.children.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No users registered yet.</td></tr>`;
-    }
-  }
-
-  function toggleUserBlock(uid, blockState) {
-    db.ref('users/' + uid + '/isBlocked').set(blockState).then(() => {
-      alert(`User ${uid} has been ${blockState ? 'BLOCKED' : 'UNBLOCKED'}!`);
-    });
-  }
-
-  let activeResetUid = null;
-  function openResetModal(uid) {
-    activeResetUid = uid;
-    document.getElementById('resetTargetUid').innerText = uid;
-    document.getElementById('newPasswordInput').value = '';
-    const modal = new bootstrap.Modal(document.getElementById('pwdResetModal'));
-    modal.show();
-  }
-
-  function confirmPasswordReset() {
-    const newPwd = document.getElementById('newPasswordInput').value.trim();
-    if (!newPwd || newPwd.length < 4) {
-      alert('Please enter at least 4 characters for security code/password.');
-      return;
-    }
-    db.ref('users/' + activeResetUid + '/password').set(newPwd).then(() => {
-      alert(`Password for user ${activeResetUid} successfully reset to "${newPwd}"!`);
-      bootstrap.Modal.getInstance(document.getElementById('pwdResetModal')).hide();
-    });
-  }
-
-  function updateAdminQrPreview(upi, name) {
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${upi || 'teerpay@upi'}%26pn=${encodeURIComponent(name || 'Teer Online')}%26cu=INR`;
-    document.getElementById('adminQrPreview').src = qrUrl;
-    document.getElementById('qrPayloadString').innerText = `upi://pay?pa=${upi}&pn=${name}&cu=INR`;
-  }
-
-  function saveUpiAndHelplineSettings() {
-    const upi = document.getElementById('settingUpiId').value.trim();
-    const name = document.getElementById('settingPayeeName').value.trim();
-    const helpline = document.getElementById('settingHelpline').value.trim();
-
-    if (!upi) {
-      alert('Enter valid UPI ID!');
-      return;
+          <div class="flex items-center gap-2">
+            <input type="text" id="sch_fr_${idx}" value="${m.frTime}" placeholder="FR Time" class="bg-black/60 border border-teal-800 text-xs px-2 py-1 rounded text-white font-mono w-24">
+            <input type="text" id="sch_sr_${idx}" value="${m.srTime}" placeholder="SR Time" class="bg-black/60 border border-teal-800 text-xs px-2 py-1 rounded text-white font-mono w-24">
+            <button onclick="saveMarketSchedule('${m.name}', ${idx})" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-bold text-xs rounded transition">
+              Save
+            </button>
+          </div>
+        </div>
+      `).join('');
     }
 
-    db.ref('settings').update({
-      upiId: upi,
-      payeeName: name,
-      helpline: helpline
-    }).then(() => {
-      updateAdminQrPreview(upi, name);
-      alert('UPI ID and Helpline details successfully updated and broadcast to user app!');
-    });
-  }
+    function saveMarketSchedule(mName, idx) {
+      const frVal = document.getElementById('sch_fr_' + idx).value.trim();
+      const srVal = document.getElementById('sch_sr_' + idx).value.trim();
+      if (!fbDatabase) return;
+      fbDatabase.ref('market_schedules/' + mName).set({ frTime: frVal, srTime: srVal }).then(() => {
+        alert(mName + ' schedule saved & synced to live app!');
+      });
+    }
 
-  function saveMarqueeSettings() {
-    const text = document.getElementById('settingMarqueeText').value.trim();
-    const active = document.getElementById('settingMarqueeActive').checked;
+    // --- USER CONTROLS: BLOCK & PASSWORD RESET ---
+    function toggleBlockUser(phone, currentStatus) {
+      if (!fbDatabase) return;
+      const newStatus = !currentStatus;
+      fbDatabase.ref('users/' + phone + '/isBlocked').set(newStatus).then(() => {
+        alert(`User ${phone} is now ` + (newStatus ? 'BLOCKED' : 'ACTIVE'));
+      });
+    }
 
-    db.ref('settings').update({
-      marqueeText: text,
-      marqueeActive: active
-    }).then(() => {
-      alert('Marquee notice broadcast updated live!');
-    });
-  }
+    function adminResetUserPassword(phone) {
+      const newPass = prompt("Enter new password/PIN for user " + phone + ":", "123456");
+      if (newPass && newPass.length >= 4) {
+        if (!fbDatabase) return;
+        fbDatabase.ref('users/' + phone + '/password').set(newPass).then(() => {
+          alert("Password successfully updated to: " + newPass);
+        });
+      }
+    }
+
+    function saveSettings() {
+      const phone = document.getElementById('cfgPhone').value.trim();
+      const upi = document.getElementById('cfgUpi').value.trim();
+
+      localStorage.setItem('teer_helpline_phone', phone);
+      localStorage.setItem('teer_deposit_upi', upi);
+
+      const marquee = document.getElementById('cfgMarquee').value.trim();
+      localStorage.setItem('teer_marquee_text', marquee);
+      if (fbDatabase) {
+        fbDatabase.ref('settings').set({ helpline: phone, depositUpi: upi, marqueeText: marquee });
+      }
+
+      alert('Settings saved successfully!');
+    }
   </script>
+
+  <!-- MODAL: FULL PAYMENT RECEIPT SCREENSHOT VIEWER -->
+  <div id="receiptViewerModal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-[#0f1d21] border border-teal-800 rounded-3xl p-4 max-w-lg w-full space-y-3 shadow-2xl flex flex-col max-h-[90vh]">
+      <div class="flex justify-between items-center border-b border-teal-900 pb-2">
+        <div>
+          <h3 class="font-bold text-sm text-amber-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-image"></i> Payment Receipt Screenshot
+          </h3>
+          <p id="receiptUserMeta" class="text-[11px] text-slate-400">User: -- | UTR: --</p>
+        </div>
+        <button onclick="closeReceiptViewer()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-auto bg-black/60 rounded-2xl p-2 flex items-center justify-center">
+        <img id="fullReceiptImg" src="" class="max-h-[65vh] w-auto rounded-xl object-contain shadow-2xl">
+      </div>
+
+      <div class="flex justify-end gap-2 pt-1 border-t border-teal-900">
+        <button onclick="closeReceiptViewer()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
