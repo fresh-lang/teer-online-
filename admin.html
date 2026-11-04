@@ -487,7 +487,7 @@
             <td class="p-2.5">
               <div class="font-bold text-white flex items-center gap-1.5">
                 ${u.name || 'User'}
-                <span class="bg-amber-400/20 text-amber-300 font-mono text-[9px] px-1.5 py-0.5 rounded border border-amber-400/30">${u.uid || ('UID_' + (u.phone ? u.phone.slice(-4) : '0000'))}</span>
+                <span class="bg-amber-400/20 text-amber-300 font-mono text-[9px] px-1.5 py-0.5 rounded border border-amber-400/30">${u.uid || ('UID_' + (1001 + idx))}</span>
               </div>
               <div class="text-[10px] text-slate-400">Reg: ${u.createdAt || 'Recent'}</div>
             </td>
@@ -523,7 +523,7 @@
       const u = allUsersCache[phone];
       if (!u) return;
       activeModalUserPhone = phone;
-      document.getElementById('mUserName').innerText = (u.name || 'User') + ' (' + (u.uid || ('UID_' + (u.phone ? u.phone.slice(-4) : '0000'))) + ')';
+      document.getElementById('mUserName').innerText = (u.name || 'User') + ' (' + (u.uid || ('UID_' + 1001)) + ')';
       document.getElementById('mUserPhone').innerText = '+91 ' + u.phone;
       document.getElementById('mUserBalance').innerText = '₹' + parseFloat(u.balance || 0).toFixed(2);
       document.getElementById('mUserReferredBy').innerText = u.referredBy || 'Direct Registration';
@@ -866,10 +866,10 @@
 
     // --- MARKET SCHEDULE & CUTOFF EDITOR ---
     const defaultMarketList = [
-      { name: 'Teer Play', frTime: '1 Min Auto', srTime: '1 Min Auto' },
       { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM' },
       { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM' },
-      { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM' }
+      { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM' },
+      { name: 'Teer Play', frTime: '1 Min Auto', srTime: '1 Min Auto' }
     ];
 
     function renderScheduleCards() {

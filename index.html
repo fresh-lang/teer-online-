@@ -174,7 +174,7 @@
                 <span class="bg-amber-400 text-teal-950 text-[9px] font-black px-2 py-0.5 rounded-full">EVERY 1 MINUTE</span>
               </div>
               <h3 class="font-cinzel text-lg font-black text-amber-300 tracking-wide drop-shadow">1 MINUTE ONLINE TEER PLAY</h3>
-              <p class="text-[10px] text-teal-100">Guti: 10 pe 19 • House/Ending: 10 pe 90 • Super Fast Result</p>
+              <p class="text-[10px] text-teal-100">Guti (01-20): 10 pe 160 • House/Ending (0-9): 10 pe 80 • 1 Min Auto Result</p>
               <div class="pt-1">
                 <span class="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-black text-xs rounded-xl shadow inline-flex items-center gap-1">
                   PLAY TEER PLAY &gt;
@@ -586,6 +586,17 @@
             <input type="number" id="betAmountInput" value="20" min="10" step="10" oninput="calculatePayout()" class="w-full border rounded-xl px-3 py-2 font-bold text-base outline-none">
           </div>
 
+          <!-- Live Teer Play Ticker in Modal -->
+          <div class="bg-[#02181a] border border-teal-900/60 rounded-xl p-2 shadow-inner">
+            <div class="flex items-center justify-between text-[9px] text-slate-400 mb-1 border-b border-teal-900/40 pb-1">
+              <span class="text-amber-400 font-bold flex items-center gap-1">
+                <i class="fa-solid fa-bolt text-amber-400"></i> Realtime Bets
+              </span>
+              <span class="text-emerald-400 animate-pulse font-mono text-[9px]">● LIVE</span>
+            </div>
+            <div id="modalFakeBetsFeed" class="space-y-1 max-h-16 overflow-hidden font-mono text-[9px]"></div>
+          </div>
+
           <div class="bg-teal-50 border border-teal-200 rounded-xl p-2.5 flex justify-between items-center text-xs">
             <div>
               <p class="text-slate-500">Total Bet Cost:</p>
@@ -849,10 +860,10 @@
       currentRound: 'FR',
       currentMarketObj: null,
       markets: [
-        { name: 'Teer Play', frTime: '1 Min Auto', srTime: '1 Min Auto', defaultFr: '14', defaultSr: '68', isFast: true },
         { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM', defaultFr: '34', defaultSr: '71' },
         { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM', defaultFr: '82', defaultSr: '19' },
-        { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM', defaultFr: '58', defaultSr: '24' }
+        { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM', defaultFr: '58', defaultSr: '24' },
+        { name: 'Teer Play', frTime: '1 Min Auto', srTime: '1 Min Auto', defaultFr: '14', defaultSr: '68', isFast: true }
       ],
       bids: [],
       notifications: []
@@ -1015,7 +1026,7 @@
     // ==========================================
     function initFakeBetsTicker() {
       const feed = document.getElementById('fakeLiveBetsFeed');
-      if (!feed) return;
+      const mFeed = document.getElementById('modalFakeBetsFeed');
 
       const randomGutis = ['20', '30', '50', '14', '78', '09', '42', '88', '15', '63', '99'];
       const amounts = [10, 10, 10, 20, 30, 50];
@@ -1045,6 +1056,11 @@
         `;
         feed.prepend(row);
         if (feed.children.length > 5) feed.removeChild(feed.lastChild);
+        if (mFeed) {
+          const rowClone = row.cloneNode(true);
+          mFeed.prepend(rowClone);
+          if (mFeed.children.length > 3) mFeed.removeChild(mFeed.lastChild);
+        }
       }
 
       for (let i = 0; i < 4; i++) addFakeBet();
@@ -1325,13 +1341,13 @@
             if (bid.market === 'Teer Play') {
               if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
                 isWin = true;
-                winAmount = (bid.amount / 10) * 19;
+                winAmount = (bid.amount / 10) * 160; // 10 pe 160
               } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
                 isWin = true;
-                winAmount = (bid.amount / 10) * 90;
+                winAmount = (bid.amount / 10) * 80;  // 10 pe 80
               } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
                 isWin = true;
-                winAmount = (bid.amount / 10) * 90;
+                winAmount = (bid.amount / 10) * 80;  // 10 pe 80
               }
             } else {
               if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
@@ -1590,8 +1606,30 @@
 
     function renderGutiGrid() {
       const g = document.getElementById('gutiGrid');
+      if (!g) return;
       g.innerHTML = '';
-      for (let i = 0; i <= 99; i++) {
+      const isTeerPlay = (state.currentMarketObj && state.currentMarketObj.name === 'Teer Play');
+      const startNum = isTeerPlay ? 1 : 0;
+      const endNum = isTeerPlay ? 20 : 99;
+
+      const directLabel = document.getElementById('modeBtnDirect');
+      const houseLabel = document.getElementById('modeBtnHouse');
+      const endingLabel = document.getElementById('modeBtnEnding');
+      const gutiTitle = document.querySelector('#directGutiSection span');
+
+      if (isTeerPlay) {
+        if (directLabel) directLabel.innerText = "Direct (10 pe 160)";
+        if (houseLabel) houseLabel.innerText = "House (10 pe 80)";
+        if (endingLabel) endingLabel.innerText = "Ending (10 pe 80)";
+        if (gutiTitle) gutiTitle.innerText = "Choose Direct Guti (01 - 20):";
+      } else {
+        if (directLabel) directLabel.innerText = "Direct Guti (1:90)";
+        if (houseLabel) houseLabel.innerText = "House (1:9)";
+        if (endingLabel) endingLabel.innerText = "Ending (1:9)";
+        if (gutiTitle) gutiTitle.innerText = "Choose Direct Guti (00 - 99):";
+      }
+
+      for (let i = startNum; i <= endNum; i++) {
         const v = i < 10 ? '0' + i : '' + i;
         const b = document.createElement('button');
         b.innerText = v;
@@ -1733,9 +1771,9 @@
       let potential = 0;
       if (state.currentMarketObj && state.currentMarketObj.name === 'Teer Play') {
         if (state.betMode === 'direct') {
-          potential = (amt / 10) * 19; // Guti: 10 pe 19
+          potential = (amt / 10) * 160; // Guti: 10 pe 160
         } else {
-          potential = (amt / 10) * 90; // House/Ending: 10 pe 90
+          potential = (amt / 10) * 80;  // House/Ending: 10 pe 80
         }
       } else {
         let mult = (state.betMode === 'direct') ? 90 : 9;
@@ -1754,6 +1792,7 @@
 
       state.currentMarketObj = mObj;
       document.getElementById('playMarketTitle').innerText = mName;
+      renderGutiGrid();
 
       const frOpen = isRoundBettingOpen(mObj.frTime, mObj.name);
       const srOpen = isRoundBettingOpen(mObj.srTime, mObj.name);
@@ -2226,7 +2265,10 @@
       }
 
       const todayStr = new Date().toLocaleDateString();
-      const userUid = 'UID_' + (phone.slice(-4) + Math.floor(1000 + Math.random() * 9000));
+      let nextId = parseInt(localStorage.getItem('teer_last_user_seq_id') || '1000') + 1;
+      localStorage.setItem('teer_last_user_seq_id', nextId.toString());
+      const userUid = 'UID_' + nextId; // Sequential: UID_1001, UID_1002, UID_1003...
+
       const newUser = {
         uid: userUid,
         name,
@@ -2237,6 +2279,10 @@
         createdAt: todayStr,
         betCount: 0
       };
+
+      if (fbDatabase) {
+        fbDatabase.ref('meta/last_user_uid').transaction(current => (current || 1000) + 1);
+      }
 
       usersDb.push(newUser);
       localStorage.setItem('teer_registered_users', JSON.stringify(usersDb));
@@ -2272,7 +2318,9 @@
 
       if (found) {
         if (!found.uid) {
-          found.uid = 'UID_' + (found.phone.slice(-4) + Math.floor(1000 + Math.random() * 9000));
+          let nextId = parseInt(localStorage.getItem('teer_last_user_seq_id') || '1000') + 1;
+          localStorage.setItem('teer_last_user_seq_id', nextId.toString());
+          found.uid = 'UID_' + nextId;
         }
         state.user = found;
         localStorage.setItem('teer_current_user', JSON.stringify(found));
