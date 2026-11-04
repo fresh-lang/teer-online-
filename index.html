@@ -36,7 +36,7 @@
         <button onclick="toggleDrawer()" class="p-1 text-teal-100 hover:text-white">
           <i class="fa-solid fa-bars text-xl"></i>
         </button>
-        <div class="flex items-center gap-1.5 cursor-pointer" onclick="switchTab('home')">
+        <div class="flex items-center gap-1.5 cursor-pointer" onclick="handleAdminSecretLogoTap()">
           <div class="w-7 h-7 rounded-full border border-amber-400/40 bg-teal-950 flex items-center justify-center p-0.5">
             <svg viewBox="0 0 100 100" class="w-full h-full fill-current text-amber-400">
               <circle cx="50" cy="50" r="44" stroke="currentColor" stroke-width="3" fill="none" />
@@ -165,26 +165,37 @@
           </a>
         </div>
 
-        <!-- Casino Games Quick Row -->
-        <div class="p-3">
-          <div class="flex items-center justify-between mb-2">
-            <h4 class="font-decorative text-lg font-bold text-teal-950 flex items-center gap-1">
-              <i class="fa-solid fa-dice text-amber-600 text-sm"></i> Casino Games
-            </h4>
-            <span class="text-[10px] bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full border border-red-200">● LIVE 24x7</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2.5">
-            <div onclick="alert('Opening Aviator...')" class="bg-gradient-to-r from-red-800 to-rose-900 rounded-xl p-2.5 text-white shadow-sm cursor-pointer relative overflow-hidden">
-              <span class="bg-rose-500 text-[9px] font-bold px-1.5 py-0.5 rounded">HOT</span>
-              <div class="font-black text-sm mt-1">Aviator</div>
-              <div class="text-[10px] text-rose-200">Crash • 100x</div>
-              <span class="mt-2 inline-block text-[10px] font-bold bg-white text-rose-900 px-2 py-0.5 rounded">PLAY NOW &gt;</span>
+        <!-- 1 Minute Online Teer Play Banner Card & Fake Bets -->
+        <div class="p-3 space-y-2.5">
+          <div onclick="openPlayModalByName('Teer Play')" class="bg-gradient-to-r from-[#032427] via-teal-900 to-[#02181a] rounded-2xl p-3.5 border-2 border-amber-400/60 shadow-xl cursor-pointer relative overflow-hidden flex items-center justify-between">
+            <div class="space-y-1 z-10">
+              <div class="flex items-center gap-1.5">
+                <span class="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full animate-pulse">● LIVE 24x7</span>
+                <span class="bg-amber-400 text-teal-950 text-[9px] font-black px-2 py-0.5 rounded-full">EVERY 1 MINUTE</span>
+              </div>
+              <h3 class="font-cinzel text-lg font-black text-amber-300 tracking-wide drop-shadow">1 MINUTE ONLINE TEER PLAY</h3>
+              <p class="text-[10px] text-teal-100">Guti: 10 pe 19 • House/Ending: 10 pe 90 • Super Fast Result</p>
+              <div class="pt-1">
+                <span class="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-black text-xs rounded-xl shadow inline-flex items-center gap-1">
+                  PLAY TEER PLAY &gt;
+                </span>
+              </div>
             </div>
-            <div onclick="alert('Opening 3D Roulette...')" class="bg-gradient-to-r from-teal-800 to-emerald-900 rounded-xl p-2.5 text-white shadow-sm cursor-pointer relative overflow-hidden">
-              <span class="bg-amber-400 text-teal-950 text-[9px] font-bold px-1.5 py-0.5 rounded">3D LIVE</span>
-              <div class="font-black text-sm mt-1">3D Roulette</div>
-              <div class="text-[10px] text-teal-200">European • 500x</div>
-              <span class="mt-2 inline-block text-[10px] font-bold bg-amber-400 text-teal-950 px-2 py-0.5 rounded">PLAY NOW &gt;</span>
+            <div class="text-4xl text-amber-400/90 z-10 pr-2 animate-bounce">
+              <i class="fa-solid fa-bullseye"></i>
+            </div>
+          </div>
+
+          <!-- Realtime Fake UID Bets Feed on Teer Play -->
+          <div class="bg-[#02181a] border border-teal-900/60 rounded-xl p-2.5 shadow-inner">
+            <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1.5 border-b border-teal-900/40 pb-1">
+              <span class="text-amber-400 font-bold flex items-center gap-1">
+                <i class="fa-solid fa-bolt text-amber-400"></i> Live Bets on Online Teer Play
+              </span>
+              <span class="text-emerald-400 animate-pulse font-mono text-[9px]">● LIVE TICKER</span>
+            </div>
+            <div id="fakeLiveBetsFeed" class="space-y-1 max-h-24 overflow-hidden font-mono text-[10px]">
+              <!-- Live fake bets inserted here -->
             </div>
           </div>
         </div>
@@ -838,17 +849,10 @@
       currentRound: 'FR',
       currentMarketObj: null,
       markets: [
-        { name: 'Shilong Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', defaultFr: '76', defaultSr: '15' },
-        { name: 'Khanapara Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', defaultFr: '60', defaultSr: '39' },
-        { name: 'Assam morning teer', frTime: '11:30 AM', srTime: '12:30 PM', defaultFr: '46', defaultSr: '88' },
-        { name: 'Sikkim', frTime: '12:15 PM', srTime: '01:40 PM', defaultFr: '15', defaultSr: '29' },
-        { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM', defaultFr: '58', defaultSr: '24' },
+        { name: 'Teer Play', frTime: '1 Min Auto', srTime: '1 Min Auto', defaultFr: '14', defaultSr: '68', isFast: true },
         { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM', defaultFr: '34', defaultSr: '71' },
         { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM', defaultFr: '82', defaultSr: '19' },
-        { name: 'Assam teer', frTime: '05:10 PM', srTime: '06:10 PM', defaultFr: '41', defaultSr: '09' },
-        { name: 'Sikkim Night Teer', frTime: '06:50 PM', srTime: '07:50 PM', defaultFr: '23', defaultSr: '**' },
-        { name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM', defaultFr: '**', defaultSr: '**' },
-        { name: 'Assam night teer', frTime: '09:40 PM', srTime: '10:40 PM', defaultFr: '**', defaultSr: '**' }
+        { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM', defaultFr: '58', defaultSr: '24' }
       ],
       bids: [],
       notifications: []
@@ -989,6 +993,142 @@
       ]
     };
 
+    
+    // ==========================================
+    // 10-TAP SECRET ADMIN ACCESS ON LOGO
+    // ==========================================
+    let adminLogoTapCount = 0;
+    let adminLogoTapTimer = null;
+    function handleAdminSecretLogoTap() {
+      adminLogoTapCount++;
+      clearTimeout(adminLogoTapTimer);
+      adminLogoTapTimer = setTimeout(() => { adminLogoTapCount = 0; }, 3000);
+
+      if (adminLogoTapCount >= 10) {
+        adminLogoTapCount = 0;
+        window.location.href = 'admin.html';
+      }
+    }
+
+    // ==========================================
+    // FAKE REALTIME BETS TICKER FOR TEER PLAY
+    // ==========================================
+    function initFakeBetsTicker() {
+      const feed = document.getElementById('fakeLiveBetsFeed');
+      if (!feed) return;
+
+      const randomGutis = ['20', '30', '50', '14', '78', '09', '42', '88', '15', '63', '99'];
+      const amounts = [10, 10, 10, 20, 30, 50];
+
+      function addFakeBet() {
+        if (!feed) return;
+        const fakeUid = 'UID_' + Math.floor(1000 + Math.random() * 9000);
+        const guti = randomGutis[Math.floor(Math.random() * randomGutis.length)];
+        const amt = amounts[Math.floor(Math.random() * amounts.length)];
+        
+        const modeRoll = Math.random();
+        let modeLabel = '';
+        if (modeRoll < 0.6) {
+          modeLabel = 'Guti [' + guti + ']';
+        } else if (modeRoll < 0.8) {
+          modeLabel = 'House [' + guti.charAt(0) + ']';
+        } else {
+          modeLabel = 'Ending [' + guti.charAt(1) + ']';
+        }
+
+        const row = document.createElement('div');
+        row.className = "flex justify-between items-center text-teal-200 py-0.5 border-b border-teal-950/40 text-[9px]";
+        row.innerHTML = `
+          <span class="text-amber-400 font-bold">${fakeUid}</span>
+          <span class="text-slate-300">${modeLabel}</span>
+          <span class="text-emerald-400 font-bold">₹${amt}</span>
+        `;
+        feed.prepend(row);
+        if (feed.children.length > 5) feed.removeChild(feed.lastChild);
+      }
+
+      for (let i = 0; i < 4; i++) addFakeBet();
+      setInterval(addFakeBet, 2500);
+    }
+
+    // ==========================================
+    // 1-MINUTE TEER PLAY AUTO DRAW ENGINE
+    // ==========================================
+    function initTeerPlayAutoEngine() {
+      setInterval(() => {
+        const now = new Date();
+        if (now.getSeconds() === 0) {
+          executeTeerPlayMinuteDraw();
+        }
+      }, 1000);
+    }
+
+    function executeTeerPlayMinuteDraw() {
+      const activeTeerPlayBids = state.bids.filter(b => b.market === 'Teer Play' && b.status === 'Active');
+      let chosenFR = null;
+      let chosenSR = null;
+
+      let userTargetGuti = null;
+      if (state.user) {
+        state.user.betCount = (state.user.betCount || 0);
+        const userActiveBids = activeTeerPlayBids.filter(b => b.phone === state.user.phone);
+        
+        if (userActiveBids.length > 0 && state.user.betCount < 10) {
+          const currentCount = state.user.betCount + 1;
+          const shouldWin = (currentCount % 2 === 1); // Alternating won/loss
+          
+          if (shouldWin) {
+            // ₹10 bet wins preferentially
+            const tenRsBid = userActiveBids.find(b => parseFloat(b.amount) <= 15);
+            if (tenRsBid) {
+              userTargetGuti = String(tenRsBid.number).padStart(2, '0');
+            }
+          }
+        }
+      }
+
+      if (userTargetGuti) {
+        chosenFR = userTargetGuti;
+        chosenSR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+      } else {
+        if (activeTeerPlayBids.length < 100) {
+          chosenFR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+          chosenSR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+        } else {
+          const gutiSums = {};
+          for (let i = 0; i <= 99; i++) gutiSums[String(i).padStart(2, '0')] = 0;
+          activeTeerPlayBids.forEach(b => {
+            const g = String(b.number).padStart(2, '0');
+            if (gutiSums[g] !== undefined) {
+              gutiSums[g] += (parseFloat(b.amount) || 0);
+            }
+          });
+          const sorted = Object.entries(gutiSums).sort((a,b) => a[1] - b[1]);
+          chosenFR = sorted[0][0];
+          chosenSR = sorted[1] ? sorted[1][0] : sorted[0][0];
+        }
+      }
+
+      const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      savedResults['Teer Play'] = { fr: chosenFR, sr: chosenSR };
+      localStorage.setItem('teer_market_results', JSON.stringify(savedResults));
+
+      if (fbDatabase) {
+        fbDatabase.ref('results/Teer Play').set({ fr: chosenFR, sr: chosenSR });
+      }
+
+      if (state.user) {
+        const playedThisRound = activeTeerPlayBids.some(b => b.phone === state.user.phone);
+        if (playedThisRound) {
+          state.user.betCount = (state.user.betCount || 0) + 1;
+          localStorage.setItem('teer_current_user', JSON.stringify(state.user));
+        }
+      }
+
+      renderMarkets();
+      checkAndCreditWinnings();
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       loadStorage();
       checkSundayHoliday();
@@ -1001,6 +1141,8 @@
       initUserLiveBalanceListener();
       checkUrlReferral();
       syncAgentEarningsFromFirebase();
+      initFakeBetsTicker();
+      initTeerPlayAutoEngine();
 
       setInterval(() => {
         renderMarkets();
@@ -1180,15 +1322,28 @@
             const houseDigit = announcedTwoDigit.charAt(0);
             const endingDigit = announcedTwoDigit.charAt(1);
 
-            if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
-              isWin = true;
-              winAmount = bid.amount * 90; // 1:90
-            } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
-              isWin = true;
-              winAmount = bid.amount * 9; // 1:9
-            } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
-              isWin = true;
-              winAmount = bid.amount * 9; // 1:9
+            if (bid.market === 'Teer Play') {
+              if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
+                isWin = true;
+                winAmount = (bid.amount / 10) * 19;
+              } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
+                isWin = true;
+                winAmount = (bid.amount / 10) * 90;
+              } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
+                isWin = true;
+                winAmount = (bid.amount / 10) * 90;
+              }
+            } else {
+              if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
+                isWin = true;
+                winAmount = bid.amount * 90; // 1:90
+              } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
+                isWin = true;
+                winAmount = bid.amount * 9; // 1:9
+              } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
+                isWin = true;
+                winAmount = bid.amount * 9; // 1:9
+              }
             }
 
             if (isWin) {
@@ -1273,7 +1428,7 @@
       const pBtn = document.getElementById('profileAuthBtn');
       if (state.user) {
         if (pName) pName.innerText = state.user.name;
-        if (pPhone) pPhone.innerText = '+91 ' + state.user.phone;
+        if (pPhone) pPhone.innerText = '+91 ' + state.user.phone + ' • ' + (state.user.uid || ('UID_' + state.user.phone.slice(-4)));
         if (pAvatar) pAvatar.innerHTML = `<span class="font-bold text-amber-300 text-lg">${state.user.name.charAt(0).toUpperCase()}</span>`;
         if (pBadge) {
           pBadge.innerText = 'Verified Member';
@@ -1340,7 +1495,10 @@
       return Math.floor((drawTime - now) / 60000);
     }
 
-    function isRoundBettingOpen(timeStr) {
+    function isRoundBettingOpen(timeStr, marketName) {
+      if (marketName === 'Teer Play' || timeStr === '1 Min Auto') {
+        return true;
+      }
       if (new Date().getDay() === 0) return false;
       return (getMinutesRemaining(timeStr) > 10);
     }
@@ -1357,8 +1515,8 @@
         const card = document.createElement('div');
         card.className = "bg-white rounded-2xl p-3 border border-slate-200/90 shadow-sm space-y-2";
 
-        const frOpen = isRoundBettingOpen(m.frTime);
-        const srOpen = isRoundBettingOpen(m.srTime);
+        const frOpen = isRoundBettingOpen(m.frTime, m.name);
+        const srOpen = isRoundBettingOpen(m.srTime, m.name);
         const allClosed = (!frOpen && !srOpen);
 
         let bottomBarHtml = '';
@@ -1518,7 +1676,7 @@
     function validateModalRoundStatus() {
       if (!state.currentMarketObj) return;
       const timeStr = (state.currentRound === 'FR') ? state.currentMarketObj.frTime : state.currentMarketObj.srTime;
-      const open = isRoundBettingOpen(timeStr);
+      const open = isRoundBettingOpen(timeStr, state.currentMarketObj ? state.currentMarketObj.name : '');
       const notice = document.getElementById('roundClosedNotice');
       const confirmBtn = document.getElementById('btnConfirmBetModal');
 
@@ -1572,8 +1730,17 @@
       const totalCost = amt * count;
       document.getElementById('totalBetCost').innerText = '₹' + totalCost.toFixed(2);
 
-      let mult = (state.betMode === 'direct') ? 90 : 9;
-      const potential = amt * mult;
+      let potential = 0;
+      if (state.currentMarketObj && state.currentMarketObj.name === 'Teer Play') {
+        if (state.betMode === 'direct') {
+          potential = (amt / 10) * 19; // Guti: 10 pe 19
+        } else {
+          potential = (amt / 10) * 90; // House/Ending: 10 pe 90
+        }
+      } else {
+        let mult = (state.betMode === 'direct') ? 90 : 9;
+        potential = amt * mult;
+      }
       document.getElementById('potentialWin').innerText = count > 0 ? '₹' + potential.toFixed(2) : '₹0.00';
     }
 
@@ -1588,8 +1755,8 @@
       state.currentMarketObj = mObj;
       document.getElementById('playMarketTitle').innerText = mName;
 
-      const frOpen = isRoundBettingOpen(mObj.frTime);
-      const srOpen = isRoundBettingOpen(mObj.srTime);
+      const frOpen = isRoundBettingOpen(mObj.frTime, mObj.name);
+      const srOpen = isRoundBettingOpen(mObj.srTime, mObj.name);
 
       if (frOpen) selectRound('FR');
       else if (srOpen) selectRound('SR');
@@ -1747,7 +1914,7 @@
       if (!state.currentMarketObj) return;
 
       const targetTimeStr = (state.currentRound === 'FR') ? state.currentMarketObj.frTime : state.currentMarketObj.srTime;
-      if (!isRoundBettingOpen(targetTimeStr)) {
+      if (!isRoundBettingOpen(targetTimeStr, state.currentMarketObj ? state.currentMarketObj.name : '')) {
         alert(`Time Over! Result aane se 10 minute pehle ${state.currentRound} betting band ho gayi hai.`);
         validateModalRoundStatus();
         return;
@@ -2059,13 +2226,16 @@
       }
 
       const todayStr = new Date().toLocaleDateString();
+      const userUid = 'UID_' + (phone.slice(-4) + Math.floor(1000 + Math.random() * 9000));
       const newUser = {
+        uid: userUid,
         name,
         phone,
         pass,
         balance: 10.00,
         referredBy: referralCode ? referralCode : null,
-        createdAt: todayStr
+        createdAt: todayStr,
+        betCount: 0
       };
 
       usersDb.push(newUser);
@@ -2101,6 +2271,9 @@
       const found = usersDb.find(u => u.phone === phone && u.pass === pass);
 
       if (found) {
+        if (!found.uid) {
+          found.uid = 'UID_' + (found.phone.slice(-4) + Math.floor(1000 + Math.random() * 9000));
+        }
         state.user = found;
         localStorage.setItem('teer_current_user', JSON.stringify(found));
         // Sync user to Firebase

@@ -109,23 +109,10 @@
         <div>
           <label class="text-xs text-slate-300 font-bold block mb-1">Select Market:</label>
           <select id="mkt" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white font-semibold outline-none focus:border-amber-400">
-            <optgroup label="Morning Draws">
-              <option value="Shilong Morning Teer">Shilong Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
-              <option value="Khanapara Morning Teer">Khanapara Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
-              <option value="Assam morning teer">Assam morning teer (FR 11:30 AM | SR 12:30 PM)</option>
-              <option value="Sikkim">Sikkim (FR 12:15 PM | SR 01:40 PM)</option>
-            </optgroup>
-            <optgroup label="Official Evening Draws">
-              <option value="Juwai Teer (Evening)">Juwai Teer Evening (FR 02:00 PM | SR 02:45 PM)</option>
-              <option value="Shillong Teer (Evening)" selected>Shillong Teer Evening (FR 03:45 PM | SR 04:45 PM)</option>
-              <option value="Khanapara Teer (Evening)">Khanapara Teer Evening (FR 04:00 PM | SR 04:40 PM)</option>
-              <option value="Assam teer">Assam teer Evening (FR 05:10 PM | SR 06:10 PM)</option>
-            </optgroup>
-            <optgroup label="Night Draws">
-              <option value="Sikkim Night Teer">Sikkim Night Teer (FR 06:50 PM | SR 07:50 PM)</option>
-              <option value="Shillong Night Teer">Shillong Night Teer (FR 08:10 PM | SR 09:10 PM)</option>
-              <option value="Assam night teer">Assam night teer (FR 09:40 PM | SR 10:40 PM)</option>
-            </optgroup>
+            <option value="Teer Play">Teer Play (1 Min Auto-Draw)</option>
+            <option value="Shillong Teer (Evening)" selected>Shillong Teer (Evening)</option>
+            <option value="Khanapara Teer (Evening)">Khanapara Teer (Evening)</option>
+            <option value="Juwai Teer (Evening)">Juwai Teer (Evening)</option>
           </select>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -265,14 +252,10 @@
           </div>
           <div class="flex gap-2">
             <select id="analyticsMarketSelect" onchange="calculateLiveRiskAnalytics()" class="bg-black/50 border border-teal-800 text-xs p-2 rounded-xl text-white outline-none">
-              <option value="Shilong Morning Teer">Shilong Morning Teer</option>
-              <option value="Khanapara Morning Teer">Khanapara Morning Teer</option>
-              <option value="Juwai Teer (Evening)">Juwai Teer (Evening)</option>
-              <option value="Shillong Teer (Evening)">Shillong Teer (Evening)</option>
+              <option value="Teer Play">Teer Play (1 Min Auto)</option>
+              <option value="Shillong Teer (Evening)" selected>Shillong Teer (Evening)</option>
               <option value="Khanapara Teer (Evening)">Khanapara Teer (Evening)</option>
-              <option value="Assam teer">Assam teer</option>
-              <option value="Sikkim Night Teer">Sikkim Night Teer</option>
-              <option value="Shillong Night Teer">Shillong Night Teer</option>
+              <option value="Juwai Teer (Evening)">Juwai Teer (Evening)</option>
             </select>
             <select id="analyticsRoundSelect" onchange="calculateLiveRiskAnalytics()" class="bg-black/50 border border-teal-800 text-xs p-2 rounded-xl text-white outline-none">
               <option value="FR">First Round (FR)</option>
@@ -502,7 +485,10 @@
         return `
           <tr class="hover:bg-teal-950/30 transition">
             <td class="p-2.5">
-              <div class="font-bold text-white">${u.name || 'User'}</div>
+              <div class="font-bold text-white flex items-center gap-1.5">
+                ${u.name || 'User'}
+                <span class="bg-amber-400/20 text-amber-300 font-mono text-[9px] px-1.5 py-0.5 rounded border border-amber-400/30">${u.uid || ('UID_' + (u.phone ? u.phone.slice(-4) : '0000'))}</span>
+              </div>
               <div class="text-[10px] text-slate-400">Reg: ${u.createdAt || 'Recent'}</div>
             </td>
             <td class="p-2.5 font-mono text-amber-300 font-semibold">+91 ${u.phone}</td>
@@ -537,7 +523,7 @@
       const u = allUsersCache[phone];
       if (!u) return;
       activeModalUserPhone = phone;
-      document.getElementById('mUserName').innerText = u.name || 'User';
+      document.getElementById('mUserName').innerText = (u.name || 'User') + ' (' + (u.uid || ('UID_' + (u.phone ? u.phone.slice(-4) : '0000'))) + ')';
       document.getElementById('mUserPhone').innerText = '+91 ' + u.phone;
       document.getElementById('mUserBalance').innerText = '₹' + parseFloat(u.balance || 0).toFixed(2);
       document.getElementById('mUserReferredBy').innerText = u.referredBy || 'Direct Registration';
@@ -880,17 +866,10 @@
 
     // --- MARKET SCHEDULE & CUTOFF EDITOR ---
     const defaultMarketList = [
-      { name: 'Shilong Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM' },
-      { name: 'Khanapara Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM' },
-      { name: 'Assam morning teer', frTime: '11:30 AM', srTime: '12:30 PM' },
-      { name: 'Sikkim', frTime: '12:15 PM', srTime: '01:40 PM' },
-      { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM' },
+      { name: 'Teer Play', frTime: '1 Min Auto', srTime: '1 Min Auto' },
       { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM' },
       { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM' },
-      { name: 'Assam teer', frTime: '05:10 PM', srTime: '06:10 PM' },
-      { name: 'Sikkim Night Teer', frTime: '06:50 PM', srTime: '07:50 PM' },
-      { name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM' },
-      { name: 'Assam night teer', frTime: '09:40 PM', srTime: '10:40 PM' }
+      { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM' }
     ];
 
     function renderScheduleCards() {
