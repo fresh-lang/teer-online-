@@ -508,9 +508,15 @@
             <td class="p-2.5 font-mono text-amber-300 font-semibold">+91 ${u.phone}</td>
             <td class="p-2.5 font-black text-emerald-400">₹${bal}</td>
             <td class="p-2.5 text-slate-400">${u.referredBy ? u.referredBy : 'Direct'}</td>
-            <td class="p-2.5 text-right">
+            <td class="p-2.5 text-right flex justify-end gap-1.5 items-center">
+              <button onclick="toggleBlockUser('${u.phone}', ${u.isBlocked || false})" class="px-2 py-1 rounded-lg text-[11px] font-bold ${u.isBlocked ? 'bg-emerald-500 text-black' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'}">
+                ${u.isBlocked ? 'Unblock' : 'Block'}
+              </button>
+              <button onclick="adminResetUserPassword('${u.phone}')" class="px-2 py-1 bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/40 rounded-lg text-[11px]">
+                Reset PIN
+              </button>
               <button onclick="openUserModal('${u.phone}')" class="px-2.5 py-1 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 rounded-lg text-xs font-bold transition">
-                <i class="fa-solid fa-eye mr-1"></i> View / Edit
+                <i class="fa-solid fa-wallet mr-1"></i> Balance
               </button>
             </td>
           </tr>

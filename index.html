@@ -1023,6 +1023,61 @@
       });
       initDynamicSettingsSync();
       checkUserBlockedStatus();
+    }
+
+    // SYNC SETTINGS & DYNAMIC QR FROM FIREBASE
+    function initDynamicSettingsSync() {
+      if (!fbDatabase) return;
+      fbDatabase.ref('settings').on('value', (snap) => {
+        const s = snap.val();
+        if (s) {
+          if (s.depositUpi) {
+            const upiSpan = document.getElementById('depositUpiText');
+            if (upiSpan) upiSpan.innerText = s.depositUpi;
+            const qrImg = document.getElementById('depositQrImg');
+            if (qrImg) {
+              qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=' + encodeURIComponent(s.depositUpi) + '%26pn=TeerOnline';
+            }
+          }
+          if (s.marqueeText) {
+            const marq = document.querySelector('marquee');
+            if (marq) marq.innerText = s.marqueeText;
+          }
+        }
+      });
+
+      // SYNC LIVE MARKET SCHEDULES & CUTOFF TIMINGS
+      fbDatabase.ref('market_schedules').on('value', (snap) => {
+        const sch = snap.val();
+        if (sch) {
+          state.markets.forEach(m => {
+            if (sch[m.name]) {
+              if (sch[m.name].frTime) m.frTime = sch[m.name].frTime;
+              if (sch[m.name].srTime) m.srTime = sch[m.name].srTime;
+            }
+          });
+          renderMarkets();
+        }
+      });
+    }
+
+    // CHECK IF LOGGED-IN USER IS BLOCKED BY ADMIN
+    function checkUserBlockedStatus() {
+      if (!fbDatabase || !state.user || !state.user.phone) return;
+      fbDatabase.ref('users/' + state.user.phone + '/isBlocked').on('value', (snap) => {
+        if (snap.val() === true) {
+          alert('Aapka account admin dwara freeze/block kar diya gaya hai.');
+          document.body.innerHTML = `
+            <div class="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6 text-center">
+              <i class="fa-solid fa-ban text-rose-500 text-6xl mb-4"></i>
+              <h2 class="text-xl font-bold text-rose-400">Account Suspended</h2>
+              <p class="text-xs text-slate-400 mt-2">Aapka account admin dwara suspend kiya gaya hai. Kripya WhatsApp helpline se sampark karein.</p>
+              <a href="https://wa.me/918134834380" class="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2">
+                <i class="fa-brands fa-whatsapp"></i> Contact Admin
+              </a>
+            </div>
+          `;
+        }
       });
     }
 
@@ -1729,18 +1784,6 @@
         });
       });
       localStorage.setItem('teer_bids', JSON.stringify(state.bids));
-      if (fbDatabase && state.user) {
-        state.selectedNumbers.forEach(n => {
-          fbDatabase.ref('bets').push({
-            phone: state.user.phone,
-            market: state.currentMarketObj.name,
-            round: state.currentRound,
-            number: n,
-            amount: amt,
-            timestamp: Date.now()
-          });
-        });
-      }
 
       updateUI();
       closePlayModal();
