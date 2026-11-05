@@ -861,9 +861,21 @@
       currentRound: 'FR',
       currentMarketObj: null,
       markets: [
+        // 1. MORNING DRAWS (Past draw time - Closed for today)
+        { name: 'Shilong Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', defaultFr: '**', defaultSr: '**' },
+        { name: 'Khanapara Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', defaultFr: '**', defaultSr: '**' },
+
+        // 2. EVENING OFFICIAL DRAWS (Currently Active/Open)
+        { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM', defaultFr: '**', defaultSr: '**' },
         { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM', defaultFr: '**', defaultSr: '**' },
         { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM', defaultFr: '**', defaultSr: '**' },
-        { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM', defaultFr: '**', defaultSr: '**' },
+
+        // 3. NIGHT TEER DRAWS (Open until 8:00 PM - 10:40 PM)
+        { name: 'Sikkim Night Teer', frTime: '06:50 PM', srTime: '07:50 PM', defaultFr: '**', defaultSr: '**' },
+        { name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM', defaultFr: '**', defaultSr: '**' },
+        { name: 'Assam night teer', frTime: '09:40 PM', srTime: '10:40 PM', defaultFr: '**', defaultSr: '**' },
+
+        // 4. INSTANT AUTO DRAW (At the end)
         { name: 'Teer Play', frTime: '1 Min Auto', srTime: '1 Min Auto', defaultFr: '**', defaultSr: '**', isFast: true }
       ],
       bids: [],
@@ -1384,7 +1396,28 @@
       localStorage.setItem('teer_registered_users', JSON.stringify(usersDb));
     }
 
+        // Auto clean old cached market results on startup if date doesn't match today
+    function sanitizeCachedResults() {
+      try {
+        const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+        const todayStr = getTodayFormattedDate();
+        let changed = false;
+        Object.keys(savedResults).forEach(key => {
+          if (key !== 'Teer Play') {
+            if (!savedResults[key].date || savedResults[key].date !== todayStr) {
+              delete savedResults[key];
+              changed = true;
+            }
+          }
+        });
+        if (changed) {
+          localStorage.setItem('teer_market_results', JSON.stringify(savedResults));
+        }
+      } catch(e) {}
+    }
+
     function loadStorage() {
+      sanitizeCachedResults();
       const savedUser = localStorage.getItem('teer_current_user');
       if (savedUser) {
         state.user = JSON.parse(savedUser);
@@ -1636,7 +1669,20 @@
       const dynamicDate = getTodayFormattedDate();
 
       state.markets.forEach(m => {
-        const live = savedResults[m.name] || { fr: '**', sr: '**' };
+        const dynamicDate = getTodayFormattedDate();
+        let liveFr = '**';
+        let liveSr = '**';
+        if (savedResults[m.name]) {
+          const res = savedResults[m.name];
+          if (m.name === 'Teer Play') {
+            liveFr = res.fr || '**';
+            liveSr = res.sr || '**';
+          } else if (res.date === dynamicDate) {
+            liveFr = res.fr || '**';
+            liveSr = res.sr || '**';
+          }
+        }
+        const live = { fr: liveFr, sr: liveSr };
         const card = document.createElement('div');
         card.className = "bg-white rounded-2xl p-3 border border-slate-200/90 shadow-sm space-y-2";
 
