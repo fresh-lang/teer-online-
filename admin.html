@@ -242,7 +242,7 @@
                 <th class="p-2.5">Date &amp; Time</th>
                 <th class="p-2.5">User</th>
                 <th class="p-2.5">Amount</th>
-                <th class="p-2.5">User UPI ID</th>
+                <th class="p-2.5">Payout Details (UPI / Bank)</th>
                 <th class="p-2.5">Status</th>
                 <th class="p-2.5 text-right">Action</th>
               </tr>
@@ -722,9 +722,20 @@
               <div class="text-[10px] text-amber-300 font-mono">${w.phone}</div>
             </td>
             <td class="p-2.5 font-black text-rose-400 text-sm">₹${w.amount}</td>
-            <td class="p-2.5 font-mono text-xs font-bold text-amber-300">
-              ${w.upi}
-              <button onclick="navigator.clipboard.writeText('${w.upi}'); alert('UPI ID Copied: ${w.upi}');" class="ml-1 text-[10px] bg-teal-900/40 px-1.5 py-0.5 rounded text-teal-300 hover:text-white">Copy</button>
+            <td class="p-2.5 text-xs font-bold text-amber-300">
+              ${w.payoutType === 'bank' && w.bankDetails ? `
+                <div class="space-y-0.5 font-sans">
+                  <div class="text-white text-[11px] font-bold"><i class="fa-solid fa-building-columns mr-1 text-teal-400"></i>${w.bankDetails.holderName}</div>
+                  <div class="font-mono text-[11px] text-amber-300">A/C: ${w.bankDetails.accountNumber}</div>
+                  <div class="font-mono text-[10px] text-slate-300">IFSC: ${w.bankDetails.ifsc} ${w.bankDetails.bankName ? '(' + w.bankDetails.bankName + ')' : ''}</div>
+                  <button onclick="navigator.clipboard.writeText('${w.bankDetails.accountNumber}'); alert('Account Number Copied: ${w.bankDetails.accountNumber}');" class="mt-0.5 text-[9px] bg-teal-900/60 px-1.5 py-0.5 rounded text-teal-200">Copy A/C</button>
+                </div>
+              ` : `
+                <div class="font-mono">
+                  ${w.upi}
+                  <button onclick="navigator.clipboard.writeText('${w.upi}'); alert('UPI ID Copied: ${w.upi}');" class="ml-1 text-[10px] bg-teal-900/40 px-1.5 py-0.5 rounded text-teal-300 hover:text-white">Copy</button>
+                </div>
+              `}
             </td>
             <td class="p-2.5">
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : (isPending ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-slate-500/20 text-slate-300')}">
