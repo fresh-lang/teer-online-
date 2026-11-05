@@ -102,9 +102,9 @@
         <div class="border-b border-teal-900/40 pb-2 flex justify-between items-center">
           <div>
             <h3 class="font-bold text-sm text-amber-400">Declare Live Market Result</h3>
-            <p class="text-[11px] text-slate-400">Result declare hote hi sabhi users ke wallet me auto winning credit ho jayegi.</p>
+            <p class="text-[11px] text-slate-400">Result declare hote hi sabhi users ke wallet me winning instant credit ho jayegi.</p>
           </div>
-          <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">Auto Winning 1:90</span>
+          <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">Instant Winning 1:90</span>
         </div>
         <div>
           <label class="text-xs text-slate-300 font-bold block mb-1">Select Market:</label>
@@ -121,8 +121,8 @@
             <optgroup label="Night Draws">
               <option value="Shillong Night Teer">Shillong Night Teer (FR 08:10 PM | SR 09:10 PM)</option>
             </optgroup>
-            <optgroup label="Fast Auto">
-              <option value="Teer Play">Teer Play (1 Min Auto-Draw)</option>
+            <optgroup label="Fast Play">
+              <option value="Teer Play">Teer Play (1 Min)</option>
             </optgroup>
           </select>
         </div>
@@ -194,7 +194,7 @@
         <div class="border-b border-teal-900/40 pb-2 flex justify-between items-center">
           <div>
             <h3 class="font-bold text-sm text-amber-400 flex items-center gap-2">
-              <i class="fa-solid fa-receipt"></i> Deposit Requests &amp; UTR Auto-Verification
+              <i class="fa-solid fa-receipt"></i> Deposit Requests &amp; UTR Verification
             </h3>
             <p class="text-[11px] text-slate-400">User dwara bheja gaya 12-digit UTR verify karke 1-click me wallet credit karein.</p>
           </div>
@@ -268,7 +268,7 @@
           </div>
           <div class="flex gap-2">
             <select id="analyticsMarketSelect" onchange="calculateLiveRiskAnalytics()" class="bg-black/50 border border-teal-800 text-xs p-2 rounded-xl text-white outline-none">
-              <option value="Teer Play">Teer Play (1 Min Auto)</option>
+              <option value="Teer Play">Teer Play (1 Min)</option>
               <option value="Shillong Teer (Evening)" selected>Shillong Teer (Evening)</option>
               <option value="Khanapara Teer (Evening)">Khanapara Teer (Evening)</option>
               <option value="Juwai Teer (Evening)">Juwai Teer (Evening)</option>
@@ -351,7 +351,7 @@
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">Live Scrolling Marquee Notice / Headline:</label>
-          <textarea id="cfgMarquee" rows="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">WINNING AUTO-CREDIT WALLET • 6 DAYS OPEN (SUNDAY OFF) • 10 MIN CUTOFF • HELPLINE +918134834380</textarea>
+          <textarea id="cfgMarquee" rows="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">WINNING INSTANT WALLET • 6 DAYS OPEN (SUNDAY OFF) • 10 MIN CUTOFF • HELPLINE +918134834380</textarea>
         </div>
         <button onclick="saveSettings()" class="w-full py-2.5 bg-teal-800 hover:bg-teal-700 text-amber-300 font-bold rounded-xl text-xs transition">Save Settings</button>
       </div>
@@ -495,7 +495,7 @@
         return;
       }
 
-      tbody.innerHTML = phones.map(p => {
+      tbody.innerHTML = phones.map((p, index) => {
         const u = allUsersCache[p];
         const bal = parseFloat(u.balance || 0).toFixed(2);
         return `
@@ -503,7 +503,7 @@
             <td class="p-2.5">
               <div class="font-bold text-white flex items-center gap-1.5">
                 ${u.name || 'User'}
-                <span class="bg-amber-400/20 text-amber-300 font-mono text-[9px] px-1.5 py-0.5 rounded border border-amber-400/30">${u.uid || ('UID_' + (1001 + idx))}</span>
+                <span class="bg-amber-400/20 text-amber-300 font-mono text-[9px] px-1.5 py-0.5 rounded border border-amber-400/30">${u.uid || ('UID_' + (1001 + index))}</span>
               </div>
               <div class="text-[10px] text-slate-400">Reg: ${u.createdAt || 'Recent'}</div>
             </td>
@@ -908,7 +908,7 @@
       { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM' },
       { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM' },
       { name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM' },
-      { name: 'Teer Play', frTime: '1 Min Auto', srTime: '1 Min Auto' }
+      { name: 'Teer Play', frTime: '1 Min', srTime: '1 Min' }
     ];
 
     function renderScheduleCards() {

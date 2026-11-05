@@ -72,7 +72,7 @@
     <div class="bg-[#02181a] border-b border-teal-900/40 py-1.5 px-2 flex items-center gap-2 overflow-hidden text-[11px] text-amber-300 font-semibold shadow-inner">
       <i class="fa-solid fa-bullhorn text-amber-400 animate-pulse text-xs shrink-0"></i>
       <marquee behavior="scroll" direction="left" scrollamount="4">
-        WINNING AUTO-CREDIT WALLET &bull; 6 DAYS OPEN (SUNDAY OFF) &bull; 10 MIN CUTOFF &bull; HELPLINE +918134834380
+        WINNING INSTANT WALLET &bull; 6 DAYS OPEN (SUNDAY OFF) &bull; 10 MIN CUTOFF &bull; HELPLINE +918134834380
       </marquee>
     </div>
 
@@ -174,7 +174,7 @@
                 <span class="bg-amber-400 text-teal-950 text-[9px] font-black px-2 py-0.5 rounded-full">EVERY 1 MINUTE</span>
               </div>
               <h3 class="font-cinzel text-lg font-black text-amber-300 tracking-wide drop-shadow">1 MINUTE ONLINE TEER PLAY</h3>
-              <p class="text-[10px] text-teal-100">Guti (01-20): 10 pe 160 • House/Ending (0-9): 10 pe 80 • 1 Min Auto Result</p>
+              <p class="text-[10px] text-teal-100">Guti (01-20): 10 pe 160 • House/Ending (0-9): 10 pe 80 • 1 Min Live Result</p>
               <div class="pt-1 flex items-center gap-2">
                 <span onclick="openPlayModalByName('Teer Play')" class="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-black text-xs rounded-xl shadow inline-flex items-center gap-1">
                   PLAY TEER PLAY &gt;
@@ -542,12 +542,12 @@
 
         <div class="p-3.5 overflow-y-auto flex-1 space-y-3 text-xs">
           <!-- Recent Teer Play Results Horizontal Strip -->
-          <div id="teerPlayRecentStripContainer" class="bg-black/40 border border-teal-900/60 rounded-xl p-2 space-y-1">
+          <div id="teerPlayRecentStripContainer" class="hidden bg-black/40 border border-teal-900/60 rounded-xl p-2 space-y-1">
             <div class="flex justify-between items-center text-[10px] text-slate-400">
               <span class="font-bold text-amber-400 flex items-center gap-1">
                 <i class="fa-solid fa-clock-rotate-left"></i> Previous Results
               </span>
-              <span class="text-emerald-400 font-mono text-[9px] animate-pulse">● Auto Saved</span>
+              <span class="text-emerald-400 font-mono text-[9px] animate-pulse">● Live Saved</span>
             </div>
             <div id="teerPlayResultsHistoryStrip" class="flex gap-2 overflow-x-auto py-1 scrollbar-none text-[11px] font-mono">
               <span class="text-slate-500 text-[10px] italic">Waiting for draw...</span>
@@ -895,7 +895,7 @@
         { name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM', defaultFr: '**', defaultSr: '**' },
 
         // 4. INSTANT AUTO DRAW (At the end)
-        { name: 'Teer Play', frTime: '1 Min Auto', srTime: '1 Min Auto', defaultFr: '**', defaultSr: '**', isFast: true }
+        { name: 'Teer Play', frTime: '1 Min', srTime: '1 Min', defaultFr: '**', defaultSr: '**', isFast: true }
       ],
       bids: [],
       notifications: []
@@ -1894,7 +1894,7 @@
     }
 
     function isRoundBettingOpen(timeStr, marketName) {
-      if (marketName === 'Teer Play' || timeStr === '1 Min Auto') {
+      if (marketName === 'Teer Play' || (timeStr === '1 Min' || timeStr === '1 Min Auto')) {
         return true;
       }
       if (new Date().getDay() === 0) return false;
@@ -1908,7 +1908,16 @@
       const isSunday = (new Date().getDay() === 0);
       const dynamicDate = getTodayFormattedDate();
 
-      state.markets.forEach(m => {
+      // Open markets stay on top, closed markets move to the bottom
+      const sortedMarkets = [...state.markets].sort((a, b) => {
+        const aOpen = (a.name === 'Teer Play') || isRoundBettingOpen(a.frTime, a.name) || isRoundBettingOpen(a.srTime, a.name);
+        const bOpen = (b.name === 'Teer Play') || isRoundBettingOpen(b.frTime, b.name) || isRoundBettingOpen(b.srTime, b.name);
+        if (aOpen && !bOpen) return -1;
+        if (!aOpen && bOpen) return 1;
+        return 0;
+      });
+
+      sortedMarkets.forEach(m => {
         const dynamicDate = getTodayFormattedDate();
         let liveFr = '**';
         let liveSr = '**';
@@ -2197,15 +2206,21 @@
 
       const noticeEl = document.getElementById('marketCutoffNotice');
       const histBtn = document.getElementById('btnTeerPlayHistory');
+      const stripContainer = document.getElementById('teerPlayRecentStripContainer');
       if (mName === 'Teer Play') {
         const remainingSecs = 60 - new Date().getSeconds();
         noticeEl.className = "text-[11px] text-amber-300 font-mono font-bold flex items-center gap-1.5";
         noticeEl.innerHTML = `⏱️ Draw In: <span id="teerPlayLiveModalTimer" class="bg-amber-400 text-teal-950 px-2 py-0.5 rounded-full font-black animate-pulse">00:${String(remainingSecs).padStart(2, '0')}s</span>`;
         if (histBtn) histBtn.classList.remove('hidden');
+        if (stripContainer) {
+          stripContainer.classList.remove('hidden');
+          renderTeerPlayHistoryStrip();
+        }
       } else {
         noticeEl.className = "text-[10px] text-amber-300 font-semibold";
         noticeEl.innerText = "⚠️ Cutoff: 10 mins before draw time";
         if (histBtn) histBtn.classList.add('hidden');
+        if (stripContainer) stripContainer.classList.add('hidden');
       }
 
       const frOpen = isRoundBettingOpen(mObj.frTime, mObj.name);
@@ -2668,14 +2683,14 @@
         recordTransaction({
           id: wthId,
           type: 'withdraw',
-          title: `Instant Auto Withdrawal (UPI: ${upi})`,
+          title: `Instant Withdrawal (UPI: ${upi})`,
           amount: amt,
           isCredit: false,
           status: 'Approved'
         });
         updateUI();
         closeWithdrawModal();
-        alert(`Withdrawal Success! ₹${amt} transferred instantly to ${upi}. (Auto Approved)`);
+        alert(`Withdrawal Success! ₹${amt} transferred instantly to ${upi}. (Approved)`);
         return;
       }
 
