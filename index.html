@@ -541,6 +541,19 @@
         </div>
 
         <div class="p-3.5 overflow-y-auto flex-1 space-y-3 text-xs">
+          <!-- Recent Teer Play Results Horizontal Strip -->
+          <div id="teerPlayRecentStripContainer" class="bg-black/40 border border-teal-900/60 rounded-xl p-2 space-y-1">
+            <div class="flex justify-between items-center text-[10px] text-slate-400">
+              <span class="font-bold text-amber-400 flex items-center gap-1">
+                <i class="fa-solid fa-clock-rotate-left"></i> Previous Results
+              </span>
+              <span class="text-emerald-400 font-mono text-[9px] animate-pulse">● Auto Saved</span>
+            </div>
+            <div id="teerPlayResultsHistoryStrip" class="flex gap-2 overflow-x-auto py-1 scrollbar-none text-[11px] font-mono">
+              <span class="text-slate-500 text-[10px] italic">Waiting for draw...</span>
+            </div>
+          </div>
+
           <div class="flex gap-2 bg-slate-100 p-1 rounded-xl">
             <button id="btnRoundFR" onclick="selectRound('FR')" class="flex-1 py-1.5 rounded-lg font-bold text-xs bg-[#032427] text-white shadow">First Round (FR)</button>
             <button id="btnRoundSR" onclick="selectRound('SR')" class="flex-1 py-1.5 rounded-lg font-bold text-xs text-slate-600">Second Round (SR)</button>
@@ -1184,6 +1197,8 @@
     }
 
     function executeTeerPlayMinuteDraw() {
+      const now = new Date();
+      const timeLabel = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const activeTeerPlayBids = state.bids.filter(b => b.market === 'Teer Play' && b.status === 'Active');
       let chosenFR = null;
       let chosenSR = null;
@@ -1252,9 +1267,56 @@
         }
       });
 
+      // 1. Save to Previous Results Strip
+      let historyList = JSON.parse(localStorage.getItem('teer_play_recent_results') || '[]');
+      historyList.unshift({ time: timeLabel, fr: chosenFR, sr: chosenSR });
+      if (historyList.length > 15) historyList.pop();
+      localStorage.setItem('teer_play_recent_results', JSON.stringify(historyList));
+      renderTeerPlayHistoryStrip();
+
+      // 2. Save current result
       const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
-      savedResults['Teer Play'] = { fr: chosenFR, sr: chosenSR };
+      savedResults['Teer Play'] = { fr: chosenFR, sr: chosenSR, time: timeLabel };
       localStorage.setItem('teer_market_results', JSON.stringify(savedResults));
+
+      // 3. Evaluate bets ONLY on this draw completion
+      activeTeerPlayBids.forEach(bid => {
+        const targetRes = (bid.round === 'FR') ? chosenFR : chosenSR;
+        const targetTwo = String(targetRes).padStart(2, '0');
+        const hDig = targetTwo.charAt(0);
+        const eDig = targetTwo.charAt(1);
+
+        let isWin = false;
+        let winAmt = 0;
+        if (bid.mode === 'DIRECT' && bid.number === targetTwo) {
+          isWin = true;
+          winAmt = (bid.amount / 10) * 160;
+        } else if (bid.mode === 'HOUSE' && bid.number === hDig) {
+          isWin = true;
+          winAmt = (bid.amount / 10) * 80;
+        } else if (bid.mode === 'ENDING' && bid.number === eDig) {
+          isWin = true;
+          winAmt = (bid.amount / 10) * 80;
+        }
+
+        if (isWin) {
+          bid.status = 'WON';
+          bid.payout = winAmt;
+          state.balance += winAmt;
+        } else {
+          bid.status = 'LOST';
+          bid.payout = 0;
+        }
+      });
+
+      if (activeTeerPlayBids.length > 0) {
+        localStorage.setItem('teer_bids', JSON.stringify(state.bids));
+        localStorage.setItem('teer_balance', state.balance.toFixed(2));
+        if (fbDatabase && state.user && state.user.phone) {
+          fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+        }
+        updateUI();
+      }
 
       if (fbDatabase) {
         fbDatabase.ref('results/Teer Play').set({ fr: chosenFR, sr: chosenSR });
@@ -1349,6 +1411,26 @@
       renderTeerPlayHistoryList();
     }
 
+    
+    // Render Previous Results Strip
+    function renderTeerPlayHistoryStrip() {
+      const strip = document.getElementById('teerPlayResultsHistoryStrip');
+      if (!strip) return;
+      const historyList = JSON.parse(localStorage.getItem('teer_play_recent_results') || '[]');
+
+      if (historyList.length === 0) {
+        strip.innerHTML = '<span class="text-slate-500 text-[10px] italic">Waiting for draw...</span>';
+        return;
+      }
+
+      strip.innerHTML = historyList.map(item => `
+        <div class="bg-teal-950/80 border border-amber-400/40 rounded-lg px-2 py-0.5 text-center flex-shrink-0 shadow">
+          <span class="text-[8px] text-slate-400 block">${item.time}</span>
+          <span class="text-amber-300 font-black">FR ${item.fr}</span> | <span class="text-emerald-400 font-black">SR ${item.sr}</span>
+        </div>
+      `).join('');
+    }
+
     function renderTeerPlayHistoryList() {
       const cont = document.getElementById('teerPlayHistoryList');
       if (!cont) return;
@@ -1397,6 +1479,8 @@
       checkSundayHoliday();
       renderMarkets();
       renderGutiGrid();
+      renderTeerPlayHistoryStrip();
+      renderTeerPlayHistoryStrip();
       startBannerAutoSlider();
       initChartMarketsDropdown();
       updateUI();
@@ -1625,6 +1709,8 @@
       let updated = false;
 
       state.bids.forEach(bid => {
+        // Exclude Teer Play bids: they are only evaluated when timer ends at 00s in executeTeerPlayMinuteDraw!
+        if (bid.market === 'Teer Play') return;
         if (bid.status === 'Active' && savedResults[bid.market]) {
           const resObj = savedResults[bid.market];
           const announcedNum = (bid.round === 'FR') ? resObj.fr : resObj.sr;
