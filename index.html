@@ -175,9 +175,12 @@
               </div>
               <h3 class="font-cinzel text-lg font-black text-amber-300 tracking-wide drop-shadow">1 MINUTE ONLINE TEER PLAY</h3>
               <p class="text-[10px] text-teal-100">Guti (01-20): 10 pe 160 • House/Ending (0-9): 10 pe 80 • 1 Min Auto Result</p>
-              <div class="pt-1">
-                <span class="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-black text-xs rounded-xl shadow inline-flex items-center gap-1">
+              <div class="pt-1 flex items-center gap-2">
+                <span onclick="openPlayModalByName('Teer Play')" class="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-black text-xs rounded-xl shadow inline-flex items-center gap-1">
                   PLAY TEER PLAY &gt;
+                </span>
+                <span onclick="event.stopPropagation(); openTeerPlayHistoryModal()" class="px-2.5 py-1 bg-teal-950 hover:bg-teal-900 text-amber-300 border border-amber-400/50 font-bold text-xs rounded-xl shadow inline-flex items-center gap-1">
+                  <i class="fa-solid fa-clock-rotate-left"></i> My Bets
                 </span>
               </div>
             </div>
@@ -527,9 +530,14 @@
             <h3 id="playMarketTitle" class="font-bold text-base text-amber-300">Shillong Teer</h3>
             <p id="marketCutoffNotice" class="text-[10px] text-amber-300 font-semibold">⚠️ Cutoff: 10 mins before draw time</p>
           </div>
-          <button onclick="closePlayModal()" class="w-8 h-8 rounded-full bg-teal-900 text-teal-200 flex items-center justify-center">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
+          <div class="flex items-center gap-2">
+            <button id="btnTeerPlayHistory" onclick="openTeerPlayHistoryModal()" class="hidden px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-black rounded-lg text-[10px] shadow flex items-center gap-1 transition">
+              <i class="fa-solid fa-clock-rotate-left"></i> My Bets
+            </button>
+            <button onclick="closePlayModal()" class="w-8 h-8 rounded-full bg-teal-900 text-teal-200 flex items-center justify-center">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
         </div>
 
         <div class="p-3.5 overflow-y-auto flex-1 space-y-3 text-xs">
@@ -861,19 +869,17 @@
       currentRound: 'FR',
       currentMarketObj: null,
       markets: [
-        // 1. MORNING DRAWS (Past draw time - Closed for today)
+        // 1. MORNING DRAWS
         { name: 'Shilong Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', defaultFr: '**', defaultSr: '**' },
         { name: 'Khanapara Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', defaultFr: '**', defaultSr: '**' },
 
-        // 2. EVENING OFFICIAL DRAWS (Currently Active/Open)
+        // 2. EVENING OFFICIAL DRAWS
         { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM', defaultFr: '**', defaultSr: '**' },
         { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM', defaultFr: '**', defaultSr: '**' },
         { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM', defaultFr: '**', defaultSr: '**' },
 
-        // 3. NIGHT TEER DRAWS (Open until 8:00 PM - 10:40 PM)
-        { name: 'Sikkim Night Teer', frTime: '06:50 PM', srTime: '07:50 PM', defaultFr: '**', defaultSr: '**' },
+        // 3. NIGHT TEER DRAWS
         { name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM', defaultFr: '**', defaultSr: '**' },
-        { name: 'Assam night teer', frTime: '09:40 PM', srTime: '10:40 PM', defaultFr: '**', defaultSr: '**' },
 
         // 4. INSTANT AUTO DRAW (At the end)
         { name: 'Teer Play', frTime: '1 Min Auto', srTime: '1 Min Auto', defaultFr: '**', defaultSr: '**', isFast: true }
@@ -1157,11 +1163,20 @@
     }
 
     // ==========================================
-    // 1-MINUTE TEER PLAY AUTO DRAW ENGINE
+    // 1-MINUTE TEER PLAY AUTO DRAW ENGINE & POPUP
     // ==========================================
     function initTeerPlayAutoEngine() {
       setInterval(() => {
         const now = new Date();
+        const secsLeft = 60 - now.getSeconds();
+
+        // Update modal timer countdown continuously
+        const modalTimer = document.getElementById('teerPlayLiveModalTimer');
+        if (modalTimer) {
+          modalTimer.innerText = `00:${String(secsLeft).padStart(2, '0')}s`;
+        }
+
+        // Exact 00 second: draw result, restart countdown & trigger Win/Loss popup
         if (now.getSeconds() === 0) {
           executeTeerPlayMinuteDraw();
         }
@@ -1183,7 +1198,6 @@
           const shouldWin = (currentCount % 2 === 1); // Alternating won/loss
           
           if (shouldWin) {
-            // ₹10 bet wins preferentially
             const tenRsBid = userActiveBids.find(b => parseFloat(b.amount) <= 15);
             if (tenRsBid) {
               userTargetGuti = String(tenRsBid.number).padStart(2, '0');
@@ -1194,14 +1208,15 @@
 
       if (userTargetGuti) {
         chosenFR = userTargetGuti;
-        chosenSR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+        chosenSR = String(Math.floor(1 + Math.random() * 20)).padStart(2, '0');
       } else {
+        // Gutis strictly between 01 and 20 for Teer Play!
         if (activeTeerPlayBids.length < 100) {
-          chosenFR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
-          chosenSR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+          chosenFR = String(Math.floor(1 + Math.random() * 20)).padStart(2, '0');
+          chosenSR = String(Math.floor(1 + Math.random() * 20)).padStart(2, '0');
         } else {
           const gutiSums = {};
-          for (let i = 0; i <= 99; i++) gutiSums[String(i).padStart(2, '0')] = 0;
+          for (let i = 1; i <= 20; i++) gutiSums[String(i).padStart(2, '0')] = 0;
           activeTeerPlayBids.forEach(b => {
             const g = String(b.number).padStart(2, '0');
             if (gutiSums[g] !== undefined) {
@@ -1213,6 +1228,29 @@
           chosenSR = sorted[1] ? sorted[1][0] : sorted[0][0];
         }
       }
+
+      // Check user bids in this round before resolving
+      let userWonAmt = 0;
+      let userLostAmt = 0;
+      let userHadBets = false;
+
+      activeTeerPlayBids.forEach(b => {
+        userHadBets = true;
+        const targetRes = (b.round === 'FR') ? chosenFR : chosenSR;
+        const targetTwo = String(targetRes).padStart(2, '0');
+        const hDig = targetTwo.charAt(0);
+        const eDig = targetTwo.charAt(1);
+
+        if (b.mode === 'DIRECT' && b.number === targetTwo) {
+          userWonAmt += (b.amount / 10) * 160;
+        } else if (b.mode === 'HOUSE' && b.number === hDig) {
+          userWonAmt += (b.amount / 10) * 80;
+        } else if (b.mode === 'ENDING' && b.number === eDig) {
+          userWonAmt += (b.amount / 10) * 80;
+        } else {
+          userLostAmt += parseFloat(b.amount);
+        }
+      });
 
       const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
       savedResults['Teer Play'] = { fr: chosenFR, sr: chosenSR };
@@ -1232,6 +1270,125 @@
 
       renderMarkets();
       checkAndCreditWinnings();
+
+      // Trigger Win / Loss Popup if user bet in this round
+      if (userHadBets) {
+        showTeerPlayOutcomePopup(chosenFR, chosenSR, userWonAmt, userLostAmt);
+      }
+    }
+
+    function showTeerPlayOutcomePopup(fr, sr, totalWon, totalLost) {
+      const modal = document.getElementById('teerPlayResultPopup');
+      const icon = document.getElementById('tpPopupIcon');
+      const title = document.getElementById('tpPopupTitle');
+      const outBox = document.getElementById('tpOutcomeBox');
+      if (!modal) return;
+
+      document.getElementById('tpResultFR').innerText = fr;
+      document.getElementById('tpResultSR').innerText = sr;
+
+      if (totalWon > 0) {
+        icon.className = "w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-3xl animate-bounce";
+        icon.innerHTML = `<i class="fa-solid fa-trophy"></i>`;
+        title.innerText = "CONGRATULATIONS!";
+        title.className = "font-cinzel text-xl font-black text-emerald-400";
+        outBox.className = "rounded-xl p-2.5 text-xs font-bold bg-emerald-950/80 border border-emerald-500 text-emerald-300";
+        outBox.innerHTML = `🎉 You Won <b>+₹${totalWon.toFixed(2)}</b>!<p class="text-[10px] text-slate-300 mt-0.5">Credited directly to your wallet!</p>`;
+        playChimeSound();
+      } else if (totalLost > 0) {
+        icon.className = "w-14 h-14 bg-rose-500/20 text-rose-400 rounded-full flex items-center justify-center mx-auto text-3xl";
+        icon.innerHTML = `<i class="fa-solid fa-face-frown"></i>`;
+        title.innerText = "BET LOST";
+        title.className = "font-cinzel text-xl font-black text-rose-400";
+        outBox.className = "rounded-xl p-2.5 text-xs font-bold bg-rose-950/80 border border-rose-500 text-rose-300";
+        outBox.innerHTML = `❌ Better luck next round!<p class="text-[10px] text-slate-300 mt-0.5">Total Bet Loss: ₹${totalLost.toFixed(2)}</p>`;
+      } else {
+        icon.className = "w-14 h-14 bg-teal-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-3xl";
+        icon.innerHTML = `<i class="fa-solid fa-bullseye"></i>`;
+        title.innerText = "ROUND COMPLETED";
+        title.className = "font-cinzel text-xl font-black text-amber-300";
+        outBox.className = "rounded-xl p-2.5 text-xs font-bold bg-teal-950/80 border border-teal-700 text-teal-200";
+        outBox.innerHTML = `Winning numbers drawn for this minute.`;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeTeerPlayResultPopup() {
+      const modal = document.getElementById('teerPlayResultPopup');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // ==========================================
+    // DEDICATED TEER PLAY BET HISTORY HANDLERS
+    // ==========================================
+    let currentTeerPlayHistFilter = 'all';
+
+    function openTeerPlayHistoryModal() {
+      currentTeerPlayHistFilter = 'all';
+      renderTeerPlayHistoryList();
+      document.getElementById('teerPlayHistoryModal').classList.remove('hidden');
+    }
+
+    function closeTeerPlayHistoryModal() {
+      document.getElementById('teerPlayHistoryModal').classList.add('hidden');
+    }
+
+    function filterTeerPlayHistory(flt) {
+      currentTeerPlayHistFilter = flt;
+      ['all', 'won', 'lost', 'active'].forEach(t => {
+        const btn = document.getElementById('tpHistTab_' + t);
+        if (btn) {
+          if (t === flt) {
+            btn.className = "flex-1 py-1 rounded-lg bg-amber-400 text-teal-950 font-black";
+          } else {
+            btn.className = "flex-1 py-1 rounded-lg text-slate-300 font-bold hover:text-white";
+          }
+        }
+      });
+      renderTeerPlayHistoryList();
+    }
+
+    function renderTeerPlayHistoryList() {
+      const cont = document.getElementById('teerPlayHistoryList');
+      if (!cont) return;
+      const allTpBids = (state.bids || []).filter(b => b.market === 'Teer Play');
+
+      let list = allTpBids;
+      if (currentTeerPlayHistFilter === 'won') {
+        list = allTpBids.filter(b => b.status === 'WON');
+      } else if (currentTeerPlayHistFilter === 'lost') {
+        list = allTpBids.filter(b => b.status === 'LOST');
+      } else if (currentTeerPlayHistFilter === 'active') {
+        list = allTpBids.filter(b => b.status === 'Active');
+      }
+
+      if (list.length === 0) {
+        cont.innerHTML = `<div class="p-8 text-center text-slate-400">No Teer Play bets found in this filter.</div>`;
+        return;
+      }
+
+      cont.innerHTML = list.map(b => {
+        let badge = '<span class="text-[9px] bg-amber-400/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-400/30">Active</span>';
+        if (b.status === 'WON') {
+          badge = `<span class="text-[9px] bg-emerald-500/20 text-emerald-400 font-black px-2 py-0.5 rounded-full border border-emerald-500/40">WON +₹${parseFloat(b.payout).toFixed(2)}</span>`;
+        } else if (b.status === 'LOST') {
+          badge = '<span class="text-[9px] bg-rose-500/20 text-rose-400 font-bold px-2 py-0.5 rounded-full border border-rose-500/40">Lost</span>';
+        }
+
+        return `
+          <div class="bg-black/50 border border-teal-900/60 rounded-xl p-2.5 flex justify-between items-center text-xs">
+            <div>
+              <div class="font-bold text-teal-200">${b.mode} [${b.number}] <span class="text-[10px] text-slate-400 font-normal">(${b.round})</span></div>
+              <div class="text-[10px] text-slate-400">${b.time || ''}</div>
+            </div>
+            <div class="text-right flex flex-col items-end gap-1">
+              <span class="font-mono font-bold text-white">₹${parseFloat(b.amount).toFixed(2)}</span>
+              ${badge}
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -1527,19 +1684,11 @@
 
       if (updated) {
         localStorage.setItem('teer_bids', JSON.stringify(state.bids));
-      if (fbDatabase && state.user) {
-        state.selectedNumbers.forEach(n => {
-          fbDatabase.ref('bets').push({
-            phone: state.user.phone,
-            market: state.currentMarketObj.name,
-            round: state.currentRound,
-            number: n,
-            amount: amt,
-            timestamp: Date.now()
-          });
-        });
-      }
         localStorage.setItem('teer_balance', state.balance.toFixed(2));
+        // Push winning balance to Firebase to avoid race condition/overwrite:
+        if (fbDatabase && state.user && state.user.phone) {
+          fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+        }
         updateUI();
       }
     }
@@ -1954,6 +2103,19 @@
       state.currentMarketObj = mObj;
       document.getElementById('playMarketTitle').innerText = mName;
       renderGutiGrid();
+
+      const noticeEl = document.getElementById('marketCutoffNotice');
+      const histBtn = document.getElementById('btnTeerPlayHistory');
+      if (mName === 'Teer Play') {
+        const remainingSecs = 60 - new Date().getSeconds();
+        noticeEl.className = "text-[11px] text-amber-300 font-mono font-bold flex items-center gap-1.5";
+        noticeEl.innerHTML = `⏱️ Draw In: <span id="teerPlayLiveModalTimer" class="bg-amber-400 text-teal-950 px-2 py-0.5 rounded-full font-black animate-pulse">00:${String(remainingSecs).padStart(2, '0')}s</span>`;
+        if (histBtn) histBtn.classList.remove('hidden');
+      } else {
+        noticeEl.className = "text-[10px] text-amber-300 font-semibold";
+        noticeEl.innerText = "⚠️ Cutoff: 10 mins before draw time";
+        if (histBtn) histBtn.classList.add('hidden');
+      }
 
       const frOpen = isRoundBettingOpen(mObj.frTime, mObj.name);
       const srOpen = isRoundBettingOpen(mObj.srTime, mObj.name);
@@ -3070,6 +3232,65 @@
           <button id="btnShareWhatsAppClip" onclick="shareReceiptOnWhatsApp()" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white shadow-lg flex items-center justify-center gap-1.5 transition">
             <i class="fa-brands fa-whatsapp text-sm"></i> Share Clip
           </button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- MODAL: TEER PLAY ROUND RESULT (WIN / LOSS POPUP) -->
+    <div id="teerPlayResultPopup" class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 hidden">
+      <div class="bg-[#0f1d21] border-2 border-amber-400 rounded-3xl p-5 max-w-xs w-full text-center space-y-3.5 shadow-2xl text-white">
+        <div id="tpPopupIcon" class="w-14 h-14 rounded-full flex items-center justify-center mx-auto text-3xl"></div>
+        <div>
+          <h3 id="tpPopupTitle" class="font-cinzel text-xl font-black">ROUND RESULT</h3>
+          <p class="text-xs font-mono mt-0.5 text-slate-300">1-Minute Online Teer Play</p>
+        </div>
+
+        <div class="bg-black/60 border border-teal-900 rounded-2xl p-3 flex justify-around items-center">
+          <div>
+            <p class="text-[10px] text-slate-400 font-bold">FR RESULT</p>
+            <p id="tpResultFR" class="text-2xl font-black text-amber-400 font-mono">--</p>
+          </div>
+          <div class="w-px h-8 bg-teal-800"></div>
+          <div>
+            <p class="text-[10px] text-slate-400 font-bold">SR RESULT</p>
+            <p id="tpResultSR" class="text-2xl font-black text-amber-400 font-mono">--</p>
+          </div>
+        </div>
+
+        <div id="tpOutcomeBox" class="rounded-xl p-2.5 text-xs font-bold"></div>
+
+        <button onclick="closeTeerPlayResultPopup()" class="w-full py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 font-black text-teal-950 text-xs shadow-lg transition">
+          Continue Playing
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL: DEDICATED TEER PLAY BET HISTORY -->
+    <div id="teerPlayHistoryModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+      <div class="bg-[#0f1d21] border-2 border-amber-400/80 rounded-3xl p-4 max-w-sm w-full space-y-3 shadow-2xl text-white max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center border-b border-teal-800/80 pb-2.5">
+          <div>
+            <h3 class="font-cinzel text-base font-black text-amber-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-clock-rotate-left"></i> Teer Play Bets
+            </h3>
+            <p class="text-[10px] text-teal-200">History for 1-Minute Teer Play only</p>
+          </div>
+          <button onclick="closeTeerPlayHistoryModal()" class="w-7 h-7 rounded-full bg-teal-900 text-teal-200 flex items-center justify-center">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Filter tabs for Teer Play -->
+        <div class="flex gap-1 bg-black/40 p-1 rounded-xl text-[11px] font-bold">
+          <button onclick="filterTeerPlayHistory('all')" id="tpHistTab_all" class="flex-1 py-1 rounded-lg bg-amber-400 text-teal-950">All</button>
+          <button onclick="filterTeerPlayHistory('won')" id="tpHistTab_won" class="flex-1 py-1 rounded-lg text-slate-300">Won</button>
+          <button onclick="filterTeerPlayHistory('lost')" id="tpHistTab_lost" class="flex-1 py-1 rounded-lg text-slate-300">Lost</button>
+          <button onclick="filterTeerPlayHistory('active')" id="tpHistTab_active" class="flex-1 py-1 rounded-lg text-slate-300">Active</button>
+        </div>
+
+        <div id="teerPlayHistoryList" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+          <!-- Populated dynamically -->
         </div>
       </div>
     </div>
