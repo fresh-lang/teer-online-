@@ -1190,10 +1190,12 @@
     function handleAdminSecretLogoTap() {
       adminLogoTapCount++;
       clearTimeout(adminLogoTapTimer);
-      adminLogoTapTimer = setTimeout(() => { adminLogoTapCount = 0; }, 3000);
+      // 2.5 seconds window after each tap so 10 taps are comfortable to execute
+      adminLogoTapTimer = setTimeout(() => { adminLogoTapCount = 0; }, 2500);
 
       if (adminLogoTapCount >= 10) {
         adminLogoTapCount = 0;
+        if (navigator.vibrate) navigator.vibrate(100);
         window.location.href = 'admin.html';
       }
     }
@@ -3195,15 +3197,19 @@
 
         if (refCode) {
           localStorage.setItem('teer_captured_ref', refCode);
-          // Referral link click par session reset karein taaki naya user register modal hamesha popup ho
-          state.user = null;
-          localStorage.removeItem('teer_current_user');
         } else {
           refCode = localStorage.getItem('teer_captured_ref');
         }
 
+        // AGAR USER PEHLE SE LOGIN HAI: Toh direct dashboard chalega, register open nahi hoga
+        if (state.user) {
+          return;
+        }
+
+        // SIRF TABHI REGISTER OPEN HOGA JAB ID LOGIN NAHI HAI
         if (refCode || isRegisterPath) {
           const forceOpenRegister = () => {
+            if (state.user) return;
             const authM = document.getElementById('authModal');
             if (authM) authM.classList.remove('hidden');
             switchAuthTab('register');
@@ -3215,8 +3221,7 @@
             }
           };
           forceOpenRegister();
-          setTimeout(forceOpenRegister, 200);
-          setTimeout(forceOpenRegister, 600);
+          setTimeout(forceOpenRegister, 250);
         }
       } catch(e) {
         console.log("Referral param error:", e);
