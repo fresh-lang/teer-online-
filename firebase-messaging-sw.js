@@ -19,3 +19,6 @@ messaging.onBackgroundMessage(payload => {
     data: payload.data || {}
   });
 });
+
+// PWA requirement
+self.addEventListener('fetch', (event) => {});

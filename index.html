@@ -4,30 +4,48 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>TEER ONLINE</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="shortcut icon" type="image/png" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#032f33">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel:wght@700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.tailwindcss.com">
     // ==========================================
-    // PWA & APP INSTALL ENGINE
+    // PWA & APP INSTALL ENGINE (RELIABLE AUTO POPUP & APK)
     // ==========================================
     let deferredInstallPrompt = null;
 
+    // Capture Chrome PWA Install Event
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredInstallPrompt = e;
+      console.log('PWA beforeinstallprompt captured!');
       const banner = document.getElementById('pwaBanner');
       if (banner) banner.classList.remove('hidden');
+      openAppInstallModal();
     });
 
     function openAppInstallModal() {
       const modal = document.getElementById('appInstallModal');
-      if (modal) modal.classList.remove('hidden');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+      }
     }
 
     function closeAppInstallModal() {
-      document.getElementById('appInstallModal').classList.add('hidden');
+      const modal = document.getElementById('appInstallModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
     }
 
     function triggerInstallAction() {
@@ -41,10 +59,41 @@
           closeAppInstallModal();
         });
       } else {
-        // Fallback for browsers that require Chrome menu click
-        alert('App Installation Started! Agar prompt nahi dikha, toh browser ke top 3 dots menu par tap karke "Install App" ya "Add to Home screen" par click karein.');
-        closeAppInstallModal();
+        // Direct APK Download Trigger
+        downloadApkFile();
       }
+    }
+
+    function downloadApkFile() {
+      try {
+        const link = document.createElement('a');
+        link.href = 'TeerOnline.apk';
+        link.download = 'TeerOnline.apk';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        alert('✅ Teer Online APK download shuru ho gaya hai! Download complete hone par file ko open karke Install karein.');
+        closeAppInstallModal();
+      } catch(err) {
+        alert('📱 App Install Guide:\n\nChrome browser ke upar 3 dots (⋮) menu par tap karein aur "Install app" ya "Add to Home screen" select karein.');
+      }
+    }
+
+    // Unconditional Auto-Popup on site visit after 1.5 seconds
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        openAppInstallModal();
+      }, 1500);
+    });
+
+
+    // Register Service Worker for PWA installation
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./firebase-messaging-sw.js').catch(err => {
+          console.log('SW register failed:', err);
+        });
+      });
     }
 
 </script>
@@ -75,14 +124,13 @@
         <button onclick="toggleDrawer()" class="p-1 text-teal-100 hover:text-white">
           <i class="fa-solid fa-bars text-xl"></i>
         </button>
-        <div class="flex items-center gap-1.5 cursor-pointer" onclick="handleAdminSecretLogoTap()">
-          <div class="w-7 h-7 rounded-full border border-amber-400/40 bg-teal-950 flex items-center justify-center p-0.5">
-            <svg viewBox="0 0 100 100" class="w-full h-full fill-current text-amber-400">
-              <circle cx="50" cy="50" r="44" stroke="currentColor" stroke-width="3" fill="none" />
-              <path d="M 30,50 L 70,50 M 50,30 L 70,50 L 50,70" stroke="currentColor" stroke-width="4" fill="none"/>
-            </svg>
-          </div>
+        <div class="flex items-center gap-2 cursor-pointer select-none" onclick="handleAdminSecretLogoTap()" title="Teer Online">
+          <img src="logo.png" alt="Teer Online Logo" class="w-8 h-8 rounded-full border border-amber-400 shadow-md object-cover">
           <div class="flex flex-col leading-none">
+            <span class="font-cinzel font-black tracking-wider text-xs gold-gradient-text">TEER</span>
+            <span class="text-[8px] font-bold tracking-widest text-teal-200">ONLINE</span>
+          </div>
+        </div>   <div class="flex flex-col leading-none">
             <span class="font-cinzel font-black tracking-wider text-xs gold-gradient-text">TEER</span>
             <span class="text-[8px] font-bold tracking-widest text-teal-200">ONLINE</span>
           </div>
@@ -3674,23 +3722,35 @@
     </div>
 
 
-    <!-- MODAL: AUTO APP INSTALL POPUP (ON LOGIN / REGISTER) -->
+    <!-- MODAL: AUTO APP INSTALL POPUP (RELIABLE POPUP) -->
     <div id="appInstallModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[9999] hidden flex items-center justify-center p-4">
-      <div class="bg-gradient-to-b from-[#063338] to-[#02181b] border-2 border-amber-400/80 w-full max-w-sm rounded-3xl p-5 text-center text-white shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
-        <div class="w-20 h-20 mx-auto rounded-3xl bg-amber-400 text-teal-950 flex items-center justify-center text-4xl shadow-lg border-2 border-white/20">
-          <i class="fa-solid fa-bullseye animate-spin-slow"></i>
+      <div class="bg-gradient-to-b from-[#063338] to-[#02181b] border-2 border-amber-400/90 w-full max-w-sm rounded-3xl p-5 text-center text-white shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200 relative">
+        <!-- Close 'X' button at top right -->
+        <button onclick="closeAppInstallModal()" class="absolute top-3 right-3 text-slate-400 hover:text-white w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+
+        <div class="w-20 h-20 mx-auto rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-400/80 bg-teal-950 p-1">
+          <img src="logo.png" alt="App Logo" class="w-full h-full object-cover rounded-2xl">
         </div>
         <div>
           <span class="bg-amber-400/20 text-amber-300 font-mono text-[10px] px-2.5 py-0.5 rounded-full border border-amber-400/40 font-bold uppercase tracking-wider">Official Android App</span>
           <h3 class="text-xl font-black text-amber-400 mt-1">Install Teer Online App</h3>
-          <p class="text-xs text-slate-300 mt-1 leading-relaxed">Faster experience, instant result alerts, and seamless gameplay directly from your home screen!</p>
+          <p class="text-xs text-slate-300 mt-1 leading-relaxed">Apne phone ke home screen par app install karein aur payein fast results & notifications!</p>
         </div>
 
-        <div class="space-y-2 pt-2">
+        <div class="space-y-2.5 pt-2">
+          <!-- Primary Install Button -->
           <button onclick="triggerInstallAction()" class="w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-teal-950 font-black rounded-2xl shadow-xl flex items-center justify-center gap-2 text-sm tracking-wide">
-            <i class="fa-solid fa-download text-base"></i> INSTALL APP NOW
+            <i class="fa-solid fa-cloud-arrow-down text-base"></i> INSTALL / ADD TO HOME SCREEN
           </button>
-          <button onclick="closeAppInstallModal()" class="w-full py-2 text-xs text-slate-400 hover:text-white font-bold">
+          
+          <!-- Direct APK Download Button -->
+          <button onclick="downloadApkFile()" class="w-full py-3 bg-teal-900/80 hover:bg-teal-800 border border-teal-500/50 text-amber-300 font-bold rounded-2xl flex items-center justify-center gap-2 text-xs">
+            <i class="fa-brands fa-android text-base text-emerald-400"></i> Download TeerOnline.apk (Direct)
+          </button>
+
+          <button onclick="closeAppInstallModal()" class="w-full py-1 text-xs text-slate-400 hover:text-white font-medium">
             Continue on Web &gt;
           </button>
         </div>
