@@ -766,8 +766,8 @@
 
     function saveResultAndBroadcast() {
       const market = document.getElementById('mkt').value;
-      const fr = document.getElementById('fr').value.trim() || '**';
-      const sr = document.getElementById('sr').value.trim() || '**';
+      const fr = document.getElementById('fr').value.trim();
+      const sr = document.getElementById('sr').value.trim();
 
       let results = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
       results[market] = { fr, sr };
