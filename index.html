@@ -8,7 +8,47 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel:wght@700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com">
+    // ==========================================
+    // PWA & APP INSTALL ENGINE
+    // ==========================================
+    let deferredInstallPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      const banner = document.getElementById('pwaBanner');
+      if (banner) banner.classList.remove('hidden');
+    });
+
+    function openAppInstallModal() {
+      // Show install modal if not already installed
+      if (window.matchMedia('(display-mode: standalone)').matches) return;
+      document.getElementById('appInstallModal').classList.remove('hidden');
+    }
+
+    function closeAppInstallModal() {
+      document.getElementById('appInstallModal').classList.add('hidden');
+    }
+
+    function triggerInstallAction() {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        deferredInstallPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('User installed Teer Online');
+          }
+          deferredInstallPrompt = null;
+          closeAppInstallModal();
+        });
+      } else {
+        // Fallback for browsers that require Chrome menu click
+        alert('App Installation Started! Agar prompt nahi dikha, toh browser ke top 3 dots menu par tap karke "Install App" ya "Add to Home screen" par click karein.');
+        closeAppInstallModal();
+      }
+    }
+
+</script>
 
   <!-- FIREBASE REALTIME DATABASE SDK (FREE) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -82,7 +122,7 @@
         <i class="fa-solid fa-cloud-arrow-down text-sm"></i>
         <span>Install Teer Online APK / Web App</span>
       </div>
-      <button onclick="alert('Click the 3 dots menu in your browser and select Install App.')" class="bg-teal-950 text-amber-300 px-2.5 py-0.5 rounded-full text-[11px]">Install</button>
+      <button onclick="triggerInstallAction()" class="bg-teal-950 text-amber-300 px-2.5 py-0.5 rounded-full text-[11px]">Install</button>
     </div>
 
     <!-- MAIN SCREENS CONTAINER -->
@@ -2975,6 +3015,24 @@
       // Push to Firebase so Admin Panel sees user live immediately
       if (fbDatabase) {
         fbDatabase.ref('users/' + phone).set(newUser);
+
+        // Track referral in Firebase if user registered with a referral code
+        if (referralCode) {
+          const refRecord = {
+            name: name,
+            phone: phone,
+            maskedPhone: phone.slice(0, 3) + '****' + phone.slice(-3),
+            uid: userUid,
+            date: todayStr,
+            timestamp: Date.now()
+          };
+          // Save under referrer's referrals list
+          fbDatabase.ref('referrals/' + referralCode).push(refRecord);
+
+          // Give referrer ₹10 reward
+          fbDatabase.ref('users/' + referralCode + '/balance').transaction(cur => (cur || 0) + 10);
+          fbDatabase.ref('agent_earnings/' + referralCode).transaction(cur => (cur || 0) + 10);
+        }
       }
       initUserLiveBalanceListener();
 
@@ -2987,6 +3045,7 @@
       updateUI();
       closeAuthModal();
       alert(`Welcome ${name}! Aapka account register ho gaya hai aur ₹10 Login Bonus wallet me add ho gaya hai.`);
+      setTimeout(openAppInstallModal, 500);
     }
 
     function handleLoginSubmit(e) {
@@ -3029,6 +3088,7 @@
         updateUI();
         closeAuthModal();
         alert(`Welcome back, ${found.name}!`);
+        setTimeout(openAppInstallModal, 500);
       } else {
         alert('Incorrect mobile number or password! Please verify or click Forgot Password.');
       }
@@ -3075,27 +3135,29 @@
     }
 
     function getBaseShareUrl() {
-      // Agar APK me chal raha hai ya localhost hai, toh official web link share hoga
-      if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '') {
-        return 'https://fresh-lang.github.io/teer-online/';
+      // Jab domain active ho toh direct app.teeronline.fun, nahi toh current GitHub Pages URL
+      if (window.location.hostname.includes('teeronline.fun')) {
+        return `${window.location.origin}/register`;
+      } else if (window.location.hostname.includes('github.io')) {
+        return `${window.location.origin}${window.location.pathname}`;
       }
-      return window.location.origin + window.location.pathname;
+      return 'https://app.teeronline.fun/register';
     }
 
     function shareReferralWhatsApp() {
-      const myRefCode = state.user ? state.user.phone : 'TEER786';
+      const myRefCode = state.user ? (state.user.phone || state.user.uid || '8134678') : '8134678';
       const baseUrl = getBaseShareUrl();
       const shareUrl = `${baseUrl}?ref=${myRefCode}`;
-      const text = encodeURIComponent(`🏹 TEER ONLINE Official App!\n🎁 Mere link se register karein aur paayein ₹10 Welcome Bonus bilkul free!\n\n👉 Referral Code: ${myRefCode}\n👉 Link par click karein: ${shareUrl}`);
+      const text = encodeURIComponent(`🎯 TEER ONLINE Official Registration!\n🎁 Mere link se register karein aur ₹10 Free Login Bonus paayein!\n\n👉 Referral Code: ${myRefCode}\n👉 Direct Register Link: ${shareUrl}`);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     }
 
     function copyReferralLink() {
-      const myRefCode = state.user ? state.user.phone : 'TEER786';
+      const myRefCode = state.user ? (state.user.phone || state.user.uid || '8134678') : '8134678';
       const baseUrl = getBaseShareUrl();
       const shareUrl = `${baseUrl}?ref=${myRefCode}`;
       navigator.clipboard.writeText(shareUrl);
-      alert(`✅ Referral Link Copied!\n${shareUrl}\n\nShare this with friends; your referral code will be auto-filled upon clicking!`);
+      alert(`✅ Referral Link Copied!\n${shareUrl}\n\nLink par click karte hi direct registration page khulega aur referral code auto-fill ho jayega!`);
     }
 
     function logoutUser() {
@@ -3119,32 +3181,30 @@
       try {
         const urlParams = new URLSearchParams(window.location.search);
         let refCode = urlParams.get('ref') || urlParams.get('referral');
+        const isRegisterPath = window.location.pathname.toLowerCase().includes('register');
+
         if (refCode) {
           localStorage.setItem('teer_captured_ref', refCode);
-          if (state.user && state.user.phone === '0000000000') {
-            state.user = null;
-            state.balance = 0.00;
-            localStorage.removeItem('teer_current_user');
-            localStorage.setItem('teer_balance', '0.00');
-            updateUI();
-          }
         } else {
           refCode = localStorage.getItem('teer_captured_ref');
         }
-        if (refCode) {
-          const regInput = document.getElementById('regReferral');
-          if (regInput) {
-            regInput.value = refCode;
-            regInput.classList.add('border-emerald-500', 'bg-emerald-50');
-          }
-          setTimeout(() => {
+
+        // Agar URL me ?ref=... hai ya /register hai:
+        if (refCode || isRegisterPath) {
+          const applyRef = () => {
             if (!state.user) {
               openAuthModal();
               switchAuthTab('register');
-              const input = document.getElementById('regReferral');
-              if (input) input.value = refCode;
+              const regInput = document.getElementById('regReferral');
+              if (regInput && refCode) {
+                regInput.value = refCode;
+                regInput.readOnly = true;
+                regInput.classList.add('border-emerald-500', 'bg-emerald-50', 'font-bold');
+              }
             }
-          }, 600);
+          };
+          applyRef();
+          setTimeout(applyRef, 300);
         }
       } catch(e) {
         console.log("Referral param error:", e);
@@ -3592,6 +3652,30 @@
 
         <div id="teerPlayHistoryList" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
           <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+
+    <!-- MODAL: AUTO APP INSTALL POPUP (ON LOGIN / REGISTER) -->
+    <div id="appInstallModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-gradient-to-b from-[#063338] to-[#02181b] border-2 border-amber-400/80 w-full max-w-sm rounded-3xl p-5 text-center text-white shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+        <div class="w-20 h-20 mx-auto rounded-3xl bg-amber-400 text-teal-950 flex items-center justify-center text-4xl shadow-lg border-2 border-white/20">
+          <i class="fa-solid fa-bullseye animate-spin-slow"></i>
+        </div>
+        <div>
+          <span class="bg-amber-400/20 text-amber-300 font-mono text-[10px] px-2.5 py-0.5 rounded-full border border-amber-400/40 font-bold uppercase tracking-wider">Official Android App</span>
+          <h3 class="text-xl font-black text-amber-400 mt-1">Install Teer Online App</h3>
+          <p class="text-xs text-slate-300 mt-1 leading-relaxed">Faster experience, instant result alerts, and seamless gameplay directly from your home screen!</p>
+        </div>
+
+        <div class="space-y-2 pt-2">
+          <button onclick="triggerInstallAction()" class="w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-teal-950 font-black rounded-2xl shadow-xl flex items-center justify-center gap-2 text-sm tracking-wide">
+            <i class="fa-solid fa-download text-base"></i> INSTALL APP NOW
+          </button>
+          <button onclick="closeAppInstallModal()" class="w-full py-2 text-xs text-slate-400 hover:text-white font-bold">
+            Continue on Web &gt;
+          </button>
         </div>
       </div>
     </div>
