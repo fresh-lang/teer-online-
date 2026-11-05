@@ -1049,11 +1049,12 @@
       const dateStr = getTodayFormattedDate();
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const userLabel = state.user ? (state.user.name + ` (${state.user.uid || state.user.phone})`) : 'Guest User';
+      const refId = 'TR' + Math.floor(100000 + Math.random() * 900000);
 
-      // Example format requested: "shillong evening fr 27" or "shillong sr 27"
       currentShareableClipText = 
 `🎯 *TEER ONLINE OFFICIAL BET SLIP* 🎯
 ━━━━━━━━━━━━━━━━━━━━
+🔖 *Ref ID:* #${refId}
 📌 *Market:* ${marketName}
 🏹 *Round:* ${round}
 🔢 *Number (Guti):* ${numbersStr}
@@ -1067,6 +1068,10 @@
       const container = document.getElementById('betReceiptCardContent');
       if (container) {
         container.innerHTML = `
+          <div class="flex justify-between items-center bg-teal-950/60 p-1.5 rounded-lg border border-teal-800/60 mb-1">
+            <span class="text-slate-400 text-[10px]">Reference ID:</span>
+            <span class="font-mono font-black text-amber-400 text-xs tracking-wider">#${refId}</span>
+          </div>
           <div class="flex justify-between"><span class="text-slate-400">Market:</span> <span class="font-bold text-amber-300 text-right">${marketName}</span></div>
           <div class="flex justify-between"><span class="text-slate-400">Round:</span> <span class="font-bold text-white text-right">${round}</span></div>
           <div class="flex justify-between"><span class="text-slate-400">Number(s):</span> <span class="font-black text-amber-400 text-sm text-right">${numbersStr}</span></div>
@@ -2382,6 +2387,10 @@
       }
       state.balance -= cost;
       localStorage.setItem('teer_balance', state.balance.toFixed(2));
+      // Sync deducted balance to Firebase immediately so listener does not revert balance
+      if (fbDatabase && state.user && state.user.phone) {
+        fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+      }
 
       applyAgentBetTurnoverCommission(cost);
 
@@ -2405,15 +2414,20 @@
       localStorage.setItem('teer_bids', JSON.stringify(state.bids));
 
       updateUI();
-      closePlayModal();
+      // Keep play modal open so user stays on betting screen after closing slip
       state.selectedNumbers.forEach(n => {
         injectUserRealtimeBet(state.user.uid || ('UID_' + (state.user.phone ? state.user.phone.slice(-4) : '1001')), state.betMode.toUpperCase(), n, amt);
       });
-      alert('Bet Success');
       
       const numbersLabel = state.selectedNumbers.join(', ');
       const roundLabel = (state.currentRound === 'BS') ? 'FR + SR (BS)' : state.currentRound;
       const potVal = document.getElementById('potentialWin').innerText.replace('₹', '');
+      
+      // Reset selected numbers for next bet
+      state.selectedNumbers = [];
+      updateSelectedTray();
+      calculatePayout();
+      
       showBetReceiptClip(state.currentMarketObj.name, roundLabel, numbersLabel, amt, potVal);
     }
 
