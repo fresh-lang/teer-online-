@@ -1344,15 +1344,15 @@
 
       if (userTargetGuti) {
         chosenFR = userTargetGuti;
-        chosenSR = String(Math.floor(1 + Math.random() * 20)).padStart(2, '0');
+        chosenSR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
       } else {
-        // Gutis strictly between 01 and 20 for Teer Play!
+        // Gutis between 00 and 99 for Teer Play
         if (activeTeerPlayBids.length < 100) {
-          chosenFR = String(Math.floor(1 + Math.random() * 20)).padStart(2, '0');
-          chosenSR = String(Math.floor(1 + Math.random() * 20)).padStart(2, '0');
+          chosenFR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+          chosenSR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
         } else {
           const gutiSums = {};
-          for (let i = 1; i <= 20; i++) gutiSums[String(i).padStart(2, '0')] = 0;
+          for (let i = 0; i <= 99; i++) gutiSums[i < 10 ? '0' + i : '' + i] = 0;
           activeTeerPlayBids.forEach(b => {
             const g = String(b.number).padStart(2, '0');
             if (gutiSums[g] !== undefined) {
@@ -1378,11 +1378,11 @@
         const eDig = targetTwo.charAt(1);
 
         if (b.mode === 'DIRECT' && b.number === targetTwo) {
-          userWonAmt += (b.amount / 10) * 160;
+          userWonAmt += b.amount * 90;
         } else if (b.mode === 'HOUSE' && b.number === hDig) {
-          userWonAmt += (b.amount / 10) * 80;
+          userWonAmt += b.amount * 9;
         } else if (b.mode === 'ENDING' && b.number === eDig) {
-          userWonAmt += (b.amount / 10) * 80;
+          userWonAmt += b.amount * 9;
         } else {
           userLostAmt += parseFloat(b.amount);
         }
@@ -1411,13 +1411,13 @@
         let winAmt = 0;
         if (bid.mode === 'DIRECT' && bid.number === targetTwo) {
           isWin = true;
-          winAmt = (bid.amount / 10) * 160;
+          winAmt = bid.amount * 90;
         } else if (bid.mode === 'HOUSE' && bid.number === hDig) {
           isWin = true;
-          winAmt = (bid.amount / 10) * 80;
+          winAmt = bid.amount * 9;
         } else if (bid.mode === 'ENDING' && bid.number === eDig) {
           isWin = true;
-          winAmt = (bid.amount / 10) * 80;
+          winAmt = bid.amount * 9;
         }
 
         if (isWin) {
@@ -1859,29 +1859,16 @@
             const houseDigit = announcedTwoDigit.charAt(0);
             const endingDigit = announcedTwoDigit.charAt(1);
 
-            if (bid.market === 'Teer Play') {
               if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
                 isWin = true;
-                winAmount = (bid.amount / 10) * 160; // 10 pe 160
+                winAmount = bid.amount * 90; // 1:90 (10 pe 900)
               } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
                 isWin = true;
-                winAmount = (bid.amount / 10) * 80;  // 10 pe 80
+                winAmount = bid.amount * 9; // 1:9 (10 pe 90)
               } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
                 isWin = true;
-                winAmount = (bid.amount / 10) * 80;  // 10 pe 80
+                winAmount = bid.amount * 9; // 1:9 (10 pe 90)
               }
-            } else {
-              if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
-                isWin = true;
-                winAmount = bid.amount * 90; // 1:90
-              } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
-                isWin = true;
-                winAmount = bid.amount * 9; // 1:9
-              } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
-                isWin = true;
-                winAmount = bid.amount * 9; // 1:9
-              }
-            }
 
             if (isWin) {
               bid.status = 'WON';
@@ -2144,25 +2131,18 @@
       if (!g) return;
       g.innerHTML = '';
       const isTeerPlay = (state.currentMarketObj && state.currentMarketObj.name === 'Teer Play');
-      const startNum = isTeerPlay ? 1 : 0;
-      const endNum = isTeerPlay ? 20 : 99;
+      const startNum = 0;
+      const endNum = 99;
 
       const directLabel = document.getElementById('modeBtnDirect');
       const houseLabel = document.getElementById('modeBtnHouse');
       const endingLabel = document.getElementById('modeBtnEnding');
       const gutiTitle = document.querySelector('#directGutiSection span');
 
-      if (isTeerPlay) {
-        if (directLabel) directLabel.innerText = "Direct (1:16)";
-        if (houseLabel) houseLabel.innerText = "House (1:8)";
-        if (endingLabel) endingLabel.innerText = "Ending (1:8)";
-        if (gutiTitle) gutiTitle.innerText = "Choose Direct Guti (01 - 20):";
-      } else {
-        if (directLabel) directLabel.innerText = "Direct Guti (1:90)";
-        if (houseLabel) houseLabel.innerText = "House (1:9)";
-        if (endingLabel) endingLabel.innerText = "Ending (1:9)";
-        if (gutiTitle) gutiTitle.innerText = "Choose Direct Guti (00 - 99):";
-      }
+      if (directLabel) directLabel.innerText = "Direct Guti (1:90)";
+      if (houseLabel) houseLabel.innerText = "House (1:9)";
+      if (endingLabel) endingLabel.innerText = "Ending (1:9)";
+      if (gutiTitle) gutiTitle.innerText = "Choose Direct Guti (00 - 99):";
 
       for (let i = startNum; i <= endNum; i++) {
         const v = i < 10 ? '0' + i : '' + i;
@@ -2310,16 +2290,8 @@
       document.getElementById('totalBetCost').innerText = '₹' + totalCost.toFixed(2);
 
       let potential = 0;
-      if (state.currentMarketObj && state.currentMarketObj.name === 'Teer Play') {
-        if (state.betMode === 'direct') {
-          potential = ((amt * count) / 10) * 160; 
-        } else {
-          potential = ((amt * count) / 10) * 80;  
-        }
-      } else {
-        let mult = (state.betMode === 'direct') ? 90 : 9;
-        potential = amt * mult * count; // Scaled by selected numbers count (Total Cost * mult)
-      }
+      let mult = (state.betMode === 'direct') ? 90 : 9;
+      potential = amt * mult * count;
       document.getElementById('potentialWin').innerText = count > 0 ? '₹' + potential.toFixed(2) : '₹0.00';
     }
 
@@ -3471,14 +3443,8 @@
 
         // Calculate potential win for the slip viewer
         let potWin = '0.00';
-        if (b.market === 'Teer Play') {
-          if (b.mode === 'DIRECT') potWin = ((b.amount) / 10) * 160;
-          else potWin = ((b.amount) / 10) * 80;
-        } else {
-          let mult = (b.mode === 'DIRECT') ? 90 : 9;
-          potWin = b.amount * mult;
-        }
-        potWin = parseFloat(potWin).toFixed(2);
+        let mult = (b.mode === 'DIRECT') ? 90 : 9;
+        potWin = (b.amount * mult).toFixed(2);
 
         item.className = `p-3 rounded-2xl border ${cardBg} shadow-sm flex justify-between items-center text-xs transition cursor-pointer hover:border-amber-500`;
         item.title = "Click to view official bet slip receipt";
