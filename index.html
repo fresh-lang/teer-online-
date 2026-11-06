@@ -2790,6 +2790,8 @@
 
       const depId = 'dep_' + Date.now();
       const now = new Date();
+      const depDate = now.toLocaleDateString();
+      const depTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const depRecord = {
         id: depId,
         phone: state.user.phone,
@@ -2799,8 +2801,8 @@
         utr: utr,
         screenshot: currentDepositScreenshotBase64 || null,
         status: 'pending',
-        date: now.toLocaleDateString(),
-        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: depDate,
+        time: depTime,
         timestamp: Date.now()
       };
 
@@ -2856,7 +2858,25 @@
       if (fileNameLabel) fileNameLabel.innerText = 'Tap to choose payment receipt screenshot';
 
       closeDepositModal();
-      alert(`Deposit Request Submitted!\nAmount: ₹${amt}\nUTR: ${utr}\n\nAdmin will verify your payment screenshot and UTR code. Balance (+5% Bonus) will be credited to your wallet within 1 to 10 minutes!`);
+      updateUI();
+
+      // Trigger WhatsApp message directly to Admin Helpline (+918134834380)
+      const depMsg = encodeURIComponent(
+        `⚡ *TEER ONLINE - DEPOSIT SLIP*\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `👤 *User Name:* ${state.user.name}\n` +
+        `📱 *Mobile Number:* ${state.user.phone}\n` +
+        `🆔 *User ID:* ${state.user.uid || 'N/A'}\n` +
+        `💰 *Deposit Amount:* ₹${amt} (+₹${(amt*0.05).toFixed(2)} Bonus)\n` +
+        `🔢 *UTR / Ref No:* ${utr}\n` +
+        `📅 *Date & Time:* ${depDate} ${depTime}\n` +
+        `🔖 *Deposit ID:* ${depId}\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `Admin sir, maine deposit payment kar di hai. UTR verify karke mere wallet me balance add karein.`
+      );
+
+      const waUrl = `https://api.whatsapp.com/send?phone=918134834380&text=${depMsg}`;
+      window.location.href = waUrl;
     }
 
     function submitWithdrawForm() {
@@ -2945,6 +2965,8 @@
 
       const wthId = 'wth_' + Date.now();
       const now = new Date();
+      const wthDate = now.toLocaleDateString();
+      const wthTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const wthRecord = {
         id: wthId,
         phone: state.user.phone,
@@ -2954,8 +2976,8 @@
         upi: (payoutType === 'upi') ? upiVal : 'Bank Transfer',
         bankDetails: bankObj || null,
         status: 'pending',
-        date: now.toLocaleDateString(),
-        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: wthDate,
+        time: wthTime,
         timestamp: Date.now()
       };
 
@@ -2968,14 +2990,14 @@
         recordTransaction({
           id: wthId,
           type: 'withdraw',
-          title: `Instant Withdrawal (UPI: ${upi})`,
+          title: `Instant Withdrawal (${upiVal})`,
           amount: amt,
           isCredit: false,
           status: 'Approved'
         });
         updateUI();
         closeWithdrawModal();
-        alert(`Withdrawal Success! ₹${amt} transferred instantly to ${upi}. (Approved)`);
+        alert(`Withdrawal Success! ₹${amt} transferred instantly to ${upiVal}. (Approved)`);
         return;
       }
 
@@ -2986,7 +3008,7 @@
       recordTransaction({
         id: wthId,
         type: 'withdraw',
-        title: `Withdrawal Request (UPI: ${upi})`,
+        title: `Withdrawal Request (${upiVal})`,
         amount: amt,
         isCredit: false,
         status: 'Processing'
@@ -2995,33 +3017,29 @@
       addAppNotification({
         type: 'withdraw',
         title: 'Withdrawal Submitted',
-        message: `₹${amt} withdrawal request (UPI: ${upi}) is being processed. Payout will be sent directly to your UPI ID within 1 to 10 minutes.`
+        message: `₹${amt} withdrawal request (${upiVal}) is being processed. Payout will be sent directly within 1 to 10 minutes.`
       });
 
       updateUI();
       closeWithdrawModal();
 
-      // Trigger WhatsApp message to Admin Helpline (+918134834380)
-      try {
-        const wthDate = now.toLocaleDateString();
-        const wthTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const wthMsg = encodeURIComponent(
-          `⚡ *TEER ONLINE - WITHDRAWAL REQUEST*\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `👤 *User Name:* ${state.user.name}\n` +
-          `📱 *Mobile Number:* ${state.user.phone}\n` +
-          `🆔 *User ID:* ${state.user.uid || 'N/A'}\n` +
-          `💰 *Amount:* ₹${amt}\n` +
-          `💳 *Payout Info:* ${payoutType === 'upi' ? upiVal : JSON.stringify(bankObj)}\n` +
-          `📅 *Date & Time:* ${wthDate} ${wthTime}\n` +
-          `🔖 *Request ID:* ${wthId}\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `Admin sir, withdrawal request lagayi hai. Please verify karke approve karein.`
-        );
-        window.open(`https://wa.me/918134834380?text=${wthMsg}`, '_blank');
-      } catch(err) {}
+      // Trigger WhatsApp message directly to Admin Helpline (+918134834380)
+      const wthMsg = encodeURIComponent(
+        `⚡ *TEER ONLINE - WITHDRAWAL REQUEST*\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `👤 *User Name:* ${state.user.name}\n` +
+        `📱 *Mobile Number:* ${state.user.phone}\n` +
+        `🆔 *User ID:* ${state.user.uid || 'N/A'}\n` +
+        `💰 *Withdrawal Amount:* ₹${amt}\n` +
+        `💳 *Payout Info:* ${payoutType === 'upi' ? upiVal : JSON.stringify(bankObj)}\n` +
+        `📅 *Date & Time:* ${wthDate} ${wthTime}\n` +
+        `🔖 *Request ID:* ${wthId}\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `Admin sir, maine withdrawal request lagayi hai. Please verify karke approve karein.`
+      );
 
-      alert(`Withdrawal Request Submitted!\nAmount: ₹${amt}\nUPI ID: ${upi}\n\nYour payout will be credited directly to your UPI ID within 1 to 10 minutes!`);
+      const waUrl = `https://api.whatsapp.com/send?phone=918134834380&text=${wthMsg}`;
+      window.location.href = waUrl;
     }
 
     function switchAuthTab(type) {
