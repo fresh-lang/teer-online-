@@ -18,46 +18,27 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.tailwindcss.com">
     // ==========================================
-    // PWA & APP INSTALL ENGINE (DIRECT AUTO INSTALL & DOWNLOAD)
+    // PWA & APP INSTALL ENGINE (DIRECT APK DOWNLOAD + 3-DOTS GUIDE)
     // ==========================================
     let deferredInstallPrompt = null;
 
-    // Capture Chrome PWA Install Event
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredInstallPrompt = e;
-      console.log('PWA beforeinstallprompt captured successfully!');
+      console.log('beforeinstallprompt captured!');
     });
 
     function triggerAutoInstall() {
-      if (deferredInstallPrompt) {
-        deferredInstallPrompt.prompt();
-        deferredInstallPrompt.userChoice.then((choiceResult) => {
-          if (choiceResult.outcome === 'accepted') {
-            console.log('User installed Teer Online App');
-          }
-          deferredInstallPrompt = null;
-        });
-      } else {
-        // Direct seamless auto download of TeerOnline.apk
+      if (navigator.vibrate) navigator.vibrate(50);
+      try {
         const a = document.createElement('a');
         a.href = 'TeerOnline.apk';
         a.download = 'TeerOnline.apk';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-      }
-    }
-
-    function openAppInstallModal() {
-      triggerAutoInstall();
-    }
-
-    function closeAppInstallModal() {
-      const modal = document.getElementById('appInstallModal');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = 'none';
+      } catch(e) {
+        window.location.href = 'TeerOnline.apk';
       }
     }
 
@@ -65,15 +46,10 @@
       triggerAutoInstall();
     }
 
-    function handleDirectApkDownload() {
-      triggerAutoInstall();
-    }
-
-
     // Register Service Worker for PWA installation
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => {
+        navigator.serviceWorker.register('./firebase-messaging-sw.js').catch(err => {
           console.log('SW register failed:', err);
         });
       });
@@ -142,18 +118,18 @@
       </marquee>
     </div>
 
-    <!-- PWA Install Prompt Banner (Direct Auto Install on Tap) -->
-    <div id="pwaBanner" onclick="triggerAutoInstall()" class="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-teal-950 px-3.5 py-2.5 flex items-center justify-between text-xs font-bold shadow-md cursor-pointer active:opacity-90 select-none z-20 relative">
+    <!-- PWA Install Prompt Banner -->
+    <div id="pwaBanner" onclick="triggerAutoInstall()" class="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-teal-950 px-3.5 py-2.5 flex items-center justify-between text-xs font-bold shadow-md cursor-pointer select-none z-20 relative">
       <div class="flex items-center gap-2">
         <div class="w-6 h-6 rounded-full bg-teal-950 text-amber-300 flex items-center justify-center text-xs shadow-inner">
           <i class="fa-solid fa-download animate-bounce"></i>
         </div>
-        <span class="tracking-wide font-black">Install Teer Online APK / Web App</span>
+        <span class="tracking-wide font-black">Download / Install Teer Online App</span>
       </div>
-      <button type="button" onclick="event.stopPropagation(); triggerAutoInstall();" class="bg-teal-950 hover:bg-teal-900 active:scale-95 text-amber-300 px-3.5 py-1.5 rounded-xl text-xs font-black shadow transition flex items-center gap-1 cursor-pointer">
-        <span>Install</span>
-        <i class="fa-solid fa-chevron-right text-[10px]"></i>
-      </button>
+      <a href="TeerOnline.apk" download="TeerOnline.apk" onclick="event.stopPropagation(); triggerAutoInstall();" class="bg-teal-950 hover:bg-teal-900 active:scale-95 text-amber-300 px-3.5 py-1.5 rounded-xl text-xs font-black shadow transition flex items-center gap-1 cursor-pointer">
+        <span>Download APK</span>
+        <i class="fa-solid fa-cloud-arrow-down text-[11px] ml-0.5"></i>
+      </a>
     </div>
 
     <!-- MAIN SCREENS CONTAINER -->
@@ -414,9 +390,7 @@
               <span class="text-[11px] text-emerald-800 font-bold block">Aapki Total Referral Kamai:</span>
               <span id="myAgentEarnedText" class="text-base font-black text-emerald-950">₹0.00</span>
             </div>
-            <button onclick="claimAgentCommission()" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs shadow transition">
-              Wallet Me Transfer
-            </button>
+            <button onclick="claimAgentCommission()" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs shadow transition">Wallet Me Transfer</button>
           </div>
 
           <!-- Referral Team Counter -->
@@ -425,10 +399,3295 @@
               <span class="text-[11px] font-bold text-amber-950 block">👥 My Referral Team:</span>
               <span id="cardJoinedCountText" class="text-xs text-amber-900 font-extrabold">0 Friends Joined</span>
             </div>
-            <button onclick="openMyReferralsModal()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-teal-950 font-black rounded-lg text-xs shadow transition">
-              View Referrals
+            <button onclick="openMyReferralsModal()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-teal-950 font-black rounded-lg text-xs shadow transition">View Referrals</button>
+          </div>
+          
+          <!-- Share buttons -->
+          <div class="pt-1 flex gap-2">
+            <button onclick="shareReferralWhatsApp()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
+              <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Share
+            </button>
+            <button onclick="copyReferralLink()" class="px-3 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs font-bold">Copy Link</button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 divide-y divide-slate-100 text-sm">
+          <div onclick="openChartModal('Shilong Morning Teer')" class="p-3 flex justify-between items-center cursor-pointer">
+            <span class="text-slate-700 font-medium"><i class="fa-solid fa-chart-simple w-5 text-teal-700"></i> Teer Results Chart</span>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+          <div onclick="switchTab('support')" class="p-3 flex justify-between items-center cursor-pointer">
+            <span class="text-slate-700 font-medium"><i class="fa-solid fa-headset w-5 text-teal-700"></i> Customer Support</span>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+          <div onclick="openNotificationModal()" class="p-3 flex justify-between items-center cursor-pointer">
+            <span class="text-slate-700 font-medium"><i class="fa-solid fa-bell w-5 text-teal-700"></i> Notifications</span>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400"></i>
+          </div>
+          <div onclick="logoutUser()" class="p-3 flex justify-between items-center cursor-pointer text-red-600 font-semibold">
+            <span><i class="fa-solid fa-arrow-right-from-bracket w-5"></i> Logout Account</span>
+            <i class="fa-solid fa-chevron-right text-xs"></i>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 5: SUPPORT -->
+      <section id="screen-support" class="app-screen p-3 space-y-3">
+        <div class="bg-[#032427] text-white p-3 rounded-2xl flex items-center justify-between shadow-sm">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-full bg-teal-800 flex items-center justify-center text-teal-200">
+              <i class="fa-solid fa-headphones"></i>
+            </div>
+            <div>
+              <p class="font-bold text-sm leading-tight">Live Chat Support</p>
+              <p class="text-[11px] text-emerald-300">Online &bull; typically replies instantly</p>
+            </div>
+          </div>
+          <button onclick="resetChat()" class="text-teal-200 hover:text-white p-1">
+            <i class="fa-solid fa-rotate-right text-sm"></i>
+          </button>
+        </div>
+
+        <div class="flex gap-2">
+          <a href="https://wa.me/918134834380?text=Hello%20Teer%20Online%20Support" target="_blank" class="flex-1 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold py-1.5 rounded-full text-center text-xs shadow-sm flex items-center justify-center gap-1">
+            <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Support
+          </a>
+          <a href="tel:+918134834380" class="flex-1 bg-teal-50 border border-teal-200 text-teal-800 font-bold py-1.5 rounded-full text-center text-xs shadow-sm flex items-center justify-center gap-1">
+            <i class="fa-solid fa-phone text-xs"></i> Call Support
+          </a>
+        </div>
+
+        <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[340px]">
+          <div id="chatMessages" class="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
+            <div class="bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">
+              Hello! Welcome to <b>TEER ONLINE</b>. Kaise help kar sakte hain aapki?
+            </div>
+          </div>
+
+          <form onsubmit="handleSendChat(event)" class="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1.5">
+            <input type="text" id="chatInput" placeholder="Type a message..." class="flex-1 bg-slate-50 border border-slate-200 rounded-full px-3.5 py-1.5 text-xs outline-none focus:border-teal-700" required>
+            <button type="submit" class="w-8 h-8 rounded-full bg-[#032427] text-amber-400 flex items-center justify-center shadow">
+              <i class="fa-solid fa-paper-plane text-xs"></i>
+            </button>
+          </form>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER NAVIGATION -->
+    <nav class="bg-white border-t border-slate-200 px-2 py-1.5 flex justify-around items-center fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-30 shadow-lg">
+      <button onclick="switchTab('home')" class="nav-btn active flex flex-col items-center text-teal-900 group" data-tab="home">
+        <i class="fa-solid fa-house text-base"></i>
+        <span class="text-[10px] font-bold mt-0.5">Home</span>
+      </button>
+      <button onclick="switchTab('wallet')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="wallet">
+        <i class="fa-solid fa-wallet text-base"></i>
+        <span class="text-[10px] font-bold mt-0.5">Wallet</span>
+      </button>
+      <button onclick="switchTab('bids')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="bids">
+        <i class="fa-solid fa-clock-rotate-left text-base"></i>
+        <span class="text-[10px] font-bold mt-0.5">My Bids</span>
+      </button>
+      <button onclick="switchTab('profile')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="profile">
+        <i class="fa-solid fa-user text-base"></i>
+        <span class="text-[10px] font-bold mt-0.5">Profile</span>
+      </button>
+      <button onclick="switchTab('support')" class="nav-btn flex flex-col items-center text-slate-400 group" data-tab="support">
+        <i class="fa-solid fa-comment-dots text-base"></i>
+        <span class="text-[10px] font-bold mt-0.5">Support</span>
+      </button>
+    </nav>
+
+    <!-- SIDEBAR DRAWER -->
+    <div id="drawerOverlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black/60 z-40 hidden transition-opacity"></div>
+    <aside id="sideDrawer" class="fixed top-0 left-0 bottom-0 w-[280px] bg-white z-50 transform -translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
+      <div class="bg-[#032427] text-white p-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div id="drawerAvatar" class="w-11 h-11 rounded-full bg-teal-800 border border-amber-400 flex items-center justify-center font-bold text-amber-300"><i class="fa-solid fa-user text-sm"></i></div>
+          <div>
+            <p id="drawerPhone" class="font-bold text-sm leading-tight text-white">Guest User</p>
+            <p id="drawerSub" class="text-xs text-teal-200">Please Login</p>
+            <p id="drawerBal" class="text-xs font-bold text-amber-400">₹0.00</p>
+          </div>
+        </div>
+        <button onclick="toggleDrawer()" class="text-teal-200 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto divide-y divide-slate-100 text-xs text-slate-700">
+        <a onclick="switchTab('home'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-house w-4 text-teal-800"></i> Home</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="openChartModal('Shilong Morning Teer'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-chart-column w-4 text-teal-800"></i> Result Chart</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="alert('Rates: Direct Guti 1:90 | House 1:9 | Ending 1:9'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-chart-line w-4 text-teal-800"></i> Game Rates</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="switchTab('wallet'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-wallet w-4 text-teal-800"></i> Wallet</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="switchTab('profile'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-gift w-4 text-teal-800"></i> Refer &amp; Agent Rules</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="openNotificationModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-bell w-4 text-teal-800"></i> Notifications</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a href="https://wa.me/918134834380" target="_blank" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-phone w-4 text-teal-800"></i> Contact Us</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <div onclick="logoutUser(); toggleDrawer()" class="p-3 flex items-center gap-3 text-red-600 font-bold hover:bg-red-50 cursor-pointer">
+          <i class="fa-solid fa-arrow-right-from-bracket w-4"></i> Logout
+        </div>
+      </div>
+    </aside>
+
+    <!-- MODAL: NOTIFICATIONS -->
+    <div id="notificationModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl flex flex-col max-h-[80vh]">
+        <div class="flex justify-between items-center border-b pb-2 mb-2">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-bell text-amber-500"></i>
+            <h3 class="font-bold text-sm text-teal-950">App Notifications</h3>
+          </div>
+          <button onclick="closeNotificationModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div id="notifListContainer" class="flex-1 overflow-y-auto space-y-2 text-xs"></div>
+        <button onclick="clearAllNotifications()" class="mt-3 w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold rounded-xl">Clear All</button>
+      </div>
+    </div>
+
+    <!-- MODAL: PLAY GAME -->
+    <div id="playGameModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-end justify-center">
+      <div class="bg-white w-full max-w-[480px] rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl">
+        <div class="bg-[#032427] text-white p-3.5 rounded-t-3xl flex items-center justify-between">
+          <div>
+            <h3 id="playMarketTitle" class="font-bold text-base text-amber-300">Shillong Teer</h3>
+            <p id="marketCutoffNotice" class="text-[10px] text-amber-300 font-semibold">⚠️ Cutoff: 10 mins before draw time</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btnTeerPlayHistory" onclick="openTeerPlayHistoryModal()" class="hidden px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-black rounded-lg text-[10px] shadow flex items-center gap-1 transition">
+              <i class="fa-solid fa-clock-rotate-left"></i> My Bets
+            </button>
+            <button onclick="closePlayModal()" class="w-8 h-8 rounded-full bg-teal-900 text-teal-200 flex items-center justify-center">
+              <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
         </div>
 
+        <div class="p-3.5 overflow-y-auto flex-1 space-y-3 text-xs">
+          <!-- Recent Teer Play Results Horizontal Strip -->
+          <div id="teerPlayRecentStripContainer" class="hidden bg-black/40 border border-teal-900/60 rounded-xl p-2 space-y-1">
+            <div class="flex justify-between items-center text-[10px] text-slate-400">
+              <span class="font-bold text-amber-400 flex items-center gap-1">
+                <i class="fa-solid fa-clock-rotate-left"></i> Previous Results
+              </span>
+              <span class="text-emerald-400 font-mono text-[9px] animate-pulse">● Live Saved</span>
+            </div>
+            <div id="teerPlayResultsHistoryStrip" class="flex gap-2 overflow-x-auto py-1 scrollbar-none text-[11px] font-mono">
+              <span class="text-slate-500 text-[10px] italic">Waiting for draw...</span>
+            </div>
+          </div>
+
+          <div class="flex gap-2 bg-slate-100 p-1 rounded-xl">
+            <button id="btnRoundFR" onclick="selectRound('FR')" class="flex-1 py-1.5 rounded-lg font-bold text-xs bg-[#032427] text-white shadow">First Round (FR)</button>
+            <button id="btnRoundSR" onclick="selectRound('SR')" class="flex-1 py-1.5 rounded-lg font-bold text-xs text-slate-600">Second Round (SR)</button>
+            <button id="btnRoundBS" onclick="selectRound('BS')" class="flex-1 py-1.5 rounded-lg font-bold text-xs text-slate-600">Both Sides (BS)</button>
+          </div>
+
+          <div id="roundClosedNotice" class="hidden p-2 rounded-xl bg-red-100 border border-red-300 text-red-800 font-bold text-center text-xs">
+            ⚠️ Time Over! Result aane ke 10 minute pehle is round par bet band ho chuki hai.
+          </div>
+
+          <div class="flex gap-1.5">
+            <button onclick="selectBetMode('direct')" id="modeBtnDirect" class="flex-1 py-1.5 bg-amber-400 text-teal-950 font-bold rounded-lg border border-amber-500 shadow-sm">Direct Guti (1:90)</button>
+            <button onclick="selectBetMode('house')" id="modeBtnHouse" class="flex-1 py-1.5 bg-slate-100 text-slate-700 font-bold rounded-lg border">House (1:9)</button>
+            <button onclick="selectBetMode('ending')" id="modeBtnEnding" class="flex-1 py-1.5 bg-slate-100 text-slate-700 font-bold rounded-lg border">Ending (1:9)</button>
+          </div>
+
+          <!-- Direct Guti 00-99 Grid -->
+          <div id="directGutiSection" class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-slate-700">Choose Direct Guti (00 - 99):</span>
+              <button onclick="randomLuckyPick()" class="text-[11px] text-amber-700 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md font-bold">🎲 Lucky Pick</button>
+            </div>
+            <div id="gutiGrid" class="grid grid-cols-10 gap-1 max-h-[170px] overflow-y-auto p-1.5 bg-slate-50 border rounded-xl"></div>
+          </div>
+
+          <!-- Digit Section (0-9) -->
+          <div id="digitSection" class="hidden space-y-2">
+            <span id="digitSectionTitle" class="font-bold text-slate-700">Choose House Digit (0 - 9):</span>
+            <div class="grid grid-cols-5 gap-2">
+              <button onclick="selectSingleDigit(0)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">0</button>
+              <button onclick="selectSingleDigit(1)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">1</button>
+              <button onclick="selectSingleDigit(2)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">2</button>
+              <button onclick="selectSingleDigit(3)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">3</button>
+              <button onclick="selectSingleDigit(4)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">4</button>
+              <button onclick="selectSingleDigit(5)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">5</button>
+              <button onclick="selectSingleDigit(6)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">6</button>
+              <button onclick="selectSingleDigit(7)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">7</button>
+              <button onclick="selectSingleDigit(8)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">8</button>
+              <button onclick="selectSingleDigit(9)" class="digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm">9</button>
+            </div>
+          </div>
+
+          <div>
+            <span class="text-slate-500 text-[11px] font-semibold">Selected:</span>
+            <div id="selectedPills" class="flex flex-wrap gap-1 mt-1 min-h-[26px]">
+              <span class="text-slate-400 italic text-[11px]">No numbers selected</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">Bet Amount per selection (₹):</label>
+            <input type="number" id="betAmountInput" value="20" min="10" step="10" oninput="calculatePayout()" class="w-full border rounded-xl px-3 py-2 font-bold text-base outline-none">
+          </div>
+
+          <!-- Live Teer Play Ticker in Modal -->
+          <div class="bg-[#02181a] border border-teal-900/60 rounded-xl p-2 shadow-inner">
+            <div class="flex items-center justify-between text-[9px] text-slate-400 mb-1 border-b border-teal-900/40 pb-1">
+              <span class="text-amber-400 font-bold flex items-center gap-1">
+                <i class="fa-solid fa-bolt text-amber-400"></i> Realtime Bets
+              </span>
+              <span class="text-emerald-400 animate-pulse font-mono text-[9px]">● LIVE</span>
+            </div>
+            <div id="modalFakeBetsFeed" class="space-y-1 max-h-16 overflow-hidden font-mono text-[9px]"></div>
+          </div>
+
+          <div class="bg-teal-50 border border-teal-200 rounded-xl p-2.5 flex justify-between items-center text-xs">
+            <div>
+              <p class="text-slate-500">Total Bet Cost:</p>
+              <p id="totalBetCost" class="text-sm font-bold text-teal-900">₹0.00</p>
+            </div>
+            <div class="text-right">
+              <p class="text-slate-500">Potential Return:</p>
+              <p id="potentialWin" class="text-sm font-black text-amber-600">₹0.00</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 border-t flex gap-2">
+          <button onclick="closePlayModal()" class="flex-1 py-2.5 rounded-xl border font-bold text-slate-600 text-xs">Cancel</button>
+          <button id="btnConfirmBetModal" onclick="confirmPlaceBet()" class="flex-1 py-2.5 rounded-xl gold-btn font-bold text-xs shadow-md">Confirm Bet</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: DEPOSIT -->
+        <!-- MODAL: DEPOSIT (100% ENGLISH, SCREENSHOT UPLOAD, NO WHATSAPP) -->
+    <div id="depositModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-end justify-center">
+      <div class="bg-white w-full max-w-[480px] rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl p-4 overflow-y-auto space-y-3">
+        <div class="flex justify-between items-center border-b pb-2">
+          <div>
+            <h3 class="font-bold text-base text-teal-950 flex items-center gap-1.5">
+              <i class="fa-solid fa-qrcode text-teal-700"></i> Add Money to Wallet
+            </h3>
+            <p class="text-[10px] text-slate-500">Scan QR &bull; Pay with any UPI &bull; Credited in 1-10 mins</p>
+          </div>
+          <button onclick="closeDepositModal()" class="text-slate-400 p-1 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+
+        <!-- QR Display Card -->
+        <div class="bg-gradient-to-b from-teal-50 to-emerald-50 border border-teal-200/80 rounded-2xl p-3 text-center shadow-sm">
+          <p class="text-[11px] font-black text-teal-950 uppercase tracking-wide">Scan QR Code to Pay via Any UPI App</p>
+          <p class="text-[10px] text-teal-700 mt-0.5">Google Pay &bull; PhonePe &bull; Paytm &bull; BHIM UPI</p>
+          
+          <div class="w-44 h-44 mx-auto bg-white p-2.5 rounded-2xl border-2 border-teal-600/30 shadow-md my-2 flex items-center justify-center">
+            <img id="depositQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=8134834380@mbk%26pn=TeerOnline" class="w-full h-full rounded-lg">
+          </div>
+
+          <div class="inline-flex items-center gap-1.5 bg-white px-3 py-1 rounded-full border border-teal-300 shadow-sm">
+            <span class="text-[10px] text-slate-500 font-bold">UPI ID:</span>
+            <span id="depositUpiText" class="text-xs font-mono font-bold text-teal-950">8134834380@mbk</span>
+            <button type="button" onclick="navigator.clipboard.writeText('8134834380@mbk'); alert('UPI ID Copied: 8134834380@mbk');" class="text-[10px] bg-teal-800 text-amber-300 font-bold px-2 py-0.5 rounded-full ml-1">Copy</button>
+          </div>
+
+          <div class="mt-2 bg-emerald-100/70 border border-emerald-300 rounded-xl p-1.5 text-[10px] text-emerald-900 font-semibold flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-bolt text-amber-500 animate-pulse"></i>
+            <span>Instant Credit: Wallet updated within <b>1 to 10 minutes</b> after verification!</span>
+          </div>
+        </div>
+
+        <!-- Deposit Form Fields -->
+        <div class="space-y-2.5 text-xs">
+          <div>
+            <label class="text-xs font-bold text-slate-700 flex justify-between items-center mb-1">
+              <span>Deposit Amount (₹):</span>
+              <span class="text-emerald-600 font-bold text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">+5% Extra Bonus Added</span>
+            </label>
+            <input type="number" id="depositAmountInput" value="500" min="100" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-teal-950 outline-none focus:border-teal-700">
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-700 block mb-1">Enter 12-Digit UTR / Transaction Ref Number:</label>
+            <input type="text" id="depositUtrInput" placeholder="e.g. 430198234823" maxlength="12" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-mono tracking-wider font-bold text-teal-950 outline-none focus:border-teal-700">
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-700 block mb-1">Upload Payment Screenshot:</label>
+            <div class="border-2 border-dashed border-teal-300 bg-teal-50/50 rounded-2xl p-3 text-center cursor-pointer hover:bg-teal-50 transition relative">
+              <input type="file" id="depositScreenshotInput" accept="image/*" onchange="handleScreenshotPreview(event)" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10">
+              <div id="screenshotPreviewBox" class="flex flex-col items-center justify-center pointer-events-none">
+                <i class="fa-solid fa-cloud-arrow-up text-teal-700 text-xl mb-1"></i>
+                <p class="font-bold text-teal-950 text-xs" id="screenshotFileName">Tap to choose payment receipt screenshot</p>
+                <p class="text-[10px] text-slate-400">PNG, JPG or JPEG allowed (Up to 10 MB • Direct to Admin)</p>
+              </div>
+              <img id="screenshotImgPreview" class="hidden max-h-32 mx-auto rounded-lg shadow border border-teal-200 mt-1 pointer-events-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button (Direct to Admin Panel, WhatsApp removed) -->
+        <button onclick="submitDepositForm()" class="w-full py-3 bg-gradient-to-r from-teal-950 to-[#043338] text-amber-300 hover:text-white font-bold rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-circle-check"></i> Submit Deposit Request (+5% Bonus)
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL: WITHDRAW -->
+        <!-- MODAL: WITHDRAW (ENGLISH, FAST 1-10 MIN PAYOUT) -->
+    <div id="withdrawModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-end justify-center">
+      <div class="bg-white w-full max-w-[480px] rounded-t-3xl p-4 shadow-2xl space-y-3">
+        <div class="flex justify-between items-center border-b pb-2">
+          <div>
+            <h3 class="font-bold text-base text-teal-950 flex items-center gap-1.5">
+              <i class="fa-solid fa-money-bill-transfer text-teal-700"></i> Withdraw Funds
+            </h3>
+            <p class="text-[10px] text-slate-500">Fast UPI Transfer &bull; Processed in 1-10 minutes</p>
+          </div>
+          <button onclick="closeWithdrawModal()" class="text-slate-400 p-1 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-2.5 text-xs text-amber-900 flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-amber-600 text-sm"></i>
+          <span><b>1 to 10 Minutes Payout:</b> Withdrawals are directly transferred to your UPI ID without delay.</span>
+        </div>
+
+        <div class="space-y-2.5 text-xs max-h-[60vh] overflow-y-auto pr-1">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-bold text-slate-700">Enter Withdrawal Amount:</label>
+              <span class="text-[10px] text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">Daily Limit: ₹50,000</span>
+            </div>
+            <input type="number" id="withdrawAmountInput" placeholder="Enter amount" min="1000" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-teal-950 outline-none focus:border-teal-700">
+            <div class="flex justify-end mt-1">
+              <span id="withdrawDailyCountText" class="font-bold text-teal-700 text-[10px]">Daily Requests: 0/5</span>
+            </div>
+          </div>
+
+          <!-- Payout Method Selection -->
+          <div class="pt-1">
+            <label class="text-xs font-bold text-slate-700 block mb-1">Payout Method:</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" id="btnMethodUpi" onclick="selectWithdrawMethod('upi')" class="py-2 px-3 rounded-xl border-2 border-teal-800 bg-teal-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-mobile-screen"></i> UPI ID
+              </button>
+              <button type="button" id="btnMethodBank" onclick="selectWithdrawMethod('bank')" class="py-2 px-3 rounded-xl border border-slate-300 bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-building-columns"></i> Bank Account
+              </button>
+            </div>
+          </div>
+
+          <!-- Saved UPI ID Field -->
+          <div id="sectionWithdrawUpi">
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-bold text-slate-700">Your UPI ID:</label>
+              <span id="savedUpiBadge" class="hidden text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">Auto-Saved</span>
+            </div>
+            <input type="text" id="withdrawUpiInput" placeholder="e.g. mobile@paytm / name@upi" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-mono font-bold text-teal-950 outline-none focus:border-teal-700">
+          </div>
+
+          <!-- Saved Bank Details Section -->
+          <div id="sectionWithdrawBank" class="hidden space-y-2 bg-slate-50 border border-slate-200 rounded-2xl p-2.5">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-teal-950 flex items-center gap-1">
+                <i class="fa-solid fa-building-columns text-teal-700"></i> Bank Account Details
+              </span>
+              <span id="savedBankBadge" class="hidden text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">Auto-Saved</span>
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Account Holder Name:</label>
+              <input type="text" id="bankHolderInput" placeholder="Name as per Bank" class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-teal-950 outline-none focus:border-teal-700">
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Bank Account Number:</label>
+              <input type="text" id="bankAccountInput" placeholder="Enter Account Number" class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-mono font-bold text-teal-950 outline-none focus:border-teal-700">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">IFSC Code:</label>
+                <input type="text" id="bankIfscInput" placeholder="e.g. SBIN0001234" class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-mono font-bold uppercase text-teal-950 outline-none focus:border-teal-700">
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Bank Name:</label>
+                <input type="text" id="bankNameInput" placeholder="e.g. SBI, HDFC" class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-bold text-teal-950 outline-none focus:border-teal-700">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="submitWithdrawForm()" class="w-full py-3 bg-gradient-to-r from-teal-950 to-[#043338] text-amber-300 hover:text-white font-bold rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> Submit Withdrawal Request
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL: DYNAMIC RESULT CHART (ALL MARKETS PREVIOUS RESULTS) -->
+    <div id="chartModal" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl space-y-3 text-xs max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-teal-950">Teer Previous Results Chart</h3>
+            <p class="text-[10px] text-slate-500">Official Past Records (10 to 15 Days)</p>
+          </div>
+          <button onclick="closeChartModal()" class="text-slate-400"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-bold text-slate-700 block mb-1">Select Market:</label>
+          <select id="chartMarketSelect" onchange="renderSelectedMarketChart()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs font-bold text-teal-950 outline-none"></select>
+        </div>
+
+        <div class="flex-1 overflow-y-auto">
+          <table class="w-full text-center border-collapse">
+            <thead>
+              <tr class="bg-teal-950 text-amber-300 font-bold text-[11px]">
+                <th class="p-2 border border-teal-800">Date</th>
+                <th class="p-2 border border-teal-800">FR Result</th>
+                <th class="p-2 border border-teal-800">SR Result</th>
+              </tr>
+            </thead>
+            <tbody id="chartTableBody" class="divide-y font-mono font-bold text-slate-700 text-xs"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: AUTHENTICATION (NO SKIP BUTTON + FORGOT PASSWORD WITH WHATSAPP CHAT AUTO MESSAGE) -->
+    <div id="authModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl text-slate-800 space-y-3 relative">
+        <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+
+        <div class="text-center pt-1">
+          <div class="w-12 h-12 mx-auto rounded-full bg-teal-950 flex items-center justify-center text-amber-400 text-xl font-cinzel mb-1">T</div>
+          <h3 class="font-cinzel text-lg font-black text-teal-950">TEER ONLINE</h3>
+          <p class="text-[11px] text-emerald-600 font-bold">🎁 Sign Up &amp; Get ₹10 Welcome Bonus Free!</p>
+        </div>
+
+        <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
+          <button onclick="switchAuthTab('login')" id="tabBtnLogin" class="flex-1 py-1.5 rounded-lg text-slate-600">Login</button>
+          <button onclick="switchAuthTab('register')" id="tabBtnRegister" class="flex-1 py-1.5 rounded-lg bg-teal-950 text-white shadow">Register</button>
+        </div>
+
+        <!-- Register Form (No Skip Button) -->
+        <form id="registerForm" onsubmit="handleRegisterSubmit(event)" class="space-y-2.5">
+          <div>
+            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">User Name:</label>
+            <input type="text" id="regName" placeholder="Apna pura naam likhein" required class="w-full border rounded-xl p-2 text-xs font-semibold outline-none focus:border-teal-700">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Mobile Number (1 Number = 1 ID):</label>
+            <input type="tel" id="regPhone" placeholder="10-digit mobile number" maxlength="10" required class="w-full border rounded-xl p-2 text-xs font-semibold outline-none focus:border-teal-700">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Password:</label>
+            <input type="password" id="regPass" placeholder="Kam se kam 4 digit password" minlength="4" required class="w-full border rounded-xl p-2 text-xs outline-none focus:border-teal-700">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-slate-600 flex justify-between items-center mb-0.5">
+              <span>Referral Code:</span>
+              <span class="text-amber-600 font-normal text-[10px]">(Optional)</span>
+            </label>
+            <input type="text" id="regReferral" placeholder="e.g. TEER786" class="w-full border border-dashed border-amber-300 bg-amber-50/40 rounded-xl p-2 text-xs font-mono uppercase outline-none focus:border-teal-700">
+          </div>
+          <button type="submit" class="w-full py-2.5 gold-btn rounded-xl font-bold text-xs shadow-md">
+            Register &amp; Claim ₹10 Free
+          </button>
+        </form>
+
+        <!-- Login Form (With Forgot Password -> WhatsApp auto message, No Skip Button) -->
+        <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-2.5 hidden">
+          <div>
+            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Mobile Number:</label>
+            <input type="tel" id="loginPhone" placeholder="10-digit mobile number" maxlength="10" required class="w-full border rounded-xl p-2 text-xs font-semibold outline-none focus:border-teal-700">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Password:</label>
+            <input type="password" id="loginPass" placeholder="Enter password" required class="w-full border rounded-xl p-2 text-xs outline-none focus:border-teal-700">
+          </div>
+          <button type="submit" class="w-full py-2.5 bg-teal-950 text-amber-300 rounded-xl font-bold text-xs shadow-md">
+            Login to Account
+          </button>
+
+          <!-- FORGOT PASSWORD LINK -->
+          <div class="pt-2 text-center">
+            <button type="button" onclick="triggerForgotPasswordWhatsApp()" class="text-xs font-bold text-teal-800 hover:text-teal-950 underline flex items-center justify-center gap-1 mx-auto">
+              <i class="fa-brands fa-whatsapp text-emerald-600 text-sm"></i> Forgot Password? Click to Reset via WhatsApp
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. FREE FIREBASE CONFIGURATION (REALTIME DB)
+    // ==========================================
+    // Yahan aap apna Firebase credentials replace kar sakte hain:
+    const firebaseConfig = {
+      apiKey: "AIzaSyCn-AKygN3yIvaXN9-TkDqoitoJRMKIDho",
+      authDomain: "teer-online-e0d9d.firebaseapp.com",
+      databaseURL: "https://teer-online-e0d9d-default-rtdb.firebaseio.com",
+      projectId: "teer-online-e0d9d",
+      storageBucket: "teer-online-e0d9d.firebasestorage.app",
+      messagingSenderId: "178122817204",
+      appId: "1:178122817204:web:98820cc4fa354bab0e21e1",
+      measurementId: "G-0WV58DNLER"
+    };
+
+    let fbDatabase = null;
+    try {
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      fbDatabase = firebase.database();
+      console.log("Firebase initialized successfully!");
+    } catch(err) {
+      console.log("Firebase fallback active:", err.message);
+    }
+
+    // State management
+    const state = {
+      user: null,
+      balance: 0.00,
+      selectedNumbers: [],
+      betMode: 'direct',
+      currentRound: 'FR',
+      currentMarketObj: null,
+      markets: [
+        // 1. MORNING DRAWS
+        { name: 'Shilong Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', defaultFr: '**', defaultSr: '**' },
+        { name: 'Khanapara Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM', defaultFr: '**', defaultSr: '**' },
+
+        // 2. EVENING OFFICIAL DRAWS
+        { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM', defaultFr: '**', defaultSr: '**' },
+        { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM', defaultFr: '**', defaultSr: '**' },
+        { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM', defaultFr: '**', defaultSr: '**' },
+
+        // 3. NIGHT TEER DRAWS
+        { name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM', defaultFr: '**', defaultSr: '**' },
+
+        // 4. INSTANT AUTO DRAW (At the end)
+        { name: 'Teer Play', frTime: '1 Min', srTime: '1 Min', defaultFr: '**', defaultSr: '**', isFast: true }
+      ],
+      bids: [],
+      notifications: []
+    };
+
+    const historicalMarketData = {
+      'Shilong Morning Teer': [
+        { d: '02/11/2026', fr: '76', sr: '15' },
+        { d: '01/11/2026', fr: '38', sr: '82' },
+        { d: '31/10/2026', fr: '47', sr: '64' },
+        { d: '30/10/2026', fr: '19', sr: '51' },
+        { d: '29/10/2026', fr: '85', sr: '04' },
+        { d: '28/10/2026', fr: '32', sr: '91' },
+        { d: '27/10/2026', fr: '64', sr: '18' },
+        { d: '26/10/2026', fr: '05', sr: '59' },
+        { d: '24/10/2026', fr: '71', sr: '40' },
+        { d: '23/10/2026', fr: '92', sr: '33' }
+      ],
+      'Shillong Teer (Evening)': [
+        { d: '02/11/2026', fr: '34', sr: '71' },
+        { d: '01/11/2026', fr: '67', sr: '29' },
+        { d: '31/10/2026', fr: '52', sr: '80' },
+        { d: '30/10/2026', fr: '08', sr: '44' },
+        { d: '29/10/2026', fr: '91', sr: '23' },
+        { d: '28/10/2026', fr: '43', sr: '65' },
+        { d: '27/10/2026', fr: '16', sr: '88' },
+        { d: '26/10/2026', fr: '79', sr: '30' },
+        { d: '24/10/2026', fr: '25', sr: '97' },
+        { d: '23/10/2026', fr: '84', sr: '12' }
+      ],
+      'Shillong Night Teer': [
+        { d: '02/11/2026', fr: '48', sr: '17' },
+        { d: '01/11/2026', fr: '21', sr: '63' },
+        { d: '31/10/2026', fr: '89', sr: '05' },
+        { d: '30/10/2026', fr: '36', sr: '74' },
+        { d: '29/10/2026', fr: '60', sr: '28' },
+        { d: '28/10/2026', fr: '14', sr: '95' },
+        { d: '27/10/2026', fr: '77', sr: '42' },
+        { d: '26/10/2026', fr: '03', sr: '81' },
+        { d: '24/10/2026', fr: '55', sr: '19' },
+        { d: '23/10/2026', fr: '90', sr: '66' }
+      ],
+      'Khanapara Morning Teer': [
+        { d: '02/11/2026', fr: '60', sr: '39' },
+        { d: '01/11/2026', fr: '14', sr: '75' },
+        { d: '31/10/2026', fr: '83', sr: '28' },
+        { d: '30/10/2026', fr: '57', sr: '01' },
+        { d: '29/10/2026', fr: '29', sr: '64' },
+        { d: '28/10/2026', fr: '90', sr: '46' },
+        { d: '27/10/2026', fr: '42', sr: '13' },
+        { d: '26/10/2026', fr: '78', sr: '85' },
+        { d: '24/10/2026', fr: '06', sr: '31' },
+        { d: '23/10/2026', fr: '35', sr: '98' }
+      ],
+      'Khanapara Teer (Evening)': [
+        { d: '02/11/2026', fr: '82', sr: '19' },
+        { d: '01/11/2026', fr: '45', sr: '60' },
+        { d: '31/10/2026', fr: '27', sr: '93' },
+        { d: '30/10/2026', fr: '70', sr: '11' },
+        { d: '29/10/2026', fr: '03', sr: '58' },
+        { d: '28/10/2026', fr: '68', sr: '34' },
+        { d: '27/10/2026', fr: '15', sr: '87' },
+        { d: '26/10/2026', fr: '94', sr: '22' },
+        { d: '24/10/2026', fr: '31', sr: '76' },
+        { d: '23/10/2026', fr: '59', sr: '04' }
+      ],
+      'Assam morning teer': [
+        { d: '02/11/2026', fr: '46', sr: '88' },
+        { d: '01/11/2026', fr: '91', sr: '25' },
+        { d: '31/10/2026', fr: '07', sr: '62' },
+        { d: '30/10/2026', fr: '53', sr: '18' },
+        { d: '29/10/2026', fr: '74', sr: '90' },
+        { d: '28/10/2026', fr: '20', sr: '37' },
+        { d: '27/10/2026', fr: '86', sr: '49' },
+        { d: '26/10/2026', fr: '38', sr: '71' },
+        { d: '24/10/2026', fr: '65', sr: '03' },
+        { d: '23/10/2026', fr: '12', sr: '84' }
+      ],
+      'Assam teer': [
+        { d: '02/11/2026', fr: '41', sr: '09' },
+        { d: '01/11/2026', fr: '87', sr: '54' },
+        { d: '31/10/2026', fr: '23', sr: '98' },
+        { d: '30/10/2026', fr: '69', sr: '31' },
+        { d: '29/10/2026', fr: '15', sr: '76' },
+        { d: '28/10/2026', fr: '58', sr: '20' },
+        { d: '27/10/2026', fr: '02', sr: '67' },
+        { d: '26/10/2026', fr: '93', sr: '45' },
+        { d: '24/10/2026', fr: '36', sr: '12' },
+        { d: '23/10/2026', fr: '70', sr: '89' }
+      ],
+      'Assam night teer': [
+        { d: '02/11/2026', fr: '53', sr: '21' },
+        { d: '01/11/2026', fr: '09', sr: '68' },
+        { d: '31/10/2026', fr: '74', sr: '15' },
+        { d: '30/10/2026', fr: '32', sr: '90' },
+        { d: '29/10/2026', fr: '86', sr: '47' },
+        { d: '28/10/2026', fr: '18', sr: '73' },
+        { d: '27/10/2026', fr: '61', sr: '04' },
+        { d: '26/10/2026', fr: '95', sr: '38' },
+        { d: '24/10/2026', fr: '27', sr: '82' },
+        { d: '23/10/2026', fr: '40', sr: '56' }
+      ],
+      'Juwai Teer (Evening)': [
+        { d: '02/11/2026', fr: '58', sr: '24' },
+        { d: '01/11/2026', fr: '12', sr: '79' },
+        { d: '31/10/2026', fr: '95', sr: '36' },
+        { d: '30/10/2026', fr: '40', sr: '81' },
+        { d: '29/10/2026', fr: '63', sr: '07' },
+        { d: '28/10/2026', fr: '27', sr: '52' },
+        { d: '27/10/2026', fr: '84', sr: '19' },
+        { d: '26/10/2026', fr: '31', sr: '65' },
+        { d: '24/10/2026', fr: '76', sr: '90' },
+        { d: '23/10/2026', fr: '08', sr: '43' }
+      ],
+      'Sikkim': [
+        { d: '02/11/2026', fr: '15', sr: '29' },
+        { d: '01/11/2026', fr: '72', sr: '84' },
+        { d: '31/10/2026', fr: '39', sr: '06' },
+        { d: '30/10/2026', fr: '88', sr: '51' },
+        { d: '29/10/2026', fr: '44', sr: '97' },
+        { d: '28/10/2026', fr: '61', sr: '13' },
+        { d: '27/10/2026', fr: '05', sr: '78' },
+        { d: '26/10/2026', fr: '50', sr: '32' },
+        { d: '24/10/2026', fr: '96', sr: '69' },
+        { d: '23/10/2026', fr: '23', sr: '47' }
+      ],
+      'Sikkim Night Teer': [
+        { d: '02/11/2026', fr: '23', sr: '65' },
+        { d: '01/11/2026', fr: '81', sr: '14' },
+        { d: '31/10/2026', fr: '46', sr: '70' },
+        { d: '30/10/2026', fr: '09', sr: '38' },
+        { d: '29/10/2026', fr: '67', sr: '92' },
+        { d: '28/10/2026', fr: '35', sr: '54' },
+        { d: '27/10/2026', fr: '90', sr: '21' },
+        { d: '26/10/2026', fr: '18', sr: '83' },
+        { d: '24/10/2026', fr: '52', sr: '07' },
+        { d: '23/10/2026', fr: '74', sr: '49' }
+      ]
+    };
+
+    
+    // ==========================================
+    // 10-TAP SECRET ADMIN ACCESS ON LOGO
+    // ==========================================
+    let adminLogoTapCount = 0;
+    let adminLogoTapTimer = null;
+    
+    let currentShareableClipText = "";
+
+    function showBetReceiptClip(marketName, round, numbersStr, amount, potentialWin) {
+      const dateStr = getTodayFormattedDate();
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const userLabel = state.user ? (state.user.name + ` (${state.user.uid || state.user.phone})`) : 'Guest User';
+      const refId = 'TR' + Math.floor(100000 + Math.random() * 900000);
+
+      currentShareableClipText = 
+`🎯 *TEER ONLINE OFFICIAL BET SLIP* 🎯
+━━━━━━━━━━━━━━━━━━━━
+🔖 *Ref ID:* #${refId}
+📌 *Market:* ${marketName}
+🏹 *Round:* ${round}
+🔢 *Number (Guti):* ${numbersStr}
+💰 *Bet Amount:* ₹${amount}
+🏆 *Potential Win:* ₹${potentialWin}
+👤 *User/Agent:* ${userLabel}
+📅 *Time:* ${dateStr} ${timeStr}
+━━━━━━━━━━━━━━━━━━━━
+✅ *Status:* Bet Success (Confirmed)`;
+
+      const container = document.getElementById('betReceiptCardContent');
+      if (container) {
+        container.innerHTML = `
+          <div class="flex justify-between items-center bg-teal-950/60 p-1.5 rounded-lg border border-teal-800/60 mb-1">
+            <span class="text-slate-400 text-[10px]">Reference ID:</span>
+            <span class="font-mono font-black text-amber-400 text-xs tracking-wider">#${refId}</span>
+          </div>
+          <div class="flex justify-between"><span class="text-slate-400">Market:</span> <span class="font-bold text-amber-300 text-right">${marketName}</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Round:</span> <span class="font-bold text-white text-right">${round}</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Number(s):</span> <span class="font-black text-amber-400 text-sm text-right">${numbersStr}</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Bet Amount:</span> <span class="font-bold text-white">₹${amount}</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Potential Return:</span> <span class="font-bold text-emerald-400">₹${potentialWin}</span></div>
+          <div class="flex justify-between border-t border-teal-900/60 pt-1.5 text-[10px] text-slate-400">
+            <span>${dateStr} ${timeStr}</span>
+            <span class="text-emerald-400 font-bold">● CONFIRMED</span>
+          </div>
+        `;
+      }
+      document.getElementById('betClipModal').classList.remove('hidden');
+    }
+
+    function shareReceiptOnWhatsApp() {
+      if (!currentShareableClipText) return;
+      const encodedText = encodeURIComponent(currentShareableClipText);
+      window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
+    }
+
+    function closeBetClipModal() {
+      document.getElementById('betClipModal').classList.add('hidden');
+    }
+
+    function handleAdminSecretLogoTap() {
+      adminLogoTapCount++;
+      clearTimeout(adminLogoTapTimer);
+      // 2.5 seconds window after each tap so 10 taps are comfortable to execute
+      adminLogoTapTimer = setTimeout(() => { adminLogoTapCount = 0; }, 2500);
+
+      if (adminLogoTapCount >= 10) {
+        adminLogoTapCount = 0;
+        if (navigator.vibrate) navigator.vibrate(100);
+        window.location.href = 'admin.html';
+      }
+    }
+
+    // ==========================================
+    // FAKE REALTIME BETS TICKER FOR TEER PLAY
+    // ==========================================
+    
+    // Realtime User Bet Injection with Unique Highlight Styling
+    function injectUserRealtimeBet(userUid, mode, number, amount) {
+      const feed1 = document.getElementById('fakeLiveBetsFeed');
+      const feed2 = document.getElementById('modalFakeBetsFeed');
+
+      const highlightHtml = `
+        <div class="flex justify-between items-center bg-gradient-to-r from-amber-500/30 to-teal-900/60 border border-amber-400 rounded-lg px-2 py-1 my-1 text-white text-[10px] shadow-lg animate-pulse">
+          <div class="flex items-center gap-1.5">
+            <span class="bg-amber-400 text-teal-950 font-black px-1.5 py-0.2 rounded text-[8px]">YOUR BET</span>
+            <span class="text-amber-300 font-extrabold font-mono">${userUid}</span>
+          </div>
+          <span class="text-teal-100 font-bold">${mode} [${number}]</span>
+          <span class="text-emerald-300 font-black font-mono">₹${amount}</span>
+        </div>
+      `;
+
+      [feed1, feed2].forEach(feed => {
+        if (feed) {
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = highlightHtml;
+          feed.prepend(wrapper.firstElementChild);
+          if (feed.children.length > 6) feed.removeChild(feed.lastChild);
+        }
+      });
+    }
+
+    function initFakeBetsTicker() {
+      const feed = document.getElementById('fakeLiveBetsFeed');
+      const mFeed = document.getElementById('modalFakeBetsFeed');
+
+      const randomGutis = ['20', '30', '50', '14', '78', '09', '42', '88', '15', '63', '99'];
+      const amounts = [10, 10, 10, 20, 30, 50];
+
+      function addFakeBet() {
+        if (!feed) return;
+        const fakeUid = 'UID_' + Math.floor(1000 + Math.random() * 9000);
+        const guti = randomGutis[Math.floor(Math.random() * randomGutis.length)];
+        const amt = amounts[Math.floor(Math.random() * amounts.length)];
         
+        const modeRoll = Math.random();
+        let modeLabel = '';
+        if (modeRoll < 0.6) {
+          modeLabel = 'Guti [' + guti + ']';
+        } else if (modeRoll < 0.8) {
+          modeLabel = 'House [' + guti.charAt(0) + ']';
+        } else {
+          modeLabel = 'Ending [' + guti.charAt(1) + ']';
+        }
+
+        const row = document.createElement('div');
+        row.className = "flex justify-between items-center text-teal-200 py-0.5 border-b border-teal-950/40 text-[9px]";
+        row.innerHTML = `
+          <span class="text-amber-400 font-bold">${fakeUid}</span>
+          <span class="text-slate-300">${modeLabel}</span>
+          <span class="text-emerald-400 font-bold">₹${amt}</span>
+        `;
+        feed.prepend(row);
+        if (feed.children.length > 5) feed.removeChild(feed.lastChild);
+        if (mFeed) {
+          const rowClone = row.cloneNode(true);
+          mFeed.prepend(rowClone);
+          if (mFeed.children.length > 3) mFeed.removeChild(mFeed.lastChild);
+        }
+      }
+
+      for (let i = 0; i < 4; i++) addFakeBet();
+      setInterval(addFakeBet, 2500);
+    }
+
+    // ==========================================
+    // 1-MINUTE TEER PLAY AUTO DRAW ENGINE & POPUP
+    // ==========================================
+    function initTeerPlayAutoEngine() {
+      setInterval(() => {
+        const now = new Date();
+        const secsLeft = 60 - now.getSeconds();
+
+        // Update modal timer countdown continuously
+        const modalTimer = document.getElementById('teerPlayLiveModalTimer');
+        if (modalTimer) {
+          modalTimer.innerText = `00:${String(secsLeft).padStart(2, '0')}s`;
+        }
+
+        // Exact 00 second: draw result, restart countdown & trigger Win/Loss popup
+        if (now.getSeconds() === 0) {
+          executeTeerPlayMinuteDraw();
+        }
+      }, 1000);
+    }
+
+    function executeTeerPlayMinuteDraw() {
+      const now = new Date();
+      const timeLabel = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const activeTeerPlayBids = state.bids.filter(b => b.market === 'Teer Play' && b.status === 'Active');
+      let chosenFR = null;
+      let chosenSR = null;
+
+      let userTargetGuti = null;
+      if (state.user) {
+        state.user.betCount = (state.user.betCount || 0);
+        const userActiveBids = activeTeerPlayBids.filter(b => b.phone === state.user.phone);
+        
+        if (userActiveBids.length > 0 && state.user.betCount < 10) {
+          const currentCount = state.user.betCount + 1;
+          const shouldWin = (currentCount % 2 === 1); // Alternating won/loss
+          
+          if (shouldWin) {
+            const tenRsBid = userActiveBids.find(b => parseFloat(b.amount) <= 15);
+            if (tenRsBid) {
+              userTargetGuti = String(tenRsBid.number).padStart(2, '0');
+            }
+          }
+        }
+      }
+
+      if (userTargetGuti) {
+        chosenFR = userTargetGuti;
+        chosenSR = String(Math.floor(1 + Math.random() * 20)).padStart(2, '0');
+      } else {
+        // Gutis strictly between 01 and 20 for Teer Play!
+        if (activeTeerPlayBids.length < 100) {
+          chosenFR = String(Math.floor(1 + Math.random() * 20)).padStart(2, '0');
+          chosenSR = String(Math.floor(1 + Math.random() * 20)).padStart(2, '0');
+        } else {
+          const gutiSums = {};
+          for (let i = 1; i <= 20; i++) gutiSums[String(i).padStart(2, '0')] = 0;
+          activeTeerPlayBids.forEach(b => {
+            const g = String(b.number).padStart(2, '0');
+            if (gutiSums[g] !== undefined) {
+              gutiSums[g] += (parseFloat(b.amount) || 0);
+            }
+          });
+          const sorted = Object.entries(gutiSums).sort((a,b) => a[1] - b[1]);
+          chosenFR = sorted[0][0];
+          chosenSR = sorted[1] ? sorted[1][0] : sorted[0][0];
+        }
+      }
+
+      // Check user bids in this round before resolving
+      let userWonAmt = 0;
+      let userLostAmt = 0;
+      let userHadBets = false;
+
+      activeTeerPlayBids.forEach(b => {
+        userHadBets = true;
+        const targetRes = (b.round === 'FR') ? chosenFR : chosenSR;
+        const targetTwo = String(targetRes).padStart(2, '0');
+        const hDig = targetTwo.charAt(0);
+        const eDig = targetTwo.charAt(1);
+
+        if (b.mode === 'DIRECT' && b.number === targetTwo) {
+          userWonAmt += (b.amount / 10) * 160;
+        } else if (b.mode === 'HOUSE' && b.number === hDig) {
+          userWonAmt += (b.amount / 10) * 80;
+        } else if (b.mode === 'ENDING' && b.number === eDig) {
+          userWonAmt += (b.amount / 10) * 80;
+        } else {
+          userLostAmt += parseFloat(b.amount);
+        }
+      });
+
+      // 1. Save to Previous Results Strip
+      let historyList = JSON.parse(localStorage.getItem('teer_play_recent_results') || '[]');
+      historyList.unshift({ time: timeLabel, fr: chosenFR, sr: chosenSR });
+      if (historyList.length > 15) historyList.pop();
+      localStorage.setItem('teer_play_recent_results', JSON.stringify(historyList));
+      renderTeerPlayHistoryStrip();
+
+      // 2. Save current result
+      const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      savedResults['Teer Play'] = { fr: chosenFR, sr: chosenSR, time: timeLabel };
+      localStorage.setItem('teer_market_results', JSON.stringify(savedResults));
+
+      // 3. Evaluate bets ONLY on this draw completion
+      activeTeerPlayBids.forEach(bid => {
+        const targetRes = (bid.round === 'FR') ? chosenFR : chosenSR;
+        const targetTwo = String(targetRes).padStart(2, '0');
+        const hDig = targetTwo.charAt(0);
+        const eDig = targetTwo.charAt(1);
+
+        let isWin = false;
+        let winAmt = 0;
+        if (bid.mode === 'DIRECT' && bid.number === targetTwo) {
+          isWin = true;
+          winAmt = (bid.amount / 10) * 160;
+        } else if (bid.mode === 'HOUSE' && bid.number === hDig) {
+          isWin = true;
+          winAmt = (bid.amount / 10) * 80;
+        } else if (bid.mode === 'ENDING' && bid.number === eDig) {
+          isWin = true;
+          winAmt = (bid.amount / 10) * 80;
+        }
+
+        if (isWin) {
+          bid.status = 'WON';
+          bid.payout = winAmt;
+          state.balance += winAmt;
+        } else {
+          bid.status = 'LOST';
+          bid.payout = 0;
+        }
+      });
+
+      if (activeTeerPlayBids.length > 0) {
+        localStorage.setItem('teer_bids', JSON.stringify(state.bids));
+        localStorage.setItem('teer_balance', state.balance.toFixed(2));
+        if (fbDatabase && state.user && state.user.phone) {
+          fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+        }
+        updateUI();
+      }
+
+      if (fbDatabase) {
+        fbDatabase.ref('results/Teer Play').set({ fr: chosenFR, sr: chosenSR });
+      }
+
+      if (state.user) {
+        const playedThisRound = activeTeerPlayBids.some(b => b.phone === state.user.phone);
+        if (playedThisRound) {
+          state.user.betCount = (state.user.betCount || 0) + 1;
+          localStorage.setItem('teer_current_user', JSON.stringify(state.user));
+        }
+      }
+
+      renderMarkets();
+      checkAndCreditWinnings();
+
+      // Trigger Win / Loss Popup if user bet in this round
+      if (userHadBets) {
+        showTeerPlayOutcomePopup(chosenFR, chosenSR, userWonAmt, userLostAmt);
+      }
+    }
+
+    function showTeerPlayOutcomePopup(fr, sr, totalWon, totalLost) {
+      const modal = document.getElementById('teerPlayResultPopup');
+      const icon = document.getElementById('tpPopupIcon');
+      const title = document.getElementById('tpPopupTitle');
+      const outBox = document.getElementById('tpOutcomeBox');
+      if (!modal) return;
+
+      document.getElementById('tpResultFR').innerText = fr;
+      document.getElementById('tpResultSR').innerText = sr;
+
+      if (totalWon > 0) {
+        icon.className = "w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-3xl animate-bounce";
+        icon.innerHTML = `<i class="fa-solid fa-trophy"></i>`;
+        title.innerText = "CONGRATULATIONS!";
+        title.className = "font-cinzel text-xl font-black text-emerald-400";
+        outBox.className = "rounded-xl p-2.5 text-xs font-bold bg-emerald-950/80 border border-emerald-500 text-emerald-300";
+        outBox.innerHTML = `🎉 You Won <b>+₹${totalWon.toFixed(2)}</b>!<p class="text-[10px] text-slate-300 mt-0.5">Credited directly to your wallet!</p>`;
+        playChimeSound();
+      } else if (totalLost > 0) {
+        icon.className = "w-14 h-14 bg-rose-500/20 text-rose-400 rounded-full flex items-center justify-center mx-auto text-3xl";
+        icon.innerHTML = `<i class="fa-solid fa-face-frown"></i>`;
+        title.innerText = "BET LOST";
+        title.className = "font-cinzel text-xl font-black text-rose-400";
+        outBox.className = "rounded-xl p-2.5 text-xs font-bold bg-rose-950/80 border border-rose-500 text-rose-300";
+        outBox.innerHTML = `❌ Better luck next round!<p class="text-[10px] text-slate-300 mt-0.5">Total Bet Loss: ₹${totalLost.toFixed(2)}</p>`;
+      } else {
+        icon.className = "w-14 h-14 bg-teal-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-3xl";
+        icon.innerHTML = `<i class="fa-solid fa-bullseye"></i>`;
+        title.innerText = "ROUND COMPLETED";
+        title.className = "font-cinzel text-xl font-black text-amber-300";
+        outBox.className = "rounded-xl p-2.5 text-xs font-bold bg-teal-950/80 border border-teal-700 text-teal-200";
+        outBox.innerHTML = `Winning numbers drawn for this minute.`;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeTeerPlayResultPopup() {
+      const modal = document.getElementById('teerPlayResultPopup');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // ==========================================
+    // DEDICATED TEER PLAY BET HISTORY HANDLERS
+    // ==========================================
+    let currentTeerPlayHistFilter = 'all';
+
+    function openTeerPlayHistoryModal() {
+      currentTeerPlayHistFilter = 'all';
+      renderTeerPlayHistoryList();
+      document.getElementById('teerPlayHistoryModal').classList.remove('hidden');
+    }
+
+    function closeTeerPlayHistoryModal() {
+      document.getElementById('teerPlayHistoryModal').classList.add('hidden');
+    }
+
+    function filterTeerPlayHistory(flt) {
+      currentTeerPlayHistFilter = flt;
+      ['all', 'won', 'lost', 'active'].forEach(t => {
+        const btn = document.getElementById('tpHistTab_' + t);
+        if (btn) {
+          if (t === flt) {
+            btn.className = "flex-1 py-1 rounded-lg bg-amber-400 text-teal-950 font-black";
+          } else {
+            btn.className = "flex-1 py-1 rounded-lg text-slate-300 font-bold hover:text-white";
+          }
+        }
+      });
+      renderTeerPlayHistoryList();
+    }
+
+    
+    // Render Previous Results Strip
+    function renderTeerPlayHistoryStrip() {
+      const strip = document.getElementById('teerPlayResultsHistoryStrip');
+      if (!strip) return;
+      const historyList = JSON.parse(localStorage.getItem('teer_play_recent_results') || '[]');
+
+      if (historyList.length === 0) {
+        strip.innerHTML = '<span class="text-slate-500 text-[10px] italic">Waiting for draw...</span>';
+        return;
+      }
+
+      strip.innerHTML = historyList.map(item => `
+        <div class="bg-teal-950/80 border border-amber-400/40 rounded-lg px-2 py-0.5 text-center flex-shrink-0 shadow">
+          <span class="text-[8px] text-slate-400 block">${item.time}</span>
+          <span class="text-amber-300 font-black">FR ${item.fr}</span> | <span class="text-emerald-400 font-black">SR ${item.sr}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderTeerPlayHistoryList() {
+      const cont = document.getElementById('teerPlayHistoryList');
+      if (!cont) return;
+      const allTpBids = (state.bids || []).filter(b => b.market === 'Teer Play');
+
+      let list = allTpBids;
+      if (currentTeerPlayHistFilter === 'won') {
+        list = allTpBids.filter(b => b.status === 'WON');
+      } else if (currentTeerPlayHistFilter === 'lost') {
+        list = allTpBids.filter(b => b.status === 'LOST');
+      } else if (currentTeerPlayHistFilter === 'active') {
+        list = allTpBids.filter(b => b.status === 'Active');
+      }
+
+      if (list.length === 0) {
+        cont.innerHTML = `<div class="p-8 text-center text-slate-400">No Teer Play bets found in this filter.</div>`;
+        return;
+      }
+
+      cont.innerHTML = list.map(b => {
+        let badge = '<span class="text-[9px] bg-amber-400/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-400/30">Active</span>';
+        if (b.status === 'WON') {
+          badge = `<span class="text-[9px] bg-emerald-500/20 text-emerald-400 font-black px-2 py-0.5 rounded-full border border-emerald-500/40">WON +₹${parseFloat(b.payout).toFixed(2)}</span>`;
+        } else if (b.status === 'LOST') {
+          badge = '<span class="text-[9px] bg-rose-500/20 text-rose-400 font-bold px-2 py-0.5 rounded-full border border-rose-500/40">Lost</span>';
+        }
+
+        return `
+          <div class="bg-black/50 border border-teal-900/60 rounded-xl p-2.5 flex justify-between items-center text-xs">
+            <div>
+              <div class="font-bold text-teal-200">${b.mode} [${b.number}] <span class="text-[10px] text-slate-400 font-normal">(${b.round})</span></div>
+              <div class="text-[10px] text-slate-400">${b.time || ''}</div>
+            </div>
+            <div class="text-right flex flex-col items-end gap-1">
+              <span class="font-mono font-bold text-white">₹${parseFloat(b.amount).toFixed(2)}</span>
+              ${badge}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadStorage();
+      initDemoAgentsSystem();
+      checkSundayHoliday();
+      renderMarkets();
+      renderGutiGrid();
+      renderTeerPlayHistoryStrip();
+      renderTeerPlayHistoryStrip();
+      startBannerAutoSlider();
+      initChartMarketsDropdown();
+      updateUI();
+      initFirebaseAutoSync(); // Realtime Firebase listener
+      initUserLiveBalanceListener();
+      checkUrlReferral();
+      syncAgentEarningsFromFirebase();
+      initFakeBetsTicker();
+      initTeerPlayAutoEngine();
+
+      setInterval(() => {
+        renderMarkets();
+        checkAndCreditWinnings();
+        syncNotifications();
+      }, 4000);
+    });
+
+    // 2. FIREBASE REALTIME LISTENER FOR AUTO-RESULT & AUTO-CREDIT
+    function initFirebaseAutoSync() {
+      if (!fbDatabase) return;
+      fbDatabase.ref('results').on('value', (snapshot) => {
+        const liveData = snapshot.val();
+        if (liveData) {
+          console.log("Firebase Live Teer Result Sync:", liveData);
+          localStorage.setItem('teer_market_results', JSON.stringify(liveData));
+          renderMarkets();
+          checkAndCreditWinnings();
+        }
+      });
+      initDynamicSettingsSync();
+      checkUserBlockedStatus();
+    }
+
+    // SYNC SETTINGS & DYNAMIC QR FROM FIREBASE
+    function initDynamicSettingsSync() {
+      if (!fbDatabase) return;
+      fbDatabase.ref('settings').on('value', (snap) => {
+        const s = snap.val();
+        if (s) {
+          if (s.depositUpi) {
+            const upiSpan = document.getElementById('depositUpiText');
+            if (upiSpan) upiSpan.innerText = s.depositUpi;
+            const qrImg = document.getElementById('depositQrImg');
+            if (qrImg) {
+              qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=' + encodeURIComponent(s.depositUpi) + '%26pn=TeerOnline';
+            }
+          }
+          if (s.marqueeText) {
+            const marq = document.querySelector('marquee');
+            if (marq) marq.innerText = s.marqueeText;
+          }
+        }
+      });
+
+      // SYNC LIVE MARKET SCHEDULES & CUTOFF TIMINGS
+      fbDatabase.ref('market_schedules').on('value', (snap) => {
+        const sch = snap.val();
+        if (sch) {
+          state.markets.forEach(m => {
+            if (sch[m.name]) {
+              if (sch[m.name].frTime) m.frTime = sch[m.name].frTime;
+              if (sch[m.name].srTime) m.srTime = sch[m.name].srTime;
+            }
+          });
+          renderMarkets();
+        }
+      });
+    }
+
+    // CHECK IF LOGGED-IN USER IS BLOCKED BY ADMIN
+    function checkUserBlockedStatus() {
+      if (!fbDatabase || !state.user || !state.user.phone) return;
+      fbDatabase.ref('users/' + state.user.phone + '/isBlocked').on('value', (snap) => {
+        if (snap.val() === true) {
+          alert('Your account has been suspended by Admin. Please contact Support.');
+          document.body.innerHTML = `
+            <div class="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6 text-center">
+              <i class="fa-solid fa-ban text-rose-500 text-6xl mb-4"></i>
+              <h2 class="text-xl font-bold text-rose-400">Account Suspended</h2>
+              <p class="text-xs text-slate-400 mt-2">Your account has been suspended by Admin. Please contact WhatsApp helpline.</p>
+              <a href="https://wa.me/918134834380" class="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2">
+                <i class="fa-brands fa-whatsapp"></i> Contact Admin
+              </a>
+            </div>
+          `;
+        }
+      });
+    }
+
+    function getTodayFormattedDate() {
+      const now = new Date();
+      const d = String(now.getDate()).padStart(2, '0');
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const y = now.getFullYear();
+      return `${d}/${m}/${y}`;
+    }
+
+    function checkSundayHoliday() {
+      const isSunday = (new Date().getDay() === 0);
+      const badge = document.getElementById('dayStatusBadge');
+      if (isSunday) {
+        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300";
+        badge.innerText = "● Sunday Off (Closed Today)";
+      } else {
+        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300";
+        badge.innerText = "● 6 Days Open (Sun Off)";
+      }
+      return isSunday;
+    }
+
+    
+    function initUserLiveBalanceListener() {
+      if (!fbDatabase || !state.user) return;
+      fbDatabase.ref('users/' + state.user.phone + '/balance').on('value', (snap) => {
+        if (snap.exists()) {
+          const cloudBal = parseFloat(snap.val());
+          if (cloudBal !== state.balance) {
+            state.balance = cloudBal;
+            localStorage.setItem('teer_balance', state.balance.toFixed(2));
+            updateUI();
+          }
+        }
+      });
+    }
+
+    
+    // ==========================================
+    // 10 DEMO AGENTS INITIALIZATION & HANDLER
+    // ==========================================
+    const demoAgentsData = [
+      { name: 'ajent 1', phone: '7638020723', pass: '8080', uid: 'UID_1023', balance: 50000, isDemo: true },
+      { name: 'ajent 2', phone: '7638020724', pass: '8080', uid: 'UID_1024', balance: 50000, isDemo: true },
+      { name: 'ajent 3', phone: '7638020725', pass: '8080', uid: 'UID_1025', balance: 50000, isDemo: true },
+      { name: 'ajent 4', phone: '7638020726', pass: '8080', uid: 'UID_1026', balance: 50000, isDemo: true },
+      { name: 'ajent 5', phone: '7638020727', pass: '8080', uid: 'UID_1027', balance: 50000, isDemo: true },
+      { name: 'ajent 6', phone: '7638020728', pass: '8080', uid: 'UID_1028', balance: 50000, isDemo: true },
+      { name: 'ajent 7', phone: '7638020729', pass: '8080', uid: 'UID_1029', balance: 50000, isDemo: true },
+      { name: 'ajent 8', phone: '7638020730', pass: '8080', uid: 'UID_1030', balance: 50000, isDemo: true },
+      { name: 'ajent 9', phone: '7638020731', pass: '8080', uid: 'UID_1031', balance: 50000, isDemo: true },
+      { name: 'ajent 10', phone: '7638020732', pass: '8080', uid: 'UID_1032', balance: 50000, isDemo: true }
+    ];
+
+    function initDemoAgentsSystem() {
+      let usersDb = JSON.parse(localStorage.getItem('teer_registered_users') || '[]');
+      demoAgentsData.forEach(agent => {
+        const found = usersDb.find(u => u.phone === agent.phone);
+        if (!found) {
+          usersDb.push(agent);
+          if (fbDatabase) {
+            fbDatabase.ref('users/' + agent.phone).set(agent);
+          }
+        }
+      });
+      localStorage.setItem('teer_registered_users', JSON.stringify(usersDb));
+    }
+
+        // Auto clean old cached market results on startup if date doesn't match today
+    function sanitizeCachedResults() {
+      try {
+        const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+        const todayStr = getTodayFormattedDate();
+        let changed = false;
+        Object.keys(savedResults).forEach(key => {
+          if (key !== 'Teer Play') {
+            if (!savedResults[key].date || savedResults[key].date !== todayStr) {
+              delete savedResults[key];
+              changed = true;
+            }
+          }
+        });
+        if (changed) {
+          localStorage.setItem('teer_market_results', JSON.stringify(savedResults));
+        }
+      } catch(e) {}
+    }
+
+    function loadStorage() {
+      sanitizeCachedResults();
+      const savedUser = localStorage.getItem('teer_current_user');
+      if (savedUser) {
+        state.user = JSON.parse(savedUser);
+        const savedBal = localStorage.getItem('teer_balance');
+        if (savedBal !== null) state.balance = parseFloat(savedBal);
+        else state.balance = 10.00;
+      } else {
+        state.user = null;
+        state.balance = 0.00;
+      }
+
+      const savedBids = localStorage.getItem('teer_bids');
+      if (savedBids) state.bids = JSON.parse(savedBids);
+
+      const savedNotifs = localStorage.getItem('teer_notifications');
+      if (savedNotifs) state.notifications = JSON.parse(savedNotifs);
+      else {
+        state.notifications = [
+          { id: 1, type: 'event', title: '🎁 Welcome Bonus Credited', message: 'Welcome to Teer Online! ₹10 Signup bonus has been credited to your wallet.', time: 'Today', unread: true },
+          { id: 2, type: 'event', title: '👑 Refer & Agent Commission Active', message: 'Invite friends and earn instant commission on every deposit & turnover!', time: 'Today', unread: true }
+        ];
+        saveNotifications();
+      }
+    }
+
+    function saveNotifications() {
+      localStorage.setItem('teer_notifications', JSON.stringify(state.notifications));
+    }
+
+    function syncNotifications() {
+      const saved = localStorage.getItem('teer_notifications');
+      if (saved) {
+        state.notifications = JSON.parse(saved);
+        const unreadCount = state.notifications.filter(n => n.unread).length;
+        const badge = document.getElementById('notifBadge');
+        if (unreadCount > 0) {
+          badge.innerText = unreadCount;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+    }
+
+    // Auto Winning Calculation & Instant Wallet Credit
+    function checkAndCreditWinnings() {
+      const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      let updated = false;
+
+      state.bids.forEach(bid => {
+        // Exclude Teer Play bids: they are only evaluated when timer ends at 00s in executeTeerPlayMinuteDraw!
+        if (bid.market === 'Teer Play') return;
+        if (bid.status === 'Active' && savedResults[bid.market]) {
+          const resObj = savedResults[bid.market];
+          const announcedNum = (bid.round === 'FR') ? resObj.fr : resObj.sr;
+
+          if (announcedNum && announcedNum !== '**') {
+            let isWin = false;
+            let winAmount = 0;
+
+            const announcedTwoDigit = String(announcedNum).padStart(2, '0');
+            const houseDigit = announcedTwoDigit.charAt(0);
+            const endingDigit = announcedTwoDigit.charAt(1);
+
+            if (bid.market === 'Teer Play') {
+              if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
+                isWin = true;
+                winAmount = (bid.amount / 10) * 160; // 10 pe 160
+              } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
+                isWin = true;
+                winAmount = (bid.amount / 10) * 80;  // 10 pe 80
+              } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
+                isWin = true;
+                winAmount = (bid.amount / 10) * 80;  // 10 pe 80
+              }
+            } else {
+              if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
+                isWin = true;
+                winAmount = bid.amount * 90; // 1:90
+              } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
+                isWin = true;
+                winAmount = bid.amount * 9; // 1:9
+              } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
+                isWin = true;
+                winAmount = bid.amount * 9; // 1:9
+              }
+            }
+
+            if (isWin) {
+              bid.status = 'WON';
+              bid.payout = winAmount;
+              state.balance += winAmount;
+              updated = true;
+
+              addAppNotification({
+                type: 'win',
+                title: '🎉 Congratulations! You Won!',
+                message: `Aapki ${bid.market} (${bid.round}) ${bid.mode} [${bid.number}] par ₹${winAmount.toFixed(2)} ka winning bonus wallet me auto-credit ho gaya hai!`
+              });
+              playChimeSound();
+            } else {
+              bid.status = 'LOST';
+              bid.payout = 0;
+              updated = true;
+            }
+          }
+        }
+      });
+
+      if (updated) {
+        localStorage.setItem('teer_bids', JSON.stringify(state.bids));
+        localStorage.setItem('teer_balance', state.balance.toFixed(2));
+        // Push winning balance to Firebase to avoid race condition/overwrite:
+        if (fbDatabase && state.user && state.user.phone) {
+          fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+        }
+        updateUI();
+      }
+    }
+
+    function addAppNotification(item) {
+      item.id = Date.now();
+      item.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      item.unread = true;
+      state.notifications.unshift(item);
+      saveNotifications();
+      syncNotifications();
+    }
+
+    function playChimeSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.45);
+      } catch(e) {}
+    }
+
+    function updateUI() {
+      const b = '₹' + state.balance.toFixed(2);
+      document.getElementById('headerBalance').innerText = b;
+      document.getElementById('walletBalanceBig').innerText = b;
+      document.getElementById('drawerBal').innerText = b;
+
+      const pName = document.getElementById('profileName');
+      const pPhone = document.getElementById('profilePhone');
+      const pAvatar = document.getElementById('profileAvatar');
+      const pBadge = document.getElementById('profileBadge');
+      const dPhone = document.getElementById('drawerPhone');
+      const dSub = document.getElementById('drawerSub');
+      const dAvatar = document.getElementById('drawerAvatar');
+
+      const pBtn = document.getElementById('profileAuthBtn');
+      if (state.user) {
+        if (pName) pName.innerText = state.user.name;
+        if (pPhone) pPhone.innerText = '+91 ' + state.user.phone + ' • ' + (state.user.uid || ('UID_' + state.user.phone.slice(-4)));
+        if (pAvatar) pAvatar.innerHTML = `<span class="font-bold text-amber-300 text-lg">${state.user.name.charAt(0).toUpperCase()}</span>`;
+        if (pBadge) {
+          pBadge.innerText = 'Verified Member';
+          pBadge.className = 'inline-block mt-1 bg-emerald-400/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-semibold';
+        }
+        if (pBtn) {
+          pBtn.innerText = 'Logout';
+          pBtn.className = 'text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg shadow';
+          pBtn.onclick = logoutUser;
+        }
+        if (dPhone) dPhone.innerText = '+91 ' + state.user.phone;
+        if (dSub) dSub.innerText = state.user.name;
+        if (dAvatar) dAvatar.innerHTML = `<span class="font-bold text-amber-300 text-base">${state.user.name.charAt(0).toUpperCase()}</span>`;
+      } else {
+        if (pName) pName.innerText = 'Guest User';
+        if (pPhone) pPhone.innerText = 'Not Logged In';
+        if (pAvatar) pAvatar.innerHTML = '<i class="fa-solid fa-user text-lg text-teal-200"></i>';
+        if (pBadge) {
+          pBadge.innerText = 'Guest Account (Please Login)';
+          pBadge.className = 'inline-block mt-1 bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-semibold';
+        }
+        if (pBtn) {
+          pBtn.innerText = 'Login';
+          pBtn.className = 'text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg shadow';
+          pBtn.onclick = openAuthModal;
+        }
+        if (dPhone) dPhone.innerText = 'Guest User';
+        if (dSub) dSub.innerText = 'Please Login';
+        if (dAvatar) dAvatar.innerHTML = '<i class="fa-solid fa-user text-sm text-teal-200"></i>';
+      }
+      renderBidsList();
+      syncNotifications();
+    }
+
+    function switchTab(t) {
+      document.querySelectorAll('.app-screen').forEach(s => s.classList.remove('active'));
+      const sc = document.getElementById('screen-' + t);
+      if (sc) sc.classList.add('active');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.tab === t) {
+          btn.classList.add('text-teal-900');
+          btn.classList.remove('text-slate-400');
+        } else {
+          btn.classList.remove('text-teal-900');
+          btn.classList.add('text-slate-400');
+        }
+      });
+      window.scrollTo(0, 0);
+    }
+
+    function getMinutesRemaining(timeStr) {
+      const parts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (!parts) return -999;
+      let h = parseInt(parts[1]);
+      const m = parseInt(parts[2]);
+      const ampm = parts[3].toUpperCase();
+      if (ampm === 'PM' && h !== 12) h += 12;
+      if (ampm === 'AM' && h === 12) h = 0;
+
+      const now = new Date();
+      const drawTime = new Date();
+      drawTime.setHours(h, m, 0, 0);
+      return Math.floor((drawTime - now) / 60000);
+    }
+
+    function isRoundBettingOpen(timeStr, marketName) {
+      if (marketName === 'Teer Play' || (timeStr === '1 Min' || timeStr === '1 Min Auto')) {
+        return true;
+      }
+      if (new Date().getDay() === 0) return false;
+      return (getMinutesRemaining(timeStr) > 10);
+    }
+
+    function renderMarkets() {
+      const cont = document.getElementById('marketCardsContainer');
+      cont.innerHTML = '';
+      const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      const isSunday = (new Date().getDay() === 0);
+      const dynamicDate = getTodayFormattedDate();
+
+      // Open markets stay on top, closed markets move to the bottom
+      const sortedMarkets = [...state.markets].sort((a, b) => {
+        const aOpen = (a.name === 'Teer Play') || isRoundBettingOpen(a.frTime, a.name) || isRoundBettingOpen(a.srTime, a.name);
+        const bOpen = (b.name === 'Teer Play') || isRoundBettingOpen(b.frTime, b.name) || isRoundBettingOpen(b.srTime, b.name);
+        if (aOpen && !bOpen) return -1;
+        if (!aOpen && bOpen) return 1;
+        return 0;
+      });
+
+      sortedMarkets.forEach(m => {
+        const dynamicDate = getTodayFormattedDate();
+        let liveFr = '**';
+        let liveSr = '**';
+        if (savedResults[m.name]) {
+          const res = savedResults[m.name];
+          if (m.name === 'Teer Play') {
+            liveFr = res.fr || '**';
+            liveSr = res.sr || '**';
+          } else if (res.date === dynamicDate) {
+            liveFr = res.fr || '**';
+            liveSr = res.sr || '**';
+          }
+        }
+        const live = { fr: liveFr, sr: liveSr };
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-2xl p-3 border border-slate-200/90 shadow-sm space-y-2";
+
+        const frOpen = isRoundBettingOpen(m.frTime, m.name);
+        const srOpen = isRoundBettingOpen(m.srTime, m.name);
+        const allClosed = (!frOpen && !srOpen);
+
+        let bottomBarHtml = '';
+        if (isSunday) {
+          bottomBarHtml = `
+            <div class="flex justify-between items-center pt-1">
+              <span class="font-decorative text-base text-rose-600 font-bold">Sunday Official Holiday</span>
+              <button class="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-600 font-decorative text-base font-bold">
+                Sunday Off
+              </button>
+            </div>
+          `;
+        } else if (allClosed) {
+          bottomBarHtml = `
+            <div class="flex justify-between items-center pt-1">
+              <span class="font-decorative text-base text-slate-700">Closed for today</span>
+              <div class="flex items-center gap-1.5">
+                <button onclick="openChartModal('${m.name}')" class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800">
+                  <i class="fa-solid fa-chart-simple text-xs"></i>
+                </button>
+                <button onclick="alert('Draw time for this market has ended for today! Next draw will open tomorrow on time.')" class="px-3.5 py-1.5 rounded-lg bg-[#b91c1c] hover:bg-red-800 text-white font-decorative text-base font-bold tracking-wide shadow-sm cursor-pointer active:scale-95 transition">
+                  Closed
+                </button>
+              </div>
+            </div>
+          `;
+        } else {
+          bottomBarHtml = `
+            <div class="flex justify-between items-center pt-1">
+              <div>
+                <span class="font-decorative text-base text-slate-700">Start your game here</span>
+                <span class="block text-[9px] text-amber-700 font-bold">10 min cutoff apply</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button onclick="openChartModal('${m.name}')" class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800">
+                  <i class="fa-solid fa-chart-simple text-xs"></i>
+                </button>
+                <button onclick="openPlayModalByName('${m.name}')" class="px-3 py-1.5 rounded-lg bg-[#032f33] text-white font-decorative text-base font-bold tracking-wide shadow-sm">
+                  Play Game &gt;
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        const frStatusTag = frOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>';
+        const srStatusTag = srOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>';
+
+        card.innerHTML = `
+          <div class="flex justify-between items-center">
+            <h5 class="font-decorative text-xl font-bold text-slate-800">${m.name}</h5>
+            <span class="font-decorative text-base text-slate-700 font-semibold">${dynamicDate}</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 bg-[#f4f9f9] border border-teal-100 rounded-xl p-2.5 text-center">
+            <div class="border-r border-teal-200/60 pr-1">
+              <p class="font-decorative text-base text-slate-800 font-bold">FR (${m.frTime}) ${frStatusTag}</p>
+              <p class="font-decorative text-3xl font-bold text-slate-900 mt-0.5">${live.fr}</p>
+            </div>
+            <div class="pl-1">
+              <p class="font-decorative text-base text-slate-800 font-bold">SR (${m.srTime}) ${srStatusTag}</p>
+              <p class="font-decorative text-3xl font-bold text-slate-900 mt-0.5">${live.sr}</p>
+            </div>
+          </div>
+
+          ${bottomBarHtml}
+        `;
+        cont.appendChild(card);
+      });
+    }
+
+    function renderGutiGrid() {
+      const g = document.getElementById('gutiGrid');
+      if (!g) return;
+      g.innerHTML = '';
+      const isTeerPlay = (state.currentMarketObj && state.currentMarketObj.name === 'Teer Play');
+      const startNum = isTeerPlay ? 1 : 0;
+      const endNum = isTeerPlay ? 20 : 99;
+
+      const directLabel = document.getElementById('modeBtnDirect');
+      const houseLabel = document.getElementById('modeBtnHouse');
+      const endingLabel = document.getElementById('modeBtnEnding');
+      const gutiTitle = document.querySelector('#directGutiSection span');
+
+      if (isTeerPlay) {
+        if (directLabel) directLabel.innerText = "Direct (1:16)";
+        if (houseLabel) houseLabel.innerText = "House (1:8)";
+        if (endingLabel) endingLabel.innerText = "Ending (1:8)";
+        if (gutiTitle) gutiTitle.innerText = "Choose Direct Guti (01 - 20):";
+      } else {
+        if (directLabel) directLabel.innerText = "Direct Guti (1:90)";
+        if (houseLabel) houseLabel.innerText = "House (1:9)";
+        if (endingLabel) endingLabel.innerText = "Ending (1:9)";
+        if (gutiTitle) gutiTitle.innerText = "Choose Direct Guti (00 - 99):";
+      }
+
+      for (let i = startNum; i <= endNum; i++) {
+        const v = i < 10 ? '0' + i : '' + i;
+        const b = document.createElement('button');
+        b.innerText = v;
+        b.id = 'guti-btn-' + v;
+        b.className = "py-1.5 bg-white border border-slate-200 rounded font-mono text-[11px] font-bold text-slate-700 hover:border-amber-400";
+        b.onclick = () => toggleNumber(v);
+        g.appendChild(b);
+      }
+    }
+
+    function toggleNumber(val) {
+      const idx = state.selectedNumbers.indexOf(val);
+      if (idx > -1) state.selectedNumbers.splice(idx, 1);
+      else state.selectedNumbers.push(val);
+      updateSelectedTray();
+      calculatePayout();
+    }
+
+    function selectSingleDigit(d) {
+      state.selectedNumbers = ['' + d];
+      document.querySelectorAll('.digit-btn').forEach((btn, idx) => {
+        if (idx === d) {
+          btn.className = "digit-btn py-2 rounded-xl bg-amber-400 text-teal-950 font-black text-sm shadow";
+        } else {
+          btn.className = "digit-btn py-2 rounded-xl bg-slate-100 font-bold text-sm text-slate-700";
+        }
+      });
+      updateSelectedTray();
+      calculatePayout();
+    }
+
+    function updateSelectedTray() {
+      const tray = document.getElementById('selectedPills');
+      tray.innerHTML = '';
+      if (state.selectedNumbers.length === 0) {
+        tray.innerHTML = '<span class="text-slate-400 italic text-[11px]">No numbers selected</span>';
+      } else {
+        state.selectedNumbers.forEach(n => {
+          const pill = document.createElement('span');
+          pill.className = "bg-amber-100 border border-amber-300 text-amber-900 font-bold px-2 py-0.5 rounded text-[10px]";
+          pill.innerText = n;
+          tray.appendChild(pill);
+        });
+      }
+
+      for (let i = 0; i <= 99; i++) {
+        const v = i < 10 ? '0' + i : '' + i;
+        const b = document.getElementById('guti-btn-' + v);
+        if (b) {
+          if (state.selectedNumbers.includes(v)) {
+            b.className = "py-1.5 bg-amber-400 text-teal-950 border border-amber-500 rounded font-mono text-[11px] font-black shadow";
+          } else {
+            b.className = "py-1.5 bg-white border border-slate-200 rounded font-mono text-[11px] font-bold text-slate-700 hover:border-amber-400";
+          }
+        }
+      }
+    }
+
+    function randomLuckyPick() {
+      const r = Math.floor(Math.random() * 100);
+      const v = r < 10 ? '0' + r : '' + r;
+      if (!state.selectedNumbers.includes(v)) state.selectedNumbers.push(v);
+      updateSelectedTray();
+      calculatePayout();
+    }
+
+    function selectRound(r) {
+      state.currentRound = r;
+      const bFr = document.getElementById('btnRoundFR');
+      const bSr = document.getElementById('btnRoundSR');
+      const bBs = document.getElementById('btnRoundBS');
+      [bFr, bSr, bBs].forEach(b => {
+        if (b) b.className = "flex-1 py-1.5 rounded-lg font-bold text-xs text-slate-600";
+      });
+      const activeBtn = (r === 'FR') ? bFr : (r === 'SR' ? bSr : bBs);
+      if (activeBtn) activeBtn.className = "flex-1 py-1.5 rounded-lg font-bold text-xs bg-[#032427] text-white shadow";
+      validateModalRoundStatus();
+      calculatePayout();
+    }
+
+    function validateModalRoundStatus() {
+      if (!state.currentMarketObj) return;
+      let open = true;
+      if (state.currentRound === 'BS') {
+        open = isRoundBettingOpen(state.currentMarketObj.frTime, state.currentMarketObj.name) && 
+               isRoundBettingOpen(state.currentMarketObj.srTime, state.currentMarketObj.name);
+      } else {
+        const timeStr = (state.currentRound === 'FR') ? state.currentMarketObj.frTime : state.currentMarketObj.srTime;
+        open = isRoundBettingOpen(timeStr, state.currentMarketObj.name);
+      }
+      const notice = document.getElementById('roundClosedNotice');
+      const confirmBtn = document.getElementById('btnConfirmBetModal');
+
+      if (!open) {
+        notice.classList.remove('hidden');
+        confirmBtn.disabled = true;
+        confirmBtn.className = "flex-1 py-2.5 rounded-xl bg-slate-300 text-slate-500 font-bold text-xs cursor-not-allowed";
+        confirmBtn.innerText = "Time Over (10 Min Cutoff)";
+      } else {
+        notice.classList.add('hidden');
+        confirmBtn.disabled = false;
+        confirmBtn.className = "flex-1 py-2.5 rounded-xl gold-btn font-bold text-xs shadow-md";
+        confirmBtn.innerText = "Confirm Bet";
+      }
+    }
+
+    function selectBetMode(m) {
+      state.betMode = m;
+      state.selectedNumbers = [];
+      const mDir = document.getElementById('modeBtnDirect');
+      const mHou = document.getElementById('modeBtnHouse');
+      const mEnd = document.getElementById('modeBtnEnding');
+      const gSec = document.getElementById('directGutiSection');
+      const dSec = document.getElementById('digitSection');
+      const dTitle = document.getElementById('digitSectionTitle');
+
+      [mDir, mHou, mEnd].forEach(b => b.className = "flex-1 py-1.5 bg-slate-100 text-slate-700 font-bold rounded-lg border");
+
+      if (m === 'direct') {
+        mDir.className = "flex-1 py-1.5 bg-amber-400 text-teal-950 font-bold rounded-lg border border-amber-500 shadow-sm";
+        gSec.classList.remove('hidden');
+        dSec.classList.add('hidden');
+      } else if (m === 'house') {
+        mHou.className = "flex-1 py-1.5 bg-amber-400 text-teal-950 font-bold rounded-lg border border-amber-500 shadow-sm";
+        gSec.classList.add('hidden');
+        dSec.classList.remove('hidden');
+        dTitle.innerText = "Choose House Digit (0 - 9):";
+      } else {
+        mEnd.className = "flex-1 py-1.5 bg-amber-400 text-teal-950 font-bold rounded-lg border border-amber-500 shadow-sm";
+        gSec.classList.add('hidden');
+        dSec.classList.remove('hidden');
+        dTitle.innerText = "Choose Ending Digit (0 - 9):";
+      }
+      updateSelectedTray();
+      calculatePayout();
+    }
+
+    function calculatePayout() {
+      const amt = parseFloat(document.getElementById('betAmountInput').value) || 0;
+      const count = state.selectedNumbers.length;
+      const roundMultiplier = (state.currentRound === 'BS') ? 2 : 1;
+      const totalCost = amt * count * roundMultiplier;
+      document.getElementById('totalBetCost').innerText = '₹' + totalCost.toFixed(2);
+
+      let potential = 0;
+      if (state.currentMarketObj && state.currentMarketObj.name === 'Teer Play') {
+        if (state.betMode === 'direct') {
+          potential = (amt / 10) * 160; // Guti: 10 pe 160
+        } else {
+          potential = (amt / 10) * 80;  // House/Ending: 10 pe 80
+        }
+      } else {
+        let mult = (state.betMode === 'direct') ? 90 : 9;
+        potential = amt * mult;
+      }
+      document.getElementById('potentialWin').innerText = count > 0 ? '₹' + potential.toFixed(2) : '₹0.00';
+    }
+
+    function openPlayModalByName(mName) {
+      if (new Date().getDay() === 0) {
+        alert('Sunday Holiday: Teer game is closed on Sundays!');
+        return;
+      }
+      const mObj = state.markets.find(x => x.name === mName);
+      if (!mObj) return;
+
+      state.currentMarketObj = mObj;
+      document.getElementById('playMarketTitle').innerText = mName;
+      renderGutiGrid();
+
+      const noticeEl = document.getElementById('marketCutoffNotice');
+      const histBtn = document.getElementById('btnTeerPlayHistory');
+      const stripContainer = document.getElementById('teerPlayRecentStripContainer');
+      if (mName === 'Teer Play') {
+        const remainingSecs = 60 - new Date().getSeconds();
+        noticeEl.className = "text-[11px] text-amber-300 font-mono font-bold flex items-center gap-1.5";
+        noticeEl.innerHTML = `⏱️ Draw In: <span id="teerPlayLiveModalTimer" class="bg-amber-400 text-teal-950 px-2 py-0.5 rounded-full font-black animate-pulse">00:${String(remainingSecs).padStart(2, '0')}s</span>`;
+        if (histBtn) histBtn.classList.remove('hidden');
+        if (stripContainer) {
+          stripContainer.classList.remove('hidden');
+          renderTeerPlayHistoryStrip();
+        }
+      } else {
+        noticeEl.className = "text-[10px] text-amber-300 font-semibold";
+        noticeEl.innerText = "⚠️ Cutoff: 10 mins before draw time";
+        if (histBtn) histBtn.classList.add('hidden');
+        if (stripContainer) stripContainer.classList.add('hidden');
+      }
+
+      const frOpen = isRoundBettingOpen(mObj.frTime, mObj.name);
+      const srOpen = isRoundBettingOpen(mObj.srTime, mObj.name);
+
+      if (frOpen) selectRound('FR');
+      else if (srOpen) selectRound('SR');
+      else {
+        selectRound('FR');
+      }
+
+      state.selectedNumbers = [];
+      updateSelectedTray();
+      calculatePayout();
+      document.getElementById('playGameModal').classList.remove('hidden');
+    }
+
+    function closePlayModal() { document.getElementById('playGameModal').classList.add('hidden'); }
+    function openDepositModal() { document.getElementById('depositModal').classList.remove('hidden'); }
+    function closeDepositModal() { document.getElementById('depositModal').classList.add('hidden'); }
+    let currentWithdrawMethod = 'upi';
+
+    function selectWithdrawMethod(method) {
+      currentWithdrawMethod = method;
+      const bUpi = document.getElementById('btnMethodUpi');
+      const bBank = document.getElementById('btnMethodBank');
+      const secUpi = document.getElementById('sectionWithdrawUpi');
+      const secBank = document.getElementById('sectionWithdrawBank');
+
+      if (method === 'upi') {
+        bUpi.className = "py-2 px-3 rounded-xl border-2 border-teal-800 bg-teal-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow";
+        bBank.className = "py-2 px-3 rounded-xl border border-slate-300 bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition";
+        secUpi.classList.remove('hidden');
+        secBank.classList.add('hidden');
+      } else {
+        bBank.className = "py-2 px-3 rounded-xl border-2 border-teal-800 bg-teal-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow";
+        bUpi.className = "py-2 px-3 rounded-xl border border-slate-300 bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition";
+        secBank.classList.remove('hidden');
+        secUpi.classList.add('hidden');
+      }
+    }
+
+    function openWithdrawModal() {
+      if (!state.user) {
+        alert('Please login or register to withdraw funds!');
+        openAuthModal();
+        return;
+      }
+
+      // Load saved UPI and Bank Details for this user
+      const userPhone = state.user.phone;
+      const savedAccounts = JSON.parse(localStorage.getItem('teer_saved_payout_details_' + userPhone) || '{}');
+
+      const upiInput = document.getElementById('withdrawUpiInput');
+      const savedUpiBadge = document.getElementById('savedUpiBadge');
+      if (savedAccounts.upi) {
+        upiInput.value = savedAccounts.upi;
+        if (savedUpiBadge) savedUpiBadge.classList.remove('hidden');
+      } else {
+        if (savedUpiBadge) savedUpiBadge.classList.add('hidden');
+      }
+
+      const holderInput = document.getElementById('bankHolderInput');
+      const accInput = document.getElementById('bankAccountInput');
+      const ifscInput = document.getElementById('bankIfscInput');
+      const bankNameInput = document.getElementById('bankNameInput');
+      const savedBankBadge = document.getElementById('savedBankBadge');
+
+      if (savedAccounts.bank && savedAccounts.bank.accountNumber) {
+        holderInput.value = savedAccounts.bank.holderName || '';
+        accInput.value = savedAccounts.bank.accountNumber || '';
+        ifscInput.value = savedAccounts.bank.ifsc || '';
+        bankNameInput.value = savedAccounts.bank.bankName || '';
+        if (savedBankBadge) savedBankBadge.classList.remove('hidden');
+      } else {
+        if (savedBankBadge) savedBankBadge.classList.add('hidden');
+      }
+
+      // Check daily withdrawal count and total
+      const todayStr = getTodayFormattedDate();
+      const dailyKey = 'teer_daily_withdrawals_' + userPhone + '_' + todayStr;
+      const dailyData = JSON.parse(localStorage.getItem(dailyKey) || '{"count": 0, "total": 0}');
+      
+      const countEl = document.getElementById('withdrawDailyCountText');
+      if (countEl) {
+        countEl.innerText = `Daily Requests: ${dailyData.count}/5 (Max ₹50,000)`;
+      }
+
+      document.getElementById('withdrawModal').classList.remove('hidden');
+    }
+    function closeWithdrawModal() { document.getElementById('withdrawModal').classList.add('hidden'); }
+    function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
+    function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
+
+    function initChartMarketsDropdown() {
+      const select = document.getElementById('chartMarketSelect');
+      select.innerHTML = '';
+      state.markets.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.innerText = m.name;
+        select.appendChild(opt);
+      });
+      renderSelectedMarketChart();
+    }
+
+    function openChartModal(mName) {
+      if (mName) {
+        const select = document.getElementById('chartMarketSelect');
+        if (select) select.value = mName;
+      }
+      renderSelectedMarketChart();
+      document.getElementById('chartModal').classList.remove('hidden');
+    }
+    function closeChartModal() { document.getElementById('chartModal').classList.add('hidden'); }
+
+    function renderSelectedMarketChart() {
+      const mName = document.getElementById('chartMarketSelect').value || 'Shilong Morning Teer';
+      const tbody = document.getElementById('chartTableBody');
+      tbody.innerHTML = '';
+
+      const records = historicalMarketData[mName] || [
+        { d: '02/11/2026', fr: '45', sr: '82' },
+        { d: '01/11/2026', fr: '30', sr: '19' },
+        { d: '31/10/2026', fr: '67', sr: '53' },
+        { d: '30/10/2026', fr: '12', sr: '94' },
+        { d: '29/10/2026', fr: '88', sr: '37' },
+        { d: '28/10/2026', fr: '54', sr: '20' },
+        { d: '27/10/2026', fr: '91', sr: '66' },
+        { d: '26/10/2026', fr: '23', sr: '48' }
+      ];
+
+      records.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 border-b";
+        tr.innerHTML = `
+          <td class="p-2 border border-slate-200 text-slate-600 font-semibold">${r.d}</td>
+          <td class="p-2 border border-slate-200 text-teal-900 font-black text-sm">${r.fr}</td>
+          <td class="p-2 border border-slate-200 text-amber-700 font-black text-sm">${r.sr}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function toggleDrawer() {
+      const drawer = document.getElementById('sideDrawer');
+      const overlay = document.getElementById('drawerOverlay');
+      if (drawer.classList.contains('-translate-x-full')) {
+        drawer.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+      } else {
+        drawer.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+      }
+    }
+
+    function startBannerAutoSlider() {
+      let isFirst = true;
+      setInterval(() => {
+        isFirst = !isFirst;
+        const s1 = document.getElementById('slide1');
+        const s2 = document.getElementById('slide2');
+        const d1 = document.getElementById('dot1');
+        const d2 = document.getElementById('dot2');
+        if (s1 && s2) {
+          s1.style.opacity = isFirst ? '1' : '0';
+          s2.style.opacity = isFirst ? '0' : '1';
+          d1.className = isFirst ? 'w-2 h-1 rounded-full bg-amber-400' : 'w-1.5 h-1 rounded-full bg-white/40';
+          d2.className = isFirst ? 'w-1.5 h-1 rounded-full bg-white/40' : 'w-2 h-1 rounded-full bg-amber-400';
+        }
+      }, 4000);
+    }
+
+    function openNotificationModal() {
+      const cont = document.getElementById('notifListContainer');
+      cont.innerHTML = '';
+      if (state.notifications.length === 0) {
+        cont.innerHTML = '<div class="text-center p-4 text-slate-400">No new notifications</div>';
+      } else {
+        state.notifications.forEach(n => {
+          const item = document.createElement('div');
+          let iconColor = 'text-blue-500 bg-blue-50';
+          if (n.type === 'win') iconColor = 'text-amber-500 bg-amber-50 border border-amber-200';
+          if (n.type === 'deposit') iconColor = 'text-emerald-500 bg-emerald-50';
+          if (n.type === 'withdraw') iconColor = 'text-purple-500 bg-purple-50';
+
+          item.className = `p-2.5 rounded-xl border ${n.unread ? 'bg-amber-50/40 border-amber-200' : 'bg-slate-50 border-slate-200'} flex gap-2.5 items-start`;
+          item.innerHTML = `
+            <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${iconColor}">
+              <i class="fa-solid ${n.type === 'win' ? 'fa-trophy' : (n.type === 'deposit' ? 'fa-wallet' : (n.type === 'withdraw' ? 'fa-arrow-up' : 'fa-bell'))} text-xs"></i>
+            </div>
+            <div class="flex-1">
+              <div class="flex justify-between items-center">
+                <p class="font-bold text-slate-800 text-[11px]">${n.title}</p>
+                <span class="text-[9px] text-slate-400">${n.time}</span>
+              </div>
+              <p class="text-[10px] text-slate-600 mt-0.5">${n.message}</p>
+            </div>
+          `;
+          cont.appendChild(item);
+        });
+      }
+
+      state.notifications.forEach(n => n.unread = false);
+      saveNotifications();
+      syncNotifications();
+      document.getElementById('notificationModal').classList.remove('hidden');
+    }
+
+    function closeNotificationModal() {
+      document.getElementById('notificationModal').classList.add('hidden');
+    }
+
+    function clearAllNotifications() {
+      state.notifications = [];
+      saveNotifications();
+      syncNotifications();
+      openNotificationModal();
+    }
+
+    function confirmPlaceBet() {
+      if (!state.user) {
+        alert('Please Login or Register first!');
+        closePlayModal();
+        openAuthModal();
+        return;
+      }
+      if (!state.currentMarketObj) return;
+
+      const targetTimeStr = (state.currentRound === 'FR') ? state.currentMarketObj.frTime : state.currentMarketObj.srTime;
+      if (!isRoundBettingOpen(targetTimeStr, state.currentMarketObj ? state.currentMarketObj.name : '')) {
+        alert(`Time Over! Betting is closed 10 minutes prior to draw time.`);
+        validateModalRoundStatus();
+        return;
+      }
+
+      const amt = parseFloat(document.getElementById('betAmountInput').value) || 0;
+      if (state.selectedNumbers.length === 0) {
+        alert('Please select a number before placing your bet!');
+        return;
+      }
+      const cost = amt * state.selectedNumbers.length;
+      if (state.balance < cost) {
+        alert('Insufficient balance! Please recharge wallet.');
+        closePlayModal();
+        openDepositModal();
+        return;
+      }
+      state.balance -= cost;
+      localStorage.setItem('teer_balance', state.balance.toFixed(2));
+      // Sync deducted balance to Firebase immediately so listener does not revert balance
+      if (fbDatabase && state.user && state.user.phone) {
+        fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+      }
+
+      applyAgentBetTurnoverCommission(cost);
+
+      const targetRounds = (state.currentRound === 'BS') ? ['FR', 'SR'] : [state.currentRound];
+      targetRounds.forEach(r => {
+        state.selectedNumbers.forEach(n => {
+          state.bids.unshift({
+            market: state.currentMarketObj.name,
+            round: r,
+            mode: state.betMode.toUpperCase(),
+            number: n,
+            amount: amt,
+            status: 'Active',
+            payout: 0,
+            date: getTodayFormattedDate(),
+            time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            isBS: (state.currentRound === 'BS')
+          });
+        });
+      });
+      localStorage.setItem('teer_bids', JSON.stringify(state.bids));
+
+      updateUI();
+      // Keep play modal open so user stays on betting screen after closing slip
+      state.selectedNumbers.forEach(n => {
+        injectUserRealtimeBet(state.user.uid || ('UID_' + (state.user.phone ? state.user.phone.slice(-4) : '1001')), state.betMode.toUpperCase(), n, amt);
+      });
+      
+      const numbersLabel = state.selectedNumbers.join(', ');
+      const roundLabel = (state.currentRound === 'BS') ? 'FR + SR (BS)' : state.currentRound;
+      const potVal = document.getElementById('potentialWin').innerText.replace('₹', '');
+      
+      // Reset selected numbers for next bet
+      state.selectedNumbers = [];
+      updateSelectedTray();
+      calculatePayout();
+      
+      showBetReceiptClip(state.currentMarketObj.name, roundLabel, numbersLabel, amt, potVal);
+    }
+
+
+    // SYNC AGENT EARNINGS FROM FIREBASE SO AGENT SEES COMMISSION LIVE
+    function syncAgentEarningsFromFirebase() {
+      if (!fbDatabase || !state.user) return;
+      const myCode = state.user.phone;
+      fbDatabase.ref('agent_earnings/' + myCode).on('value', (snap) => {
+        const total = snap.val() || 0;
+        const box = document.getElementById('myAgentEarnedText');
+        if (box) box.innerText = '₹' + parseFloat(total).toFixed(2);
+      });
+    }
+
+    // PUSH COMMISSION SILENTLY TO FIREBASE (SHOW NAHI HOGA)
+    function applyAgentBetTurnoverCommission(betAmount) {
+      if (state.user && state.user.referredBy) {
+        let agentComm = 0;
+        
+        // ₹1000 bet par ₹10, aur ₹100 bet par ₹5 logic
+        if (betAmount >= 1000) {
+          agentComm = Math.floor(betAmount / 1000) * 10;
+        } else if (betAmount >= 100) {
+          agentComm = Math.floor(betAmount / 100) * 5;
+        }
+
+        if (agentComm <= 0) return;
+
+        const ref = state.user.referredBy;
+        
+        // 1. Local update
+        let agentLedger = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
+        agentLedger[ref] = (agentLedger[ref] || 0) + agentComm;
+        localStorage.setItem('teer_agent_earnings', JSON.stringify(agentLedger));
+
+        // 2. Firebase Cloud Realtime Push to Referrer
+        if (fbDatabase) {
+          fbDatabase.ref('agent_earnings/' + ref).transaction((current) => {
+            return (current || 0) + agentComm;
+          });
+        }
+      }
+    }
+
+
+    function renderBidsList() {
+      const cont = document.getElementById('bidsListContainer');
+      const countBadge = document.getElementById('bidsCountBadge');
+      countBadge.innerText = `${state.bids.length} Bids`;
+
+      if (state.bids.length === 0) {
+        cont.innerHTML = '<div class="p-8 text-center text-slate-400">No bids placed yet.</div>';
+        return;
+      }
+      cont.innerHTML = '';
+      state.bids.forEach(b => {
+        const item = document.createElement('div');
+        let statusBadge = '<span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded">Active</span>';
+        if (b.status === 'WON') statusBadge = `<span class="text-[10px] bg-emerald-100 text-emerald-800 font-black px-1.5 py-0.2 rounded">WON +₹${b.payout.toFixed(2)}</span>`;
+        if (b.status === 'LOST') statusBadge = '<span class="text-[10px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.2 rounded">Lost</span>';
+
+        item.className = `p-3 rounded-xl border ${b.status === 'WON' ? 'bg-emerald-50/50 border-emerald-200' : 'bg-white border-slate-200'} shadow-sm flex justify-between items-center text-xs`;
+        item.innerHTML = `
+          <div>
+            <p class="font-bold text-teal-950">${b.market} [${b.round}]</p>
+            <p class="text-slate-500">${b.mode}: <b class="text-amber-600 font-mono text-sm">${b.number}</b> &bull; ${b.date} ${b.time}</p>
+          </div>
+          <div class="text-right">
+            <span class="font-bold text-teal-900">₹${b.amount}</span>
+            <div class="mt-0.5">${statusBadge}</div>
+          </div>
+        `;
+        cont.appendChild(item);
+      });
+    }
+
+        
+    // SCREENSHOT UPLOAD & COMPRESSION HANDLER
+    let currentDepositScreenshotBase64 = null;
+
+    function handleScreenshotPreview(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // 10 MB limit check (10 * 1024 * 1024 bytes)
+      const MAX_BYTES = 10 * 1024 * 1024;
+      if (file.size > MAX_BYTES) {
+        alert('File size bahut bada hai! Maximum 10 MB tak ki photo allow hai.');
+        e.target.value = '';
+        return;
+      }
+
+      const fileNameLabel = document.getElementById('screenshotFileName');
+      if (fileNameLabel) {
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+        fileNameLabel.innerText = `${file.name} (${sizeMb} MB)`;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          // High-clarity client-side compression (allows up to 10MB input, converts to crisp optimized base64 for fast Firebase transfer)
+          const canvas = document.createElement('canvas');
+          const maxDim = 1080;
+          let width = img.width;
+          let height = img.height;
+          if (width > height && width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Crisp 0.78 JPEG compression
+          currentDepositScreenshotBase64 = canvas.toDataURL('image/jpeg', 0.78);
+          
+          const previewImg = document.getElementById('screenshotImgPreview');
+          if (previewImg) {
+            previewImg.src = currentDepositScreenshotBase64;
+            previewImg.classList.remove('hidden');
+          }
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function submitDepositForm() {
+      if (!state.user) {
+        alert('Please login or register to deposit money!');
+        closeDepositModal();
+        openAuthModal();
+        return;
+      }
+      const utr = document.getElementById('depositUtrInput').value.trim();
+      const amt = parseFloat(document.getElementById('depositAmountInput').value) || 0;
+      if (amt < 100) { alert('Minimum deposit amount is ₹100.'); return; }
+      if (utr.length < 10) { alert('Please enter a valid 12-digit UPI / UTR Transaction Reference number!'); return; }
+
+      const depId = 'dep_' + Date.now();
+      const now = new Date();
+      const depRecord = {
+        id: depId,
+        phone: state.user.phone,
+        name: state.user.name,
+        amount: amt,
+        bonus: amt * 0.05,
+        utr: utr,
+        screenshot: currentDepositScreenshotBase64 || null,
+        status: 'pending',
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Date.now()
+      };
+
+      // Check if Demo User (Instant credit directly)
+      const isDemoAgent = state.user && (state.user.isDemo || demoAgentsData.some(a => a.phone === state.user.phone));
+      if (isDemoAgent) {
+        state.balance += amt;
+        localStorage.setItem('teer_balance', state.balance.toFixed(2));
+        depRecord.status = 'approved';
+        if (fbDatabase) {
+          fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+          fbDatabase.ref('deposits/' + depId).set(depRecord);
+        }
+        recordTransaction({
+          id: depId,
+          type: 'deposit',
+          title: `Deposit Instant Credit (UTR: ${utr})`,
+          amount: amt,
+          isCredit: true,
+          status: 'Approved'
+        });
+        updateUI();
+        closeDepositModal();
+        alert(`Instant Deposit Success! ₹${amt} credited immediately to your demo wallet.`);
+        return;
+      }
+
+      if (fbDatabase) {
+        fbDatabase.ref('deposits/' + depId).set(depRecord);
+      }
+
+      recordTransaction({
+        id: depId,
+        type: 'deposit',
+        title: `Deposit Request (UTR: ${utr})`,
+        amount: amt,
+        isCredit: true,
+        status: 'Pending'
+      });
+
+      addAppNotification({
+        type: 'deposit',
+        title: 'Deposit Request Submitted',
+        message: `₹${amt} deposit request (UTR: ${utr}) submitted. Admin will verify screenshot & UTR within 1 to 10 minutes.`
+      });
+
+      // Reset form
+      document.getElementById('depositUtrInput').value = '';
+      currentDepositScreenshotBase64 = null;
+      const previewImg = document.getElementById('screenshotImgPreview');
+      if (previewImg) previewImg.classList.add('hidden');
+      const fileNameLabel = document.getElementById('screenshotFileName');
+      if (fileNameLabel) fileNameLabel.innerText = 'Tap to choose payment receipt screenshot';
+
+      closeDepositModal();
+      alert(`Deposit Request Submitted!\nAmount: ₹${amt}\nUTR: ${utr}\n\nAdmin will verify your payment screenshot and UTR code. Balance (+5% Bonus) will be credited to your wallet within 1 to 10 minutes!`);
+    }
+
+    function submitWithdrawForm() {
+      if (!state.user) {
+        alert('Please login or register to withdraw funds!');
+        closeWithdrawModal();
+        openAuthModal();
+        return;
+      }
+
+      const amt = parseFloat(document.getElementById('withdrawAmountInput').value) || 0;
+      if (amt < 1000) {
+        alert('Minimum withdrawal amount is ₹1,000!');
+        return;
+      }
+      if (amt > 2000) {
+        alert('Please upgrade to pro minimum 50000 recharged today');
+        return;
+      }
+      if (state.balance < amt) {
+        alert('Insufficient wallet balance!');
+        return;
+      }
+
+      // Daily Limit & Frequency Check (Max 5 requests & Max ₹50,000 daily)
+      const userPhone = state.user.phone;
+      const todayStr = getTodayFormattedDate();
+      const dailyKey = 'teer_daily_withdrawals_' + userPhone + '_' + todayStr;
+      let dailyData = JSON.parse(localStorage.getItem(dailyKey) || '{"count": 0, "total": 0}');
+
+      if (dailyData.count >= 5) {
+        alert('Daily Withdrawal Limit Reached! Aap din me maximum 5 baar hi withdraw request laga sakte hain.');
+        return;
+      }
+      if ((dailyData.total + amt) > 50000) {
+        alert('Daily limit ₹50,000 exceed ho jayegi! Aapka aaj ka remaining limit: ₹' + (50000 - dailyData.total));
+        return;
+      }
+
+      // Validate & Save Payout Details
+      let payoutType = currentWithdrawMethod;
+      let upiVal = '';
+      let bankObj = null;
+
+      let savedAccounts = JSON.parse(localStorage.getItem('teer_saved_payout_details_' + userPhone) || '{}');
+
+      if (payoutType === 'upi') {
+        upiVal = document.getElementById('withdrawUpiInput').value.trim();
+        if (!upiVal || !upiVal.includes('@')) {
+          alert('Please enter a valid UPI ID (e.g. mobile@paytm or name@upi).');
+          return;
+        }
+        savedAccounts.upi = upiVal;
+      } else {
+        const holder = document.getElementById('bankHolderInput').value.trim();
+        const acc = document.getElementById('bankAccountInput').value.trim();
+        const ifsc = document.getElementById('bankIfscInput').value.trim().toUpperCase();
+        const bName = document.getElementById('bankNameInput').value.trim();
+
+        if (!holder || !acc || !ifsc) {
+          alert('Please enter Account Holder Name, Account Number and IFSC Code!');
+          return;
+        }
+        bankObj = { holderName: holder, accountNumber: acc, ifsc: ifsc, bankName: bName };
+        savedAccounts.bank = bankObj;
+        upiVal = `Bank: ${acc} (${ifsc})`;
+      }
+
+      // Save to localStorage & Firebase User Profile permanently
+      localStorage.setItem('teer_saved_payout_details_' + userPhone, JSON.stringify(savedAccounts));
+      if (fbDatabase) {
+        fbDatabase.ref('users/' + userPhone + '/savedPayoutDetails').set(savedAccounts);
+      }
+
+      // Deduct balance
+      state.balance -= amt;
+      localStorage.setItem('teer_balance', state.balance.toFixed(2));
+      if (fbDatabase) {
+        fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+      }
+
+      // Update Daily Count
+      dailyData.count += 1;
+      dailyData.total += amt;
+      localStorage.setItem(dailyKey, JSON.stringify(dailyData));
+
+      const wthId = 'wth_' + Date.now();
+      const now = new Date();
+      const wthRecord = {
+        id: wthId,
+        phone: state.user.phone,
+        name: state.user.name,
+        amount: amt,
+        payoutType: payoutType,
+        upi: (payoutType === 'upi') ? upiVal : 'Bank Transfer',
+        bankDetails: bankObj || null,
+        status: 'pending',
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Date.now()
+      };
+
+      const isDemoAgent = state.user && (state.user.isDemo || demoAgentsData.some(a => a.phone === state.user.phone));
+      if (isDemoAgent) {
+        wthRecord.status = 'approved';
+        if (fbDatabase) {
+          fbDatabase.ref('withdrawals/' + wthId).set(wthRecord);
+        }
+        recordTransaction({
+          id: wthId,
+          type: 'withdraw',
+          title: `Instant Withdrawal (UPI: ${upi})`,
+          amount: amt,
+          isCredit: false,
+          status: 'Approved'
+        });
+        updateUI();
+        closeWithdrawModal();
+        alert(`Withdrawal Success! ₹${amt} transferred instantly to ${upi}. (Approved)`);
+        return;
+      }
+
+      if (fbDatabase) {
+        fbDatabase.ref('withdrawals/' + wthId).set(wthRecord);
+      }
+
+      recordTransaction({
+        id: wthId,
+        type: 'withdraw',
+        title: `Withdrawal Request (UPI: ${upi})`,
+        amount: amt,
+        isCredit: false,
+        status: 'Processing'
+      });
+
+      addAppNotification({
+        type: 'withdraw',
+        title: 'Withdrawal Submitted',
+        message: `₹${amt} withdrawal request (UPI: ${upi}) is being processed. Payout will be sent directly to your UPI ID within 1 to 10 minutes.`
+      });
+
+      updateUI();
+      closeWithdrawModal();
+      alert(`Withdrawal Request Submitted!\nAmount: ₹${amt}\nUPI ID: ${upi}\n\nYour payout will be credited directly to your UPI ID within 1 to 10 minutes!`);
+    }
+
+    function switchAuthTab(type) {
+      const regF = document.getElementById('registerForm');
+      const logF = document.getElementById('loginForm');
+      const bReg = document.getElementById('tabBtnRegister');
+      const bLog = document.getElementById('tabBtnLogin');
+
+      if (type === 'register') {
+        regF.classList.remove('hidden');
+        logF.classList.add('hidden');
+        bReg.className = "flex-1 py-1.5 rounded-lg bg-teal-950 text-white shadow";
+        bLog.className = "flex-1 py-1.5 rounded-lg text-slate-600";
+      } else {
+        logF.classList.remove('hidden');
+        regF.classList.add('hidden');
+        bLog.className = "flex-1 py-1.5 rounded-lg bg-teal-950 text-white shadow";
+        bReg.className = "flex-1 py-1.5 rounded-lg text-slate-600";
+      }
+    }
+
+    function handleRegisterSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value.trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      const pass = document.getElementById('regPass').value;
+      const referralCode = document.getElementById('regReferral').value.trim();
+
+      if (phone.length !== 10) {
+        alert('Please enter a valid 10-digit mobile number!');
+        return;
+      }
+
+      const usersDb = JSON.parse(localStorage.getItem('teer_registered_users') || '[]');
+      const exists = usersDb.some(u => u.phone === phone);
+      if (exists) {
+        alert('This mobile number is already registered! Please Login.');
+        switchAuthTab('login');
+        document.getElementById('loginPhone').value = phone;
+        return;
+      }
+
+      const todayStr = new Date().toLocaleDateString();
+      let nextId = parseInt(localStorage.getItem('teer_last_user_seq_id') || '1000') + 1;
+      localStorage.setItem('teer_last_user_seq_id', nextId.toString());
+      const userUid = 'UID_' + nextId; // Sequential: UID_1001, UID_1002, UID_1003...
+
+      const newUser = {
+        uid: userUid,
+        name,
+        phone,
+        pass,
+        balance: 10.00,
+        referredBy: referralCode ? referralCode : null,
+        createdAt: todayStr,
+        betCount: 0
+      };
+
+      if (fbDatabase) {
+        fbDatabase.ref('meta/last_user_uid').transaction(current => (current || 1000) + 1);
+      }
+
+      usersDb.push(newUser);
+      localStorage.setItem('teer_registered_users', JSON.stringify(usersDb));
+
+      state.user = newUser;
+      state.balance = 10.00;
+      localStorage.setItem('teer_current_user', JSON.stringify(newUser));
+      localStorage.setItem('teer_balance', state.balance.toFixed(2));
+
+      // Push to Firebase so Admin Panel sees user live immediately
+      if (fbDatabase) {
+        fbDatabase.ref('users/' + phone).set(newUser);
+
+        // Track referral in Firebase if user registered with a referral code
+        if (referralCode) {
+          const refRecord = {
+            name: name,
+            phone: phone,
+            maskedPhone: phone.slice(0, 3) + '****' + phone.slice(-3),
+            uid: userUid,
+            date: todayStr,
+            timestamp: Date.now()
+          };
+          // Save under referrer's referrals list
+          fbDatabase.ref('referrals/' + referralCode).push(refRecord);
+
+          // Give referrer ₹10 reward
+          fbDatabase.ref('users/' + referralCode + '/balance').transaction(cur => (cur || 0) + 10);
+          fbDatabase.ref('agent_earnings/' + referralCode).transaction(cur => (cur || 0) + 10);
+        }
+      }
+      initUserLiveBalanceListener();
+
+      addAppNotification({
+        type: 'event',
+        title: '🎁 ₹10 Welcome Bonus Credited',
+        message: `Welcome ${name}! Aapka registration safal hua aur ₹10 Welcome bonus aapke wallet me add ho chuka hai.`
+      });
+
+      updateUI();
+      closeAuthModal();
+      closeAuthModal();
+      openAppInstallModal();
+    }
+
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+      const phone = document.getElementById('loginPhone').value.trim();
+      const pass = document.getElementById('loginPass').value;
+      const usersDb = JSON.parse(localStorage.getItem('teer_registered_users') || '[]');
+      const found = usersDb.find(u => u.phone === phone && u.pass === pass);
+
+      if (found) {
+        if (!found.uid) {
+          let nextId = parseInt(localStorage.getItem('teer_last_user_seq_id') || '1000') + 1;
+          localStorage.setItem('teer_last_user_seq_id', nextId.toString());
+          found.uid = 'UID_' + nextId;
+        }
+        state.user = found;
+        localStorage.setItem('teer_current_user', JSON.stringify(found));
+        // Sync user to Firebase
+        if (fbDatabase) {
+          fbDatabase.ref('users/' + found.phone).once('value', (snap) => {
+            if (snap.exists()) {
+              const uData = snap.val();
+              if (uData.balance !== undefined) {
+                state.balance = parseFloat(uData.balance);
+                localStorage.setItem('teer_balance', state.balance.toFixed(2));
+              }
+            } else {
+              fbDatabase.ref('users/' + found.phone).set({
+                name: found.name,
+                phone: found.phone,
+                balance: state.balance,
+                referredBy: found.referredBy || null,
+                createdAt: new Date().toLocaleDateString()
+              });
+            }
+            updateUI();
+          });
+        }
+        initUserLiveBalanceListener();
+        updateUI();
+        closeAuthModal();
+        closeAuthModal();
+        openAppInstallModal();
+      } else {
+        alert('Incorrect mobile number or password! Please verify or click Forgot Password.');
+      }
+    }
+
+    function triggerForgotPasswordWhatsApp() {
+      const enteredPhone = document.getElementById('loginPhone').value.trim();
+      const userPhone = enteredPhone || (state.user ? state.user.phone : 'Not Specified');
+      
+      const message = encodeURIComponent(`Hello Admin, I forgot My password. My registered number is: ${userPhone}. Please reset my account.`);
+      const whatsappUrl = `https://wa.me/918134834380?text=${message}`;
+      
+      window.open(whatsappUrl, '_blank');
+    }
+
+    function handleSendChat(e) {
+      e.preventDefault();
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const container = document.getElementById('chatMessages');
+      const userBubble = document.createElement('div');
+      userBubble.className = "bg-[#032427] text-white p-2.5 rounded-2xl rounded-tr-none ml-auto max-w-[85%]";
+      userBubble.innerText = text;
+      container.appendChild(userBubble);
+      input.value = '';
+
+      setTimeout(() => {
+        const reply = document.createElement('div');
+        reply.className = "bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]";
+        reply.innerText = "We received your message. Please contact WhatsApp +918134834380 for direct support.";
+        container.appendChild(reply);
+        container.scrollTop = container.scrollHeight;
+      }, 700);
+    }
+
+    function resetChat() {
+      document.getElementById('chatMessages').innerHTML = `
+        <div class="bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">
+          Hello! Welcome to <b>TEER ONLINE</b>. Kaise help kar sakte hain aapki?
+        </div>
+      `;
+    }
+
+    function getBaseShareUrl() {
+      // Jab domain active ho toh direct app.teeronline.fun, nahi toh current GitHub Pages URL
+      if (window.location.hostname.includes('teeronline.fun')) {
+        return `${window.location.origin}/register`;
+      } else if (window.location.hostname.includes('github.io')) {
+        return `${window.location.origin}${window.location.pathname}`;
+      }
+      return 'https://app.teeronline.fun/register';
+    }
+
+    function shareReferralWhatsApp() {
+      const myRefCode = state.user ? (state.user.phone || state.user.uid || '8134678') : '8134678';
+      const baseUrl = getBaseShareUrl();
+      const shareUrl = `${baseUrl}?ref=${myRefCode}`;
+      const text = encodeURIComponent(`🎯 TEER ONLINE Official Registration!\n🎁 Mere link se register karein aur ₹10 Free Login Bonus paayein!\n\n👉 Referral Code: ${myRefCode}\n👉 Direct Register Link: ${shareUrl}`);
+      window.open(`https://wa.me/?text=${text}`, '_blank');
+    }
+
+    function copyReferralLink() {
+      const myRefCode = state.user ? (state.user.phone || state.user.uid || '8134678') : '8134678';
+      const baseUrl = getBaseShareUrl();
+      const shareUrl = `${baseUrl}?ref=${myRefCode}`;
+      navigator.clipboard.writeText(shareUrl);
+      alert(`✅ Referral Link Copied!\n${shareUrl}\n\nLink par click karte hi direct registration page khulega aur referral code auto-fill ho jayega!`);
+    }
+
+    function logoutUser() {
+      if (confirm('Are you sure you want to log out?')) {
+        state.user = null;
+        state.balance = 0.00;
+        localStorage.removeItem('teer_current_user');
+        localStorage.setItem('teer_balance', '0.00');
+        updateUI();
+        openAuthModal();
+      }
+    }
+
+    function refreshBalance() { alert('Balance updated: ₹' + state.balance.toFixed(2)); }
+  
+
+    // ==========================================
+    // AUTO DETECT REFERRAL LINK (?ref=...)
+    // ==========================================
+    function checkUrlReferral() {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        let refCode = urlParams.get('ref') || urlParams.get('referral');
+        const isRegisterPath = window.location.pathname.toLowerCase().includes('register');
+
+        if (refCode) {
+          localStorage.setItem('teer_captured_ref', refCode);
+        } else {
+          refCode = localStorage.getItem('teer_captured_ref');
+        }
+
+        // AGAR USER PEHLE SE LOGIN HAI: Toh direct dashboard chalega, register open nahi hoga
+        if (state.user) {
+          return;
+        }
+
+        // SIRF TABHI REGISTER OPEN HOGA JAB ID LOGIN NAHI HAI
+        if (refCode || isRegisterPath) {
+          const forceOpenRegister = () => {
+            if (state.user) return;
+            const authM = document.getElementById('authModal');
+            if (authM) authM.classList.remove('hidden');
+            switchAuthTab('register');
+            const regInput = document.getElementById('regReferral');
+            if (regInput && refCode) {
+              regInput.value = refCode;
+              regInput.readOnly = true;
+              regInput.classList.add('border-emerald-500', 'bg-emerald-50', 'font-bold');
+            }
+          };
+          forceOpenRegister();
+          setTimeout(forceOpenRegister, 250);
+        }
+      } catch(e) {
+        console.log("Referral param error:", e);
+      }
+    }
+
+    // ==========================================
+    // AGENT COMMISSION CLAIM & SYNC
+    // ==========================================
+    function claimAgentCommission() {
+      if (!state.user) {
+        alert('Please login to claim commission!');
+        openAuthModal();
+        return;
+      }
+      const myCode = state.user.phone;
+      if (fbDatabase) {
+        fbDatabase.ref('agent_earnings/' + myCode).once('value', (snap) => {
+          const amt = parseFloat(snap.val()) || 0;
+          if (amt <= 0) {
+            alert('No referral commission available to claim right now.');
+            return;
+          }
+          state.balance += amt;
+          localStorage.setItem('teer_balance', state.balance.toFixed(2));
+          fbDatabase.ref('agent_earnings/' + myCode).set(0);
+          recordTransaction({
+            type: 'commission',
+            title: 'Agent Referral Commission Claim',
+            amount: amt,
+            isCredit: true,
+            status: 'Completed'
+          });
+          updateUI();
+          alert(`Success! ₹${amt.toFixed(2)} referral commission credited to your wallet.`);
+        });
+      }
+    }
+
+    // ==========================================
+    // BETS FILTER SYSTEM (ALL, ACTIVE, WON, LOSS)
+    // ==========================================
+    let currentBetFilter = 'all';
+
+    function setBetFilter(filter) {
+      currentBetFilter = filter;
+      document.querySelectorAll('.bet-tab-btn').forEach(btn => {
+        btn.className = "bet-tab-btn flex-1 py-1.5 rounded-xl text-slate-700 hover:text-teal-900 transition";
+      });
+      const activeBtn = document.getElementById('betTab_' + filter);
+      if (activeBtn) {
+        activeBtn.className = "bet-tab-btn flex-1 py-1.5 rounded-xl bg-teal-950 text-white shadow-sm transition";
+      }
+      renderBidsList();
+    }
+
+    function renderBidsList() {
+      const cont = document.getElementById('bidsListContainer');
+      const countBadge = document.getElementById('bidsCountBadge');
+      
+      const allBids = state.bids || [];
+      const activeBids = allBids.filter(b => b.status === 'Active');
+      const wonBids = allBids.filter(b => b.status === 'WON' || b.status === 'Won');
+      const lossBids = allBids.filter(b => b.status === 'LOST' || b.status === 'Lost' || b.status === 'LOSS' || b.status === 'Loss');
+
+      if (countBadge) countBadge.innerText = `${allBids.length} Bets`;
+
+      const cAll = document.getElementById('countBetAll');
+      const cActive = document.getElementById('countBetActive');
+      const cWon = document.getElementById('countBetWon');
+      const cLoss = document.getElementById('countBetLoss');
+
+      if (cAll) cAll.innerText = allBids.length;
+      if (cActive) cActive.innerText = activeBids.length;
+      if (cWon) cWon.innerText = wonBids.length;
+      if (cLoss) cLoss.innerText = lossBids.length;
+
+      let filteredBids = allBids;
+      if (currentBetFilter === 'active') filteredBids = activeBids;
+      else if (currentBetFilter === 'won') filteredBids = wonBids;
+      else if (currentBetFilter === 'loss') filteredBids = lossBids;
+
+      if (!cont) return;
+
+      if (filteredBids.length === 0) {
+        let emptyMsg = 'No bets placed yet.';
+        if (currentBetFilter === 'active') emptyMsg = 'No active bets right now.';
+        else if (currentBetFilter === 'won') emptyMsg = 'No winning bets yet. Best of luck for next draw!';
+        else if (currentBetFilter === 'loss') emptyMsg = 'No loss bets recorded.';
+        cont.innerHTML = `<div class="p-8 text-center text-slate-400">${emptyMsg}</div>`;
+        return;
+      }
+
+      cont.innerHTML = '';
+      filteredBids.forEach(b => {
+        const item = document.createElement('div');
+        const isWon = (b.status === 'WON' || b.status === 'Won');
+        const isLoss = (b.status === 'LOST' || b.status === 'Lost' || b.status === 'LOSS' || b.status === 'Loss');
+
+        let statusBadge = '<span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-300">Active (Waiting Draw)</span>';
+        let cardBg = 'bg-white border-slate-200';
+
+        if (isWon) {
+          statusBadge = `<span class="text-[10px] bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1"><i class="fa-solid fa-trophy text-amber-600"></i> WON +₹${parseFloat(b.payout).toFixed(2)}</span>`;
+          cardBg = 'bg-emerald-50/70 border-emerald-300';
+        } else if (isLoss) {
+          statusBadge = '<span class="text-[10px] bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded-full border border-rose-200">Loss</span>';
+          cardBg = 'bg-slate-50/60 border-slate-200 opacity-90';
+        }
+
+        item.className = `p-3 rounded-2xl border ${cardBg} shadow-sm flex justify-between items-center text-xs transition`;
+        item.innerHTML = `
+          <div>
+            <div class="flex items-center gap-2">
+              <p class="font-bold text-teal-950 text-xs">${b.market} [${b.round}]</p>
+            </div>
+            <p class="text-slate-500 mt-0.5">
+              ${b.mode}: <b class="text-amber-700 font-mono text-sm font-black">${b.number}</b> &bull; ${b.date} ${b.time}
+            </p>
+          </div>
+          <div class="text-right flex flex-col items-end gap-1">
+            <span class="font-extrabold text-slate-800">₹${parseFloat(b.amount).toFixed(2)}</span>
+            ${statusBadge}
+          </div>
+        `;
+        cont.appendChild(item);
+      });
+    }
+
+    // ==========================================
+    // TRANSACTION HISTORY LEDGER SYSTEM
+    // ==========================================
+    let currentTxFilter = 'all';
+
+    function getTransactions() {
+      return JSON.parse(localStorage.getItem('teer_transactions') || '[]');
+    }
+
+    function recordTransaction(tx) {
+      const list = getTransactions();
+      const newTx = {
+        id: tx.id || ('tx_' + Date.now()),
+        type: tx.type,
+        title: tx.title,
+        amount: parseFloat(tx.amount),
+        isCredit: tx.isCredit,
+        status: tx.status || 'Completed',
+        date: tx.date || new Date().toLocaleDateString(),
+        time: tx.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Date.now()
+      };
+      list.unshift(newTx);
+      localStorage.setItem('teer_transactions', JSON.stringify(list));
+      if (fbDatabase && state.user) {
+        fbDatabase.ref('user_transactions/' + state.user.phone + '/' + newTx.id).set(newTx);
+      }
+    }
+
+    function openTransactionModal() {
+      document.getElementById('txModal').classList.remove('hidden');
+      renderTransactions();
+    }
+
+    function closeTransactionModal() {
+      document.getElementById('txModal').classList.add('hidden');
+    }
+
+    function filterTransactions(type) {
+      currentTxFilter = type;
+      document.querySelectorAll('.tx-tab-btn').forEach(b => {
+        b.className = "tx-tab-btn flex-1 py-1 rounded-lg text-slate-600";
+      });
+      const activeBtn = document.getElementById('txTab_' + type);
+      if (activeBtn) activeBtn.className = "tx-tab-btn flex-1 py-1 rounded-lg bg-teal-950 text-white font-bold";
+      renderTransactions();
+    }
+
+    function renderTransactions() {
+      const cont = document.getElementById('txListContainer');
+      const allTx = getTransactions();
+      
+      let filtered = allTx;
+      if (currentTxFilter === 'deposit') filtered = allTx.filter(t => t.type === 'deposit');
+      else if (currentTxFilter === 'withdraw') filtered = allTx.filter(t => t.type === 'withdraw');
+      else if (currentTxFilter === 'game') filtered = allTx.filter(t => t.type === 'bet' || t.type === 'win');
+
+      if (!cont) return;
+      if (filtered.length === 0) {
+        cont.innerHTML = '<div class="p-8 text-center text-slate-400">No transactions recorded yet.</div>';
+        return;
+      }
+
+      cont.innerHTML = filtered.map(t => {
+        const isPlus = t.isCredit;
+        const colorClass = isPlus ? 'text-emerald-600' : 'text-rose-600';
+        const sign = isPlus ? '+' : '-';
+        let icon = 'fa-receipt';
+        if (t.type === 'deposit') icon = 'fa-arrow-down-long';
+        else if (t.type === 'withdraw') icon = 'fa-arrow-up-long';
+        else if (t.type === 'bet') icon = 'fa-dice';
+        else if (t.type === 'win') icon = 'fa-trophy';
+        else if (t.type === 'bonus' || t.type === 'commission') icon = 'fa-gift';
+
+        let badgeColor = 'bg-slate-100 text-slate-700';
+        if (t.status === 'Completed' || t.status === 'Approved') badgeColor = 'bg-emerald-100 text-emerald-800';
+        else if (t.status === 'Pending' || t.status === 'Processing') badgeColor = 'bg-amber-100 text-amber-800';
+        else if (t.status === 'Rejected' || t.status === 'Failed') badgeColor = 'bg-rose-100 text-rose-800';
+
+        return `
+          <div class="py-2.5 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-full ${isPlus ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'} flex items-center justify-center text-xs shrink-0">
+                <i class="fa-solid ${icon}"></i>
+              </div>
+              <div>
+                <p class="font-bold text-slate-900 leading-tight text-xs">${t.title}</p>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-[10px] text-slate-400">${t.date} ${t.time}</span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${badgeColor}">${t.status}</span>
+                </div>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="text-sm font-black ${colorClass}">${sign}₹${t.amount.toFixed(2)}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ==========================================
+    // ALL MY REFERRALS SYSTEM
+    // ==========================================
+    let myReferralFriends = [];
+
+    function openMyReferralsModal() {
+      if (!state.user) {
+        alert('Please login or register to view referrals!');
+        openAuthModal();
+        return;
+      }
+      document.getElementById('myReferralsModal').classList.remove('hidden');
+      renderMyReferralsModal();
+    }
+
+    function closeMyReferralsModal() {
+      document.getElementById('myReferralsModal').classList.add('hidden');
+    }
+
+    function syncMyReferralsFromFirebase() {
+      if (!fbDatabase || !state.user) return;
+      const myPhone = state.user.phone;
+      fbDatabase.ref('referrals/' + myPhone).on('value', (snap) => {
+        const val = snap.val() || {};
+        myReferralFriends = Object.values(val);
+        const count = myReferralFriends.length;
+        
+        const countText = document.getElementById('cardJoinedCountText');
+        if (countText) countText.innerText = `${count} Friends Joined`;
+        
+        const modalCount = document.getElementById('modalRefFriendsCount');
+        if (modalCount) modalCount.innerText = `${count} Members`;
+      });
+    }
+
+    function renderMyReferralsModal() {
+      const cont = document.getElementById('myReferralsListContainer');
+      if (!cont) return;
+      if (myReferralFriends.length === 0) {
+        cont.innerHTML = '<div class="p-8 text-center text-slate-400">No friends joined yet. Share your link to start earning!</div>';
+        return;
+      }
+
+      cont.innerHTML = myReferralFriends.map((f, idx) => {
+        return `
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs">
+                ${f.name ? f.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 text-xs">${f.name || 'Friend'}</p>
+                <p class="text-[10px] text-slate-500 font-mono">+91 ${f.maskedPhone || f.phone}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">Active Member</span>
+              <p class="text-[9px] text-slate-400 mt-0.5">Joined: ${f.date || 'Recent'}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+</script>
+
+    <!-- MODAL: REALTIME TRANSACTION HISTORY -->
+    <div id="txModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-3">
+      <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl space-y-3 max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-teal-950 flex items-center gap-1.5">
+              <i class="fa-solid fa-receipt text-teal-700"></i> Transaction History
+            </h3>
+            <p class="text-[10px] text-slate-500">Deposit, Withdrawal, Bet Debits &amp; Winnings</p>
+          </div>
+          <button onclick="closeTransactionModal()" class="text-slate-400 hover:text-slate-700 p-1">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+
+        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl text-[10px] font-bold">
+          <button onclick="filterTransactions('all')" id="txTab_all" class="tx-tab-btn flex-1 py-1 rounded-lg bg-teal-950 text-white font-bold">All</button>
+          <button onclick="filterTransactions('deposit')" id="txTab_deposit" class="tx-tab-btn flex-1 py-1 rounded-lg text-slate-600">Deposit</button>
+          <button onclick="filterTransactions('withdraw')" id="txTab_withdraw" class="tx-tab-btn flex-1 py-1 rounded-lg text-slate-600">Withdraw</button>
+          <button onclick="filterTransactions('game')" id="txTab_game" class="tx-tab-btn flex-1 py-1 rounded-lg text-slate-600">Bets &amp; Wins</button>
+        </div>
+
+        <div id="txListContainer" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs divide-y divide-slate-100 min-h-[220px]">
+          <div class="p-8 text-center text-slate-400">No transactions recorded yet.</div>
+        </div>
+
+        <div class="pt-2 border-t text-center">
+          <button onclick="closeTransactionModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: MY REFERRAL TEAM -->
+    <div id="myReferralsModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-3">
+      <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl space-y-3 max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-teal-950 flex items-center gap-1.5">
+              <i class="fa-solid fa-users-viewfinder text-amber-600"></i> My Referral Team
+            </h3>
+            <p class="text-[10px] text-slate-500">Friends who registered using your referral link</p>
+          </div>
+          <button onclick="closeMyReferralsModal()" class="text-slate-400 hover:text-slate-700 p-1">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+
+        <div class="bg-gradient-to-r from-teal-900 to-[#021d20] text-white p-3 rounded-2xl flex justify-between items-center">
+          <div>
+            <p class="text-[10px] text-teal-300">Total Joined Friends</p>
+            <p id="modalRefFriendsCount" class="text-xl font-black text-amber-300">0 Members</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] text-teal-300">Total Commission Earned</p>
+            <p id="modalRefTotalEarned" class="text-xl font-black text-emerald-400">₹0.00</p>
+          </div>
+        </div>
+
+        <div id="myReferralsListContainer" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs min-h-[200px]">
+          <div class="p-8 text-center text-slate-400">No friends joined yet. Share your link to start earning!</div>
+        </div>
+
+        <div class="pt-2 border-t">
+          <button onclick="shareReferralWhatsApp()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
+            <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Share
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- MODAL: WHATSAPP BET CLIP RECEIPT -->
+    <div id="betClipModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+      <div class="bg-[#0f1d21] border-2 border-amber-400/80 rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl text-white">
+        <div class="text-center border-b border-teal-800 pb-3">
+          <div class="w-12 h-12 bg-amber-400/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-2xl mb-1">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <h3 class="font-cinzel text-lg font-black text-amber-300">BET CONFIRMED</h3>
+          <p class="text-[11px] text-teal-200 font-mono">Official Teer Online Slip</p>
+        </div>
+
+        <div id="betReceiptCardContent" class="bg-black/60 border border-teal-900 rounded-2xl p-3.5 font-mono text-xs space-y-2 text-slate-200">
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button onclick="closeBetClipModal()" class="flex-1 py-2.5 rounded-xl border border-slate-600 font-bold text-xs text-slate-300 hover:bg-white/10 transition">
+            Close
+          </button>
+          <button id="btnShareWhatsAppClip" onclick="shareReceiptOnWhatsApp()" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white shadow-lg flex items-center justify-center gap-1.5 transition">
+            <i class="fa-brands fa-whatsapp text-sm"></i> Share Clip
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- MODAL: TEER PLAY ROUND RESULT (WIN / LOSS POPUP) -->
+    <div id="teerPlayResultPopup" class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 hidden">
+      <div class="bg-[#0f1d21] border-2 border-amber-400 rounded-3xl p-5 max-w-xs w-full text-center space-y-3.5 shadow-2xl text-white">
+        <div id="tpPopupIcon" class="w-14 h-14 rounded-full flex items-center justify-center mx-auto text-3xl"></div>
+        <div>
+          <h3 id="tpPopupTitle" class="font-cinzel text-xl font-black">ROUND RESULT</h3>
+          <p class="text-xs font-mono mt-0.5 text-slate-300">1-Minute Online Teer Play</p>
+        </div>
+
+        <div class="bg-black/60 border border-teal-900 rounded-2xl p-3 flex justify-around items-center">
+          <div>
+            <p class="text-[10px] text-slate-400 font-bold">FR RESULT</p>
+            <p id="tpResultFR" class="text-2xl font-black text-amber-400 font-mono">--</p>
+          </div>
+          <div class="w-px h-8 bg-teal-800"></div>
+          <div>
+            <p class="text-[10px] text-slate-400 font-bold">SR RESULT</p>
+            <p id="tpResultSR" class="text-2xl font-black text-amber-400 font-mono">--</p>
+          </div>
+        </div>
+
+        <div id="tpOutcomeBox" class="rounded-xl p-2.5 text-xs font-bold"></div>
+
+        <button onclick="closeTeerPlayResultPopup()" class="w-full py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 font-black text-teal-950 text-xs shadow-lg transition">
+          Continue Playing
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL: DEDICATED TEER PLAY BET HISTORY -->
+    <div id="teerPlayHistoryModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+      <div class="bg-[#0f1d21] border-2 border-amber-400/80 rounded-3xl p-4 max-w-sm w-full space-y-3 shadow-2xl text-white max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center border-b border-teal-800/80 pb-2.5">
+          <div>
+            <h3 class="font-cinzel text-base font-black text-amber-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-clock-rotate-left"></i> Teer Play Bets
+            </h3>
+            <p class="text-[10px] text-teal-200">History for 1-Minute Teer Play only</p>
+          </div>
+          <button onclick="closeTeerPlayHistoryModal()" class="w-7 h-7 rounded-full bg-teal-900 text-teal-200 flex items-center justify-center">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Filter tabs for Teer Play -->
+        <div class="flex gap-1 bg-black/40 p-1 rounded-xl text-[11px] font-bold">
+          <button onclick="filterTeerPlayHistory('all')" id="tpHistTab_all" class="flex-1 py-1 rounded-lg bg-amber-400 text-teal-950">All</button>
+          <button onclick="filterTeerPlayHistory('won')" id="tpHistTab_won" class="flex-1 py-1 rounded-lg text-slate-300">Won</button>
+          <button onclick="filterTeerPlayHistory('lost')" id="tpHistTab_lost" class="flex-1 py-1 rounded-lg text-slate-300">Lost</button>
+          <button onclick="filterTeerPlayHistory('active')" id="tpHistTab_active" class="flex-1 py-1 rounded-lg text-slate-300">Active</button>
+        </div>
+
+        <div id="teerPlayHistoryList" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+
+    </body>
+</html>
