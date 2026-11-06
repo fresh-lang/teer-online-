@@ -456,7 +456,15 @@
 
       // 1. Sync All Users
       fbDatabase.ref('users').on('value', (snap) => {
-        allUsersCache = snap.val() || {};
+        let cloudUsers = snap.val() || {};
+        let localUsersList = JSON.parse(localStorage.getItem('teer_registered_users') || '[]');
+        let merged = { ...cloudUsers };
+        localUsersList.forEach(u => {
+          if (u.phone && !merged[u.phone]) {
+            merged[u.phone] = u;
+          }
+        });
+        allUsersCache = merged;
         renderUsersList();
       });
 
