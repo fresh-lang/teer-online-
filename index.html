@@ -1151,11 +1151,19 @@
     
     let currentShareableClipText = "";
 
-    function showBetReceiptClip(marketName, round, numbersStr, amount, potentialWin) {
-      const dateStr = getTodayFormattedDate();
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    function showBetReceiptClip(marketName, round, numbersStr, amount, potentialWin, customRef, customDate, customTime, customStatus, customPayout) {
+      const dateStr = customDate || getTodayFormattedDate();
+      const timeStr = customTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const userLabel = state.user ? (state.user.name + ` (${state.user.uid || state.user.phone})`) : 'Guest User';
-      const refId = 'TR' + Math.floor(100000 + Math.random() * 900000);
+      const refId = customRef || ('TR' + Math.floor(100000 + Math.random() * 900000));
+      let statusHtml = '<span class="text-emerald-400 font-bold">● CONFIRMED</span>';
+      if (customStatus === 'WON' || customStatus === 'Won') {
+        statusHtml = `<span class="text-emerald-400 font-black">🎉 WON (+₹${parseFloat(customPayout || 0).toFixed(2)})</span>`;
+      } else if (customStatus === 'LOST' || customStatus === 'Lost') {
+        statusHtml = '<span class="text-rose-400 font-bold">❌ LOST</span>';
+      } else if (customStatus === 'Active') {
+        statusHtml = '<span class="text-amber-400 font-bold">● ACTIVE (Waiting Draw)</span>';
+      }
 
       currentShareableClipText = 
 `🎯 *TEER ONLINE OFFICIAL BET SLIP* 🎯
@@ -1185,7 +1193,7 @@
           <div class="flex justify-between"><span class="text-slate-400">Potential Return:</span> <span class="font-bold text-emerald-400">₹${potentialWin}</span></div>
           <div class="flex justify-between border-t border-teal-900/60 pt-1.5 text-[10px] text-slate-400">
             <span>${dateStr} ${timeStr}</span>
-            <span class="text-emerald-400 font-bold">● CONFIRMED</span>
+            <span>${statusHtml}</span>
           </div>
         `;
       }
@@ -2604,7 +2612,9 @@
       const targetRounds = (state.currentRound === 'BS') ? ['FR', 'SR'] : [state.currentRound];
       targetRounds.forEach(r => {
         state.selectedNumbers.forEach(n => {
+          const generatedRefId = 'TR' + Math.floor(100000 + Math.random() * 900000);
           state.bids.unshift({
+            refId: generatedRefId,
             market: state.currentMarketObj.name,
             round: r,
             mode: state.betMode.toUpperCase(),
@@ -2635,7 +2645,7 @@
       updateSelectedTray();
       calculatePayout();
       
-      showBetReceiptClip(state.currentMarketObj.name, roundLabel, numbersLabel, amt, potVal);
+      showBetReceiptClip(state.currentMarketObj.name, roundLabel, numbersLabel, amt, potVal, generatedRefId);
     }
 
 
@@ -3459,7 +3469,22 @@
           cardBg = 'bg-slate-50/60 border-slate-200 opacity-90';
         }
 
-        item.className = `p-3 rounded-2xl border ${cardBg} shadow-sm flex justify-between items-center text-xs transition`;
+        // Calculate potential win for the slip viewer
+        let potWin = '0.00';
+        if (b.market === 'Teer Play') {
+          if (b.mode === 'DIRECT') potWin = ((b.amount) / 10) * 160;
+          else potWin = ((b.amount) / 10) * 80;
+        } else {
+          let mult = (b.mode === 'DIRECT') ? 90 : 9;
+          potWin = b.amount * mult;
+        }
+        potWin = parseFloat(potWin).toFixed(2);
+
+        item.className = `p-3 rounded-2xl border ${cardBg} shadow-sm flex justify-between items-center text-xs transition cursor-pointer hover:border-amber-500`;
+        item.title = "Click to view official bet slip receipt";
+        item.onclick = () => {
+          showBetReceiptClip(b.market, b.round, b.number, b.amount, potWin, b.refId || ('TR' + Math.floor(100000 + Math.random()*900000)), b.date, b.time, b.status, b.payout);
+        };
         item.innerHTML = `
           <div>
             <div class="flex items-center gap-2">
