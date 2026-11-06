@@ -3634,6 +3634,71 @@
       }).join('');
     }
 
+
+    // ==========================================
+    // BACK BUTTON & EXIT POPUP NAVIGATION FIX
+    // ==========================================
+    let currentActiveTab = 'home';
+    let isExitModalOpen = false;
+
+    // Push initial home state on load
+    window.history.pushState({ tab: 'home' }, '', '');
+
+    // Override switchTab to also push history state so back button works across tabs & modals
+    const originalSwitchTab = switchTab;
+    switchTab = function(t, push = true) {
+      currentActiveTab = t;
+      originalSwitchTab(t);
+      if (push) {
+        window.history.pushState({ tab: t }, '', '');
+      }
+    };
+
+    window.addEventListener('popstate', (e) => {
+      // 1. Check if any modal is open, close it first
+      const openModals = document.querySelectorAll('.fixed:not(.hidden)');
+      let modalClosed = false;
+      openModals.forEach(m => {
+        if (m.id !== 'exitAppModal' && m.id !== 'lockScreen') {
+          m.classList.add('hidden');
+          modalClosed = true;
+        }
+      });
+
+      if (modalClosed) {
+        window.history.pushState({ tab: currentActiveTab }, '', '');
+        return;
+      }
+
+      // 2. If not on home tab, go back to home tab first
+      if (currentActiveTab !== 'home') {
+        currentActiveTab = 'home';
+        originalSwitchTab('home');
+        window.history.pushState({ tab: 'home' }, '', '');
+        return;
+      }
+
+      // 3. If already on home tab, show Stay App / Exit popup
+      if (!isExitModalOpen) {
+        isExitModalOpen = true;
+        document.getElementById('exitAppModal').classList.remove('hidden');
+        window.history.pushState({ tab: 'home' }, '', '');
+      }
+    });
+
+    function closeExitModal() {
+      isExitModalOpen = false;
+      document.getElementById('exitAppModal').classList.add('hidden');
+    }
+
+    function confirmExitApp() {
+      try {
+        window.close();
+      } catch(e) {}
+      // Fallback redirect or history back
+      window.location.href = "about:blank";
+    }
+
 </script>
 
     <!-- MODAL: REALTIME TRANSACTION HISTORY -->
@@ -3792,5 +3857,27 @@
     </div>
 
 
-    </body>
+    
+    <!-- MODAL: STAY APP OR EXIT CONFIRMATION -->
+    <div id="exitAppModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-[#0f1d21] border-2 border-amber-400 rounded-3xl p-6 max-w-xs w-full text-center space-y-4 shadow-2xl text-white">
+        <div class="w-14 h-14 bg-amber-400/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-2xl">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </div>
+        <div>
+          <h3 class="font-cinzel text-lg font-black text-amber-300">EXIT APP?</h3>
+          <p class="text-xs text-slate-300 mt-1">Kya aap Teer Online app se exit karna chahte hain?</p>
+        </div>
+        <div class="grid grid-cols-2 gap-2 pt-2">
+          <button onclick="closeExitModal()" class="py-2.5 rounded-xl bg-teal-900 hover:bg-teal-800 text-teal-200 font-bold text-xs">
+            Stay App
+          </button>
+          <button onclick="confirmExitApp()" class="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg">
+            Exit
+          </button>
+        </div>
+      </div>
+    </div>
+
+</body>
 </html>
