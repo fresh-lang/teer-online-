@@ -104,9 +104,9 @@
           <i class="fa-solid fa-bell text-[11px]"></i>
           <span id="notifBadge" class="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] font-bold flex items-center justify-center hidden">0</span>
         </button>
-        <a href="admin.html" class="w-7 h-7 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-amber-400 text-xs">
+        <button type="button" onclick="handleAdminSecretLogoTap()" class="w-7 h-7 rounded-full bg-teal-900/60 border border-teal-700/50 flex items-center justify-center text-amber-400 text-xs cursor-pointer select-none" title="Security">
           <i class="fa-solid fa-lock text-[11px]"></i>
-        </a>
+        </button>
       </div>
     </header>
 
@@ -375,16 +375,32 @@
           <button id="profileAuthBtn" onclick="openAuthModal()" class="text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg shadow">Login</button>
         </div>
 
-        <!-- Refer & Agent Earnings Card (Rules Hidden) -->
+        <!-- Refer & Agent Earnings Card -->
         <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 text-slate-800 space-y-2.5">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2 text-amber-900 font-black text-sm">
-              <i class="fa-solid fa-crown text-amber-600"></i> Referral &amp; Earnings
+              <i class="fa-solid fa-crown text-amber-600"></i> Refer &amp; Earn Rules (Mega Commission)
             </div>
-            <span class="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">Active Member</span>
+            <span class="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">10% Active</span>
+          </div>
+
+          <!-- User Display Rules (Fake Display to attract users) -->
+          <div class="bg-white/90 p-3 rounded-xl border border-amber-200 text-xs space-y-1.5 text-slate-700 shadow-sm">
+            <p class="flex items-center gap-2 font-semibold">
+              <i class="fa-solid fa-gift text-emerald-600"></i>
+              <span>Har Refer Par: <b class="text-emerald-700 font-bold">Flat ₹10 Instant Bonus</b></span>
+            </p>
+            <p class="flex items-center gap-2 font-semibold">
+              <i class="fa-solid fa-wallet text-amber-600"></i>
+              <span>Friend Har Deposit Par: <b class="text-amber-700 font-bold">Flat 10% Extra Commission</b></span>
+            </p>
+            <p class="flex items-center gap-2 font-semibold">
+              <i class="fa-solid fa-bullseye text-teal-700"></i>
+              <span>Friend Game Betting Par: <b class="text-teal-800 font-bold">Flat 10% Turnover Commission</b></span>
+            </p>
           </div>
           
-          <!-- Private Earnings Box -->
+          <!-- Real Earnings Box -->
           <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex justify-between items-center shadow-sm">
             <div>
               <span class="text-[11px] text-emerald-800 font-bold block">Aapki Total Referral Kamai:</span>
@@ -2616,13 +2632,29 @@
 
     // SYNC AGENT EARNINGS FROM FIREBASE SO AGENT SEES COMMISSION LIVE
     function syncAgentEarningsFromFirebase() {
-      if (!fbDatabase || !state.user) return;
+      if (!state.user) return;
       const myCode = state.user.phone;
-      fbDatabase.ref('agent_earnings/' + myCode).on('value', (snap) => {
-        const total = snap.val() || 0;
+
+      const updateAllEarningsUI = (val) => {
+        const formatted = '₹' + parseFloat(val || 0).toFixed(2);
         const box = document.getElementById('myAgentEarnedText');
-        if (box) box.innerText = '₹' + parseFloat(total).toFixed(2);
-      });
+        if (box) box.innerText = formatted;
+        const modalEarned = document.getElementById('modalRefTotalEarned');
+        if (modalEarned) modalEarned.innerText = formatted;
+      };
+
+      // Local storage fallback
+      const localLedger = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
+      if (localLedger[myCode] !== undefined) {
+        updateAllEarningsUI(localLedger[myCode]);
+      }
+
+      if (fbDatabase) {
+        fbDatabase.ref('agent_earnings/' + myCode).on('value', (snap) => {
+          const total = snap.val() !== null ? snap.val() : (localLedger[myCode] || 0);
+          updateAllEarningsUI(total);
+        });
+      }
     }
 
     // PUSH COMMISSION SILENTLY TO FIREBASE (SHOW NAHI HOGA)
@@ -2990,6 +3022,18 @@
       }
     }
 
+        // ==========================================
+    // UNIQUE DEVICE FINGERPRINT & 2-ID SECURITY
+    // ==========================================
+    function getDeviceIdentifier() {
+      let devId = localStorage.getItem('teer_dev_uid');
+      if (!devId) {
+        devId = 'DEV_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+        localStorage.setItem('teer_dev_uid', devId);
+      }
+      return devId;
+    }
+
     function handleRegisterSubmit(e) {
       e.preventDefault();
       const name = document.getElementById('regName').value.trim();
@@ -3002,6 +3046,14 @@
         return;
       }
 
+      // 1. DEVICE LIMIT: 1 DEVICE PAR MAXIMUM 2 ID ALLOW HAI
+      const deviceId = getDeviceIdentifier();
+      let deviceRegisteredPhones = JSON.parse(localStorage.getItem('teer_dev_phones') || '[]');
+      if (deviceRegisteredPhones.length >= 2 && !deviceRegisteredPhones.includes(phone)) {
+        alert('⛔ Security Alert: Ek mobile device par maximum 2 ID hi bana sakte hain!');
+        return;
+      }
+
       const usersDb = JSON.parse(localStorage.getItem('teer_registered_users') || '[]');
       const exists = usersDb.some(u => u.phone === phone);
       if (exists) {
@@ -3011,10 +3063,22 @@
         return;
       }
 
+      // 2. ANTI-FAKE REFERRAL PROTECTION (Same Device & Self-Referral Block)
+      let isFakeReferral = false;
+      if (referralCode) {
+        if (referralCode === phone) {
+          isFakeReferral = true;
+        }
+        if (deviceRegisteredPhones.includes(referralCode)) {
+          isFakeReferral = true;
+          console.warn('Fake referral blocked: Same device referral attempt!');
+        }
+      }
+
       const todayStr = new Date().toLocaleDateString();
       let nextId = parseInt(localStorage.getItem('teer_last_user_seq_id') || '1000') + 1;
       localStorage.setItem('teer_last_user_seq_id', nextId.toString());
-      const userUid = 'UID_' + nextId; // Sequential: UID_1001, UID_1002, UID_1003...
+      const userUid = 'UID_' + nextId;
 
       const newUser = {
         uid: userUid,
@@ -3022,8 +3086,11 @@
         phone,
         pass,
         balance: 10.00,
-        referredBy: referralCode ? referralCode : null,
+        referredBy: (referralCode && !isFakeReferral) ? referralCode : null,
+        deviceId: deviceId,
         createdAt: todayStr,
+        totalDeposit: 0,
+        totalBet: 0,
         betCount: 0
       };
 
@@ -3034,17 +3101,24 @@
       usersDb.push(newUser);
       localStorage.setItem('teer_registered_users', JSON.stringify(usersDb));
 
+      // Register phone under this device list
+      if (!deviceRegisteredPhones.includes(phone)) {
+        deviceRegisteredPhones.push(phone);
+        localStorage.setItem('teer_dev_phones', JSON.stringify(deviceRegisteredPhones));
+      }
+
       state.user = newUser;
       state.balance = 10.00;
       localStorage.setItem('teer_current_user', JSON.stringify(newUser));
       localStorage.setItem('teer_balance', state.balance.toFixed(2));
 
-      // Push to Firebase so Admin Panel sees user live immediately
+      // Push to Firebase
       if (fbDatabase) {
         fbDatabase.ref('users/' + phone).set(newUser);
+        fbDatabase.ref('devices/' + deviceId + '/' + phone).set(Date.now());
 
-        // Track referral in Firebase if user registered with a referral code
-        if (referralCode) {
+        // SIRF GENUINE (ALAG DEVICE) REFER PAR COMMISSION MILEGA (FAKE PAR 0)
+        if (referralCode && !isFakeReferral) {
           const refRecord = {
             name: name,
             phone: phone,
@@ -3053,12 +3127,14 @@
             date: todayStr,
             timestamp: Date.now()
           };
-          // Save under referrer's referrals list
           fbDatabase.ref('referrals/' + referralCode).push(refRecord);
 
-          // Give referrer ₹10 reward
-          fbDatabase.ref('users/' + referralCode + '/balance').transaction(cur => (cur || 0) + 10);
-          fbDatabase.ref('agent_earnings/' + referralCode).transaction(cur => (cur || 0) + 10);
+          // HAR GENUINE REFER PAR 5 RS REFER EARNING ME (WALLET ME DIRECT 0)
+          fbDatabase.ref('agent_earnings/' + referralCode).transaction(cur => (cur || 0) + 5);
+
+          let agentLedger = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
+          agentLedger[referralCode] = (agentLedger[referralCode] || 0) + 5;
+          localStorage.setItem('teer_agent_earnings', JSON.stringify(agentLedger));
         }
       }
       initUserLiveBalanceListener();
@@ -3071,8 +3147,6 @@
 
       updateUI();
       closeAuthModal();
-      closeAuthModal();
-      openAppInstallModal();
     }
 
     function handleLoginSubmit(e) {
