@@ -2295,13 +2295,13 @@
       let potential = 0;
       if (state.currentMarketObj && state.currentMarketObj.name === 'Teer Play') {
         if (state.betMode === 'direct') {
-          potential = (amt / 10) * 160; // Guti: 10 pe 160
+          potential = ((amt * count) / 10) * 160; 
         } else {
-          potential = (amt / 10) * 80;  // House/Ending: 10 pe 80
+          potential = ((amt * count) / 10) * 80;  
         }
       } else {
         let mult = (state.betMode === 'direct') ? 90 : 9;
-        potential = amt * mult;
+        potential = amt * mult * count; // Scaled by selected numbers count (Total Cost * mult)
       }
       document.getElementById('potentialWin').innerText = count > 0 ? '₹' + potential.toFixed(2) : '₹0.00';
     }
