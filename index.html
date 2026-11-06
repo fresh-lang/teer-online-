@@ -1608,15 +1608,30 @@
     // 2. FIREBASE REALTIME LISTENER FOR AUTO-RESULT & AUTO-CREDIT
     function initFirebaseAutoSync() {
       if (!fbDatabase) return;
+      
+      // 1. Listen to Live Results
       fbDatabase.ref('results').on('value', (snapshot) => {
         const liveData = snapshot.val();
         if (liveData) {
-          console.log("Firebase Live Teer Result Sync:", liveData);
           localStorage.setItem('teer_market_results', JSON.stringify(liveData));
           renderMarkets();
           checkAndCreditWinnings();
         }
       });
+
+      // 2. Listen to Admin Broadcast Notifications
+      fbDatabase.ref('broadcast_notifications').on('child_added', (snapshot) => {
+        const notif = snapshot.val();
+        if (notif && notif.message) {
+          addAppNotification({
+            type: 'event',
+            title: notif.title || 'Master Admin Notice',
+            message: notif.message,
+            time: notif.time || 'Just now'
+          });
+        }
+      });
+
       initDynamicSettingsSync();
       checkUserBlockedStatus();
     }
@@ -3045,6 +3060,14 @@
 
     function handleRegisterSubmit(e) {
       e.preventDefault();
+      
+      // Request browser notification permission on registration
+      if ('Notification' in window && Notification.permission !== 'granted') {
+        Notification.requestPermission().then(permission => {
+          console.log('Notification permission:', permission);
+        });
+      }
+
       const name = document.getElementById('regName').value.trim();
       const phone = document.getElementById('regPhone').value.trim();
       const pass = document.getElementById('regPass').value;
