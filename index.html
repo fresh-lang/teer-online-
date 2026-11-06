@@ -3000,6 +3000,27 @@
 
       updateUI();
       closeWithdrawModal();
+
+      // Trigger WhatsApp message to Admin Helpline (+918134834380)
+      try {
+        const wthDate = now.toLocaleDateString();
+        const wthTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const wthMsg = encodeURIComponent(
+          `⚡ *TEER ONLINE - WITHDRAWAL REQUEST*\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n` +
+          `👤 *User Name:* ${state.user.name}\n` +
+          `📱 *Mobile Number:* ${state.user.phone}\n` +
+          `🆔 *User ID:* ${state.user.uid || 'N/A'}\n` +
+          `💰 *Amount:* ₹${amt}\n` +
+          `💳 *Payout Info:* ${payoutType === 'upi' ? upiVal : JSON.stringify(bankObj)}\n` +
+          `📅 *Date & Time:* ${wthDate} ${wthTime}\n` +
+          `🔖 *Request ID:* ${wthId}\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n` +
+          `Admin sir, withdrawal request lagayi hai. Please verify karke approve karein.`
+        );
+        window.open(`https://wa.me/918134834380?text=${wthMsg}`, '_blank');
+      } catch(err) {}
+
       alert(`Withdrawal Request Submitted!\nAmount: ₹${amt}\nUPI ID: ${upi}\n\nYour payout will be credited directly to your UPI ID within 1 to 10 minutes!`);
     }
 

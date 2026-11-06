@@ -108,7 +108,7 @@
         </div>
         <div>
           <label class="text-xs text-slate-300 font-bold block mb-1">Select Market:</label>
-          <select id="mkt" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white font-semibold outline-none focus:border-amber-400">
+          <select id="mkt" onchange="loadMarketExistingResult()" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white font-semibold outline-none focus:border-amber-400">
             <optgroup label="Morning Draws (Closed in Afternoon)">
               <option value="Shilong Morning Teer">Shilong Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
               <option value="Khanapara Morning Teer">Khanapara Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
@@ -370,7 +370,10 @@
       <div class="bg-black/40 p-3 rounded-2xl space-y-2 text-xs">
         <div class="flex justify-between"><span class="text-slate-400">Name:</span> <span id="mUserName" class="font-bold text-white">--</span></div>
         <div class="flex justify-between"><span class="text-slate-400">Mobile:</span> <span id="mUserPhone" class="font-mono text-amber-300 font-bold">--</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">Current Balance:</span> <span id="mUserBalance" class="font-black text-emerald-400 text-sm">₹0.00</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Current Balance:</span> <span id="mUserBalance" class="font-black text-amber-400 text-sm">₹0.00</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Total Deposits:</span> <span id="mUserTotalDeposits" class="font-black text-emerald-400">₹0.00</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Total Withdrawals:</span> <span id="mUserTotalWithdrawals" class="font-black text-rose-400">₹0.00</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Total Bets Placed:</span> <span id="mUserTotalBets" class="font-bold text-teal-300">0 Bets</span></div>
         <div class="flex justify-between"><span class="text-slate-400">Referred By:</span> <span id="mUserReferredBy" class="text-slate-300">Direct</span></div>
         <div class="flex justify-between"><span class="text-slate-400">Registered Date:</span> <span id="mUserCreatedAt" class="text-slate-400">--</span></div>
       </div>
@@ -544,6 +547,31 @@
       document.getElementById('mUserBalance').innerText = '₹' + parseFloat(u.balance || 0).toFixed(2);
       document.getElementById('mUserReferredBy').innerText = u.referredBy || 'Direct Registration';
       document.getElementById('mUserCreatedAt').innerText = u.createdAt || 'Recent';
+
+      // 1. Calculate Total Approved Deposits
+      let totalDep = 0;
+      Object.values(allDepositsCache || {}).forEach(d => {
+        if (d.phone === phone && d.status === 'approved') {
+          totalDep += parseFloat(d.amount || 0);
+        }
+      });
+      const depElem = document.getElementById('mUserTotalDeposits');
+      if (depElem) depElem.innerText = '₹' + totalDep.toFixed(2);
+
+      // 2. Calculate Total Approved Withdrawals
+      let totalWth = 0;
+      Object.values(allWithdrawalsCache || {}).forEach(w => {
+        if (w.phone === phone && w.status === 'approved') {
+          totalWth += parseFloat(w.amount || 0);
+        }
+      });
+      const wthElem = document.getElementById('mUserTotalWithdrawals');
+      if (wthElem) wthElem.innerText = '₹' + totalWth.toFixed(2);
+
+      // 3. User Total Bets Count
+      const betElem = document.getElementById('mUserTotalBets');
+      if (betElem) betElem.innerText = `${u.betCount || 0} Bets Placed`;
+
       document.getElementById('adjustAmtInput').value = '';
       document.getElementById('userModal').classList.remove('hidden');
     }
@@ -799,13 +827,32 @@
       return `${d}/${m}/${y}`;
     }
 
+    function loadMarketExistingResult() {
+      const market = document.getElementById('mkt').value;
+      const results = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      const current = results[market] || { fr: '', sr: '' };
+
+      document.getElementById('fr').value = (current.fr && current.fr !== '**') ? current.fr : '';
+      document.getElementById('sr').value = (current.sr && current.sr !== '**') ? current.sr : '';
+    }
+
     function saveResultAndBroadcast() {
       const market = document.getElementById('mkt').value;
-      const fr = document.getElementById('fr').value.trim() || '**';
-      const sr = document.getElementById('sr').value.trim() || '**';
+      let fr = document.getElementById('fr').value.trim();
+      let sr = document.getElementById('sr').value.trim();
       const todayDate = getTodayFormattedDate();
 
       let results = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      const existing = results[market] || { fr: '**', sr: '**' };
+
+      // Agar FR pehle se set tha aur ab khali chhod diya, toh purana FR delete na ho
+      if (!fr) {
+        fr = (existing.fr && existing.fr !== '**') ? existing.fr : '**';
+      }
+      if (!sr) {
+        sr = (existing.sr && existing.sr !== '**') ? existing.sr : '**';
+      }
+
       results[market] = { fr, sr, date: todayDate };
       localStorage.setItem('teer_market_results', JSON.stringify(results));
 
@@ -813,7 +860,7 @@
         fbDatabase.ref('results/' + market).set({ fr, sr, date: todayDate });
       }
 
-      alert(`Result saved & broadcasted for ${market}!\nDate: ${todayDate}\nFR: ${fr} | SR: ${sr}\nAll player screens synced.`);
+      alert(`✅ Result Saved for ${market}!\nDate: ${todayDate}\nFR: ${fr} | SR: ${sr}\nSabhi player screens par sync ho gaya.`);
     }
 
     function resetMarketResult(market) {
