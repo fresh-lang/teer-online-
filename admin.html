@@ -857,7 +857,7 @@
       localStorage.setItem('teer_market_results', JSON.stringify(results));
 
       if (fbDatabase) {
-        fbDatabase.ref('results/' + market).set({ fr, sr, date: todayDate });
+        fbDatabase.ref('results').set(results);
       }
 
       alert(`✅ Result Saved for ${market}!\nDate: ${todayDate}\nFR: ${fr} | SR: ${sr}\nSabhi player screens par sync ho gaya.`);
@@ -869,7 +869,7 @@
       results[market] = { fr: '**', sr: '**', date: '' };
       localStorage.setItem('teer_market_results', JSON.stringify(results));
       if (fbDatabase) {
-        fbDatabase.ref('results/' + market).set({ fr: '**', sr: '**', date: '' });
+        fbDatabase.ref('results').set(results);
       }
       alert(`${market} result reset to **.`);
     }
