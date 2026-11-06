@@ -509,7 +509,7 @@
         const u = allUsersCache[p];
         const bal = parseFloat(u.balance || 0).toFixed(2);
         return `
-          <tr class="hover:bg-teal-950/30 transition">
+          <tr onclick="openUserModal('${u.phone}')" class="hover:bg-teal-950/30 transition cursor-pointer" title="Click to view/edit user wallet">
             <td class="p-2.5">
               <div class="font-bold text-white flex items-center gap-1.5">
                 ${u.name || 'User'}
@@ -518,9 +518,9 @@
               <div class="text-[10px] text-slate-400">Reg: ${u.createdAt || 'Recent'}</div>
             </td>
             <td class="p-2.5 font-mono text-amber-300 font-semibold">+91 ${u.phone}</td>
-            <td class="p-2.5 font-black text-emerald-400">₹${bal}</td>
+            <td class="p-2.5 font-black text-emerald-400 underline">₹${bal} (Edit)</td>
             <td class="p-2.5 text-slate-400">${u.referredBy ? u.referredBy : 'Direct'}</td>
-            <td class="p-2.5 text-right flex justify-end gap-1.5 items-center">
+            <td class="p-2.5 text-right flex justify-end gap-1.5 items-center" onclick="event.stopPropagation()">
               <button onclick="toggleBlockUser('${u.phone}', ${u.isBlocked || false})" class="px-2 py-1 rounded-lg text-[11px] font-bold ${u.isBlocked ? 'bg-emerald-500 text-black' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'}">
                 ${u.isBlocked ? 'Unblock' : 'Block'}
               </button>
