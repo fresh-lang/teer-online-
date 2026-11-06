@@ -447,6 +447,13 @@
     function initAdminDataSync() {
       if (!fbDatabase) return;
 
+      // 0. Sync Results from Firebase to Admin LocalStorage
+      fbDatabase.ref('results').on('value', (snap) => {
+        const resVal = snap.val() || {};
+        localStorage.setItem('teer_market_results', JSON.stringify(resVal));
+        loadMarketExistingResult();
+      });
+
       // 1. Sync All Users
       fbDatabase.ref('users').on('value', (snap) => {
         allUsersCache = snap.val() || {};
