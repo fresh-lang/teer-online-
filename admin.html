@@ -490,7 +490,9 @@
     // RENDER USERS
     function renderUsersList() {
       const tbody = document.getElementById('usersTableBody');
-      const phones = Object.keys(allUsersCache);
+      let phones = Object.keys(allUsersCache);
+      // Sort or reverse so newest/recent registered users appear at the top
+      phones.reverse();
       document.getElementById('statTotalUsers').innerText = phones.length;
       document.getElementById('tabCountUsers').innerText = phones.length;
 
