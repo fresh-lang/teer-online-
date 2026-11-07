@@ -2445,7 +2445,7 @@
       const tbody = document.getElementById('chartTableBody');
       tbody.innerHTML = '';
 
-      const records = historicalMarketData[mName] || [
+      let records = [...(historicalMarketData[mName] || [
         { d: '02/11/2026', fr: '45', sr: '82' },
         { d: '01/11/2026', fr: '30', sr: '19' },
         { d: '31/10/2026', fr: '67', sr: '53' },
@@ -2454,7 +2454,23 @@
         { d: '28/10/2026', fr: '54', sr: '20' },
         { d: '27/10/2026', fr: '91', sr: '66' },
         { d: '26/10/2026', fr: '23', sr: '48' }
-      ];
+      ])];
+
+      // Merge today's live declared result if available
+      try {
+        const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+        const todayStr = getTodayFormattedDate();
+        if (savedResults[mName] && (savedResults[mName].fr !== '**' || savedResults[mName].sr !== '**')) {
+          const liveRec = {
+            d: savedResults[mName].date || todayStr,
+            fr: savedResults[mName].fr || '**',
+            sr: savedResults[mName].sr || '**'
+          };
+          // Remove if duplicate date already exists in static records, then prepend
+          records = records.filter(r => r.d !== liveRec.d);
+          records.unshift(liveRec);
+        }
+      } catch(e) {}
 
       records.forEach(r => {
         const tr = document.createElement('tr');
@@ -2767,7 +2783,7 @@
       reader.readAsDataURL(file);
     }
 
-        function submitDepositForm() {
+    function submitDepositForm() {
       if (!state.user) {
         alert('Please login or register to deposit money!');
         closeDepositModal();
@@ -2794,25 +2810,6 @@
         time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         timestamp: Date.now()
       };
-
-      // Trigger WhatsApp message to Admin Helpline FIRST so mobile popup blocker doesn't block it
-      try {
-        const depDate = now.toLocaleDateString();
-        const depTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const depMsg = encodeURIComponent(
-          `⚡ *TEER ONLINE - DEPOSIT REQUEST*\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `👤 *User Name:* ${state.user.name}\n` +
-          `📱 *Mobile Number:* ${state.user.phone}\n` +
-          `🆔 *User ID:* ${state.user.uid || 'N/A'}\n` +
-          `💰 *Amount:* ₹${amt} (+5% Bonus)\n` +
-          `🔖 *12-Digit UTR:* ${utr}\n` +
-          `📅 *Date & Time:* ${depDate} ${depTime}\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `Admin sir, deposit request aur screenshot bhej diya hai. Please verify karke wallet credit karein.`
-        );
-        window.open(`https://wa.me/918134834380?text=${depMsg}`, '_blank');
-      } catch(err) {}
 
       // Check if Demo User (Instant credit directly)
       const isDemoAgent = state.user && (state.user.isDemo || demoAgentsData.some(a => a.phone === state.user.phone));
@@ -2866,14 +2863,30 @@
       if (fileNameLabel) fileNameLabel.innerText = 'Tap to choose payment receipt screenshot';
 
       closeDepositModal();
-      alert(`Deposit Request Submitted!
-Amount: ₹${amt}
-UTR: ${utr}
 
-Admin will verify your payment screenshot and UTR code. Balance (+5% Bonus) will be credited to your wallet within 1 to 10 minutes!`);
+      // Trigger WhatsApp message to Admin Helpline (+918134834380)
+      try {
+        const depDate = now.toLocaleDateString();
+        const depTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const depMsg = encodeURIComponent(
+          `⚡ *TEER ONLINE - DEPOSIT REQUEST*\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n` +
+          `👤 *User Name:* ${state.user.name}\n` +
+          `📱 *Mobile Number:* ${state.user.phone}\n` +
+          `🆔 *User ID:* ${state.user.uid || 'N/A'}\n` +
+          `💰 *Amount:* ₹${amt} (+5% Bonus)\n` +
+          `🔖 *12-Digit UTR:* ${utr}\n` +
+          `📅 *Date & Time:* ${depDate} ${depTime}\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n` +
+          `Admin sir, deposit request aur screenshot bhej diya hai. Please verify karke wallet credit karein.`
+        );
+        window.open(`https://wa.me/918134834380?text=${depMsg}`, '_blank');
+      } catch(err) {}
+
+      alert(`Deposit Request Submitted!\nAmount: ₹${amt}\nUTR: ${utr}\n\nAdmin will verify your payment screenshot and UTR code. Balance (+5% Bonus) will be credited to your wallet within 1 to 10 minutes!`);
     }
 
-function submitWithdrawForm() {
+    function submitWithdrawForm() {
       if (!state.user) {
         alert('Please login or register to withdraw funds!');
         closeWithdrawModal();
