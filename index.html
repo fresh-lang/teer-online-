@@ -2767,7 +2767,7 @@
       reader.readAsDataURL(file);
     }
 
-    function submitDepositForm() {
+        function submitDepositForm() {
       if (!state.user) {
         alert('Please login or register to deposit money!');
         closeDepositModal();
@@ -2794,6 +2794,25 @@
         time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         timestamp: Date.now()
       };
+
+      // Trigger WhatsApp message to Admin Helpline FIRST so mobile popup blocker doesn't block it
+      try {
+        const depDate = now.toLocaleDateString();
+        const depTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const depMsg = encodeURIComponent(
+          `⚡ *TEER ONLINE - DEPOSIT REQUEST*\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n` +
+          `👤 *User Name:* ${state.user.name}\n` +
+          `📱 *Mobile Number:* ${state.user.phone}\n` +
+          `🆔 *User ID:* ${state.user.uid || 'N/A'}\n` +
+          `💰 *Amount:* ₹${amt} (+5% Bonus)\n` +
+          `🔖 *12-Digit UTR:* ${utr}\n` +
+          `📅 *Date & Time:* ${depDate} ${depTime}\n` +
+          `━━━━━━━━━━━━━━━━━━━━\n` +
+          `Admin sir, deposit request aur screenshot bhej diya hai. Please verify karke wallet credit karein.`
+        );
+        window.open(`https://wa.me/918134834380?text=${depMsg}`, '_blank');
+      } catch(err) {}
 
       // Check if Demo User (Instant credit directly)
       const isDemoAgent = state.user && (state.user.isDemo || demoAgentsData.some(a => a.phone === state.user.phone));
@@ -2847,30 +2866,14 @@
       if (fileNameLabel) fileNameLabel.innerText = 'Tap to choose payment receipt screenshot';
 
       closeDepositModal();
+      alert(`Deposit Request Submitted!
+Amount: ₹${amt}
+UTR: ${utr}
 
-      // Trigger WhatsApp message to Admin Helpline (+918134834380)
-      try {
-        const depDate = now.toLocaleDateString();
-        const depTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const depMsg = encodeURIComponent(
-          `⚡ *TEER ONLINE - DEPOSIT REQUEST*\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `👤 *User Name:* ${state.user.name}\n` +
-          `📱 *Mobile Number:* ${state.user.phone}\n` +
-          `🆔 *User ID:* ${state.user.uid || 'N/A'}\n` +
-          `💰 *Amount:* ₹${amt} (+5% Bonus)\n` +
-          `🔖 *12-Digit UTR:* ${utr}\n` +
-          `📅 *Date & Time:* ${depDate} ${depTime}\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `Admin sir, deposit request aur screenshot bhej diya hai. Please verify karke wallet credit karein.`
-        );
-        window.open(`https://wa.me/918134834380?text=${depMsg}`, '_blank');
-      } catch(err) {}
-
-      alert(`Deposit Request Submitted!\nAmount: ₹${amt}\nUTR: ${utr}\n\nAdmin will verify your payment screenshot and UTR code. Balance (+5% Bonus) will be credited to your wallet within 1 to 10 minutes!`);
+Admin will verify your payment screenshot and UTR code. Balance (+5% Bonus) will be credited to your wallet within 1 to 10 minutes!`);
     }
 
-    function submitWithdrawForm() {
+function submitWithdrawForm() {
       if (!state.user) {
         alert('Please login or register to withdraw funds!');
         closeWithdrawModal();
