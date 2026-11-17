@@ -7,9 +7,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- FIREBASE SDK FOR INSTANT TWO-WAY SYNC -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <!-- Supabase Edge Function is the only admin data/auth transport. -->
 </head>
 <body class="bg-[#081012] text-slate-100 min-h-screen p-3 md:p-6 font-sans">
 
@@ -23,7 +21,8 @@
         <h2 class="text-xl font-black text-amber-400 tracking-wide">MASTER ADMIN</h2>
         <p class="text-xs text-slate-400 mt-1">Authorized Access Only</p>
       </div>
-      <input type="password" id="passInput" placeholder="••••••••" class="w-full p-3 text-center text-xl font-mono bg-black/50 border border-teal-800 rounded-2xl text-white outline-none focus:border-amber-400">
+      <input type="tel" id="adminPhone" inputmode="numeric" maxlength="10" placeholder="Admin registered phone" class="w-full p-3 text-center text-sm font-mono bg-black/50 border border-teal-800 rounded-2xl text-white outline-none focus:border-amber-400">
+      <input type="password" id="passInput" placeholder="Account password" class="w-full p-3 text-center text-xl font-mono bg-black/50 border border-teal-800 rounded-2xl text-white outline-none focus:border-amber-400">
       <button onclick="checkPass()" class="w-full py-3 bg-amber-400 hover:bg-amber-500 text-teal-950 font-black rounded-2xl text-sm transition shadow-lg">Unlock Panel</button>
       <p id="err" class="text-xs text-rose-500 font-bold hidden">Galat Password! Kripya sahi password enter karein.</p>
     </div>
@@ -38,7 +37,7 @@
           <i class="fa-solid fa-bullseye"></i> TEER MASTER ADMIN
         </h1>
         <p class="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5 mt-0.5">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Firebase Realtime Cloud Connected
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Supabase Secure API Connected
         </p>
       </div>
       <div class="flex items-center gap-2">
@@ -180,7 +179,7 @@
             </thead>
             <tbody id="usersTableBody" class="divide-y divide-teal-900/30 font-medium">
               <tr>
-                <td colspan="5" class="p-4 text-center text-slate-500">Loading users from Firebase...</td>
+                <td colspan="5" class="p-4 text-center text-slate-500">Loading users from Supabase...</td>
               </tr>
             </tbody>
           </table>
@@ -332,7 +331,7 @@
       <!-- Agent Ledger -->
       <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-2">
         <h3 class="font-bold text-sm text-amber-300">Agent &amp; Referral Secret Commission Ledger</h3>
-        <p class="text-[11px] text-slate-400">Display: ₹100/₹1000. Actual credited in Firebase: <b>₹5 per ₹1000 deposit</b> aur <b>₹50 per ₹1000 bet</b>.</p>
+        <p class="text-[11px] text-slate-400">Display: ₹100/₹1000. Actual credited in Supabase: <b>₹5 per ₹1000 deposit</b> aur <b>₹50 per ₹1000 bet</b>.</p>
         <div id="agentEarningsList" class="bg-black/40 p-3 rounded-xl text-xs font-mono text-emerald-400 max-h-40 overflow-y-auto">
           No referral transactions recorded yet.
         </div>
@@ -396,23 +395,20 @@
   </div>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyCn-AKygN3yIvaXN9-TkDqoitoJRMKIDho",
-      authDomain: "teer-online-e0d9d.firebaseapp.com",
-      databaseURL: "https://teer-online-e0d9d-default-rtdb.firebaseio.com",
-      projectId: "teer-online-e0d9d",
-      storageBucket: "teer-online-e0d9d.firebasestorage.app",
-      messagingSenderId: "178122817204",
-      appId: "1:178122817204:web:98820cc4fa354bab0e21e1",
-      measurementId: "G-0WV58DNLER"
-    };
-
-    let fbDatabase = null;
-    try {
-      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-      fbDatabase = firebase.database();
-    } catch(err) {
-      console.log("Firebase fallback active:", err.message);
+    // Volatile compatibility storage only; admin data is fetched from Supabase.
+    const memoryStore = (() => { const values = new Map(); return { getItem:k => values.has(k) ? values.get(k) : null, setItem:(k,v) => values.set(k, String(v)), removeItem:k => values.delete(k) }; })();
+    const ACCOUNT_API_URL = 'https://qzbqmbrzmfggzzeufkyh.supabase.co/functions/v1/account-api';
+    const ACCOUNT_API_KEY = 'sb_publishable_Z2ij7JqELoVfBQ75wrSrFg_bKDt3aj1';
+    let adminSessionToken = null;
+    let adminUser = null;
+    let fbDatabase = null; // legacy functions are overridden below; Supabase is not loaded.
+    async function adminApi(action, payload = {}, authenticated = true) {
+      const headers = { 'Content-Type': 'application/json', 'apikey': ACCOUNT_API_KEY, 'Authorization': 'Bearer ' + ACCOUNT_API_KEY };
+      if (authenticated && adminSessionToken) headers['x-session-token'] = adminSessionToken;
+      const response = await fetch(ACCOUNT_API_URL, { method: 'POST', headers, body: JSON.stringify({ action, ...payload }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || ('API error ' + response.status));
+      return data;
     }
 
     let allUsersCache = {};
@@ -447,17 +443,17 @@
     function initAdminDataSync() {
       if (!fbDatabase) return;
 
-      // 0. Sync Results from Firebase to Admin LocalStorage
+      // 0. Legacy result sync disabled
       fbDatabase.ref('results').on('value', (snap) => {
         const resVal = snap.val() || {};
-        localStorage.setItem('teer_market_results', JSON.stringify(resVal));
+        memoryStore.setItem('teer_market_results', JSON.stringify(resVal));
         loadMarketExistingResult();
       });
 
       // 1. Sync All Users
       fbDatabase.ref('users').on('value', (snap) => {
         let cloudUsers = snap.val() || {};
-        let localUsersList = JSON.parse(localStorage.getItem('teer_registered_users') || '[]');
+        let localUsersList = JSON.parse(memoryStore.getItem('teer_registered_users') || '[]');
         let merged = { ...cloudUsers };
         localUsersList.forEach(u => {
           if (u.phone && !merged[u.phone]) {
@@ -716,10 +712,10 @@
 
       if (!confirm(`Deposit Verify Karein?\nUser: ${d.name} (${d.phone})\nAmount: ₹${amt} + ₹${bonus.toFixed(2)} (5% Bonus) = ₹${totalCredit.toFixed(2)}\n\nUser wallet me turant credit ho jayega!`)) return;
 
-      // 1. Update deposit status in Firebase
+      // 1. Update deposit status in Supabase
       fbDatabase.ref('deposits/' + depositId + '/status').set('approved');
 
-      // 2. Add balance to user in Firebase
+      // 2. Add balance to user in Supabase
       fbDatabase.ref('users/' + d.phone + '/balance').transaction((curr) => {
         return (curr || 0) + totalCredit;
       });
@@ -846,7 +842,7 @@
 
     function loadMarketExistingResult() {
       const market = document.getElementById('mkt').value;
-      const results = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      const results = JSON.parse(memoryStore.getItem('teer_market_results') || '{}');
       const current = results[market] || { fr: '', sr: '' };
 
       document.getElementById('fr').value = (current.fr && current.fr !== '**') ? current.fr : '';
@@ -859,7 +855,7 @@
       let sr = document.getElementById('sr').value.trim();
       const todayDate = getTodayFormattedDate();
 
-      let results = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      let results = JSON.parse(memoryStore.getItem('teer_market_results') || '{}');
       const existing = results[market] || { fr: '**', sr: '**' };
 
       // Agar FR pehle se set tha aur ab khali chhod diya, toh purana FR delete na ho
@@ -871,7 +867,7 @@
       }
 
       results[market] = { fr, sr, date: todayDate };
-      localStorage.setItem('teer_market_results', JSON.stringify(results));
+      memoryStore.setItem('teer_market_results', JSON.stringify(results));
 
       if (fbDatabase) {
         fbDatabase.ref('results').set(results);
@@ -882,9 +878,9 @@
 
     function resetMarketResult(market) {
       if (!confirm(`Reset results for ${market} to **?`)) return;
-      let results = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      let results = JSON.parse(memoryStore.getItem('teer_market_results') || '{}');
       results[market] = { fr: '**', sr: '**', date: '' };
-      localStorage.setItem('teer_market_results', JSON.stringify(results));
+      memoryStore.setItem('teer_market_results', JSON.stringify(results));
       if (fbDatabase) {
         fbDatabase.ref('results').set(results);
       }
@@ -1038,17 +1034,134 @@
       const phone = document.getElementById('cfgPhone').value.trim();
       const upi = document.getElementById('cfgUpi').value.trim();
 
-      localStorage.setItem('teer_helpline_phone', phone);
-      localStorage.setItem('teer_deposit_upi', upi);
+      memoryStore.setItem('teer_helpline_phone', phone);
+      memoryStore.setItem('teer_deposit_upi', upi);
 
       const marquee = document.getElementById('cfgMarquee').value.trim();
-      localStorage.setItem('teer_marquee_text', marquee);
+      memoryStore.setItem('teer_marquee_text', marquee);
       if (fbDatabase) {
         fbDatabase.ref('settings').set({ helpline: phone, depositUpi: upi, marqueeText: marquee });
       }
 
       alert('Settings saved successfully!');
     }
+    // ===== Supabase-only admin implementation (overrides legacy Supabase handlers) =====
+    async function checkPass() {
+      const phone = (document.getElementById('adminPhone').value || '').replace(/\D/g, '');
+      const password = document.getElementById('passInput').value;
+      const err = document.getElementById('err');
+      err.classList.add('hidden');
+      try {
+        const data = await adminApi('admin_login', { phone, password }, false);
+        if (!data.is_admin || !data.session?.token) throw new Error('Admin access denied');
+        adminSessionToken = data.session.token;
+        adminUser = data.user;
+        document.getElementById('lockScreen').classList.add('hidden');
+        document.getElementById('dash').classList.remove('hidden');
+        await initAdminDataSync();
+        if (!window.__adminRefreshTimer) window.__adminRefreshTimer = setInterval(() => initAdminDataSync().catch(e => console.error(e)), 20000);
+      } catch (e) {
+        err.textContent = e.message || 'Login failed';
+        err.classList.remove('hidden');
+      }
+    }
+
+    async function initAdminDataSync() {
+      const data = await adminApi('admin_dashboard');
+      allUsersCache = {};
+      (data.users || []).forEach(u => { allUsersCache[u.phone] = { ...u, referredBy: u.referred_by || '', createdAt: u.created_at ? new Date(u.created_at).toLocaleString() : '', isBlocked: false }; });
+      allDepositsCache = {};
+      (data.deposits || []).forEach(d => { allDepositsCache[d.id] = { ...d, date: d.created_at ? new Date(d.created_at).toLocaleDateString('en-GB') : '', time: d.created_at ? new Date(d.created_at).toLocaleTimeString() : '', screenshot: d.screenshot_url || '' }; });
+      allWithdrawalsCache = {};
+      (data.withdrawals || []).forEach(w => { allWithdrawalsCache[w.id] = { ...w, date: w.created_at ? new Date(w.created_at).toLocaleDateString('en-GB') : '', time: w.created_at ? new Date(w.created_at).toLocaleTimeString() : '' }; });
+      window.__adminBets = data.bets || [];
+      window.__adminResults = data.results || {};
+      window.__adminSettings = data.settings || {};
+      renderUsersList(); renderDepositsList(); renderWithdrawalsList();
+      const st = window.__adminSettings;
+      document.getElementById('cfgPhone').value = st.helpline || '';
+      document.getElementById('cfgUpi').value = st.deposit_upi || '';
+      document.getElementById('cfgMarquee').value = st.marquee_text || '';
+      loadMarketExistingResult();
+      renderScheduleCards();
+      renderAgentEarnings({});
+    }
+
+    function loadMarketExistingResult() {
+      const market = document.getElementById('mkt').value;
+      const current = (window.__adminResults || {})[market] || { fr: '', sr: '' };
+      document.getElementById('fr').value = current.fr && current.fr !== '**' ? current.fr : '';
+      document.getElementById('sr').value = current.sr && current.sr !== '**' ? current.sr : '';
+    }
+
+    async function saveResultAndBroadcast() {
+      const market = document.getElementById('mkt').value;
+      const fr = document.getElementById('fr').value.trim() || '**';
+      const sr = document.getElementById('sr').value.trim() || '**';
+      try {
+        await adminApi('admin_save_result', { market, fr, sr, result_date: getTodayFormattedDate() });
+        window.__adminResults = window.__adminResults || {};
+        window.__adminResults[market] = { fr, sr, date: getTodayFormattedDate() };
+        alert('Result Supabase mein save ho gaya.');
+      } catch (e) { alert('Result save failed: ' + e.message); }
+    }
+
+    async function resetMarketResult(market) {
+      if (!confirm(`Reset results for ${market} to **?`)) return;
+      try {
+        await adminApi('admin_reset_result', { market });
+        window.__adminResults[market] = { fr: '**', sr: '**', date: '' };
+        loadMarketExistingResult();
+        alert('Result reset ho gaya.');
+      } catch (e) { alert('Reset failed: ' + e.message); }
+    }
+
+    async function saveSettings() {
+      const payload = {
+        helpline: document.getElementById('cfgPhone').value.trim(),
+        deposit_upi: document.getElementById('cfgUpi').value.trim(),
+        marquee_text: document.getElementById('cfgMarquee').value.trim(),
+        market_schedules: (window.__adminSettings || {}).market_schedules || {}
+      };
+      try { await adminApi('admin_save_settings', payload); window.__adminSettings = { ...payload }; alert('Settings Supabase mein save ho gayi.'); }
+      catch (e) { alert('Settings save failed: ' + e.message); }
+    }
+
+    async function approveDeposit(id) {
+      const d = allDepositsCache[id]; if (!d || !confirm(`₹${d.amount} deposit approve aur wallet credit karein?`)) return;
+      try { await adminApi('admin_review_deposit', { deposit_id: id, review_action: 'approve' }); await initAdminDataSync(); alert('Deposit approved.'); }
+      catch (e) { alert('Approval failed: ' + e.message); }
+    }
+    async function rejectDeposit(id) {
+      if (!confirm('Deposit reject karein?')) return;
+      try { await adminApi('admin_review_deposit', { deposit_id: id, review_action: 'reject' }); await initAdminDataSync(); alert('Deposit rejected.'); }
+      catch (e) { alert('Reject failed: ' + e.message); }
+    }
+    async function approveWithdrawal(id) {
+      if (!confirm('Payout bhejne ke baad is withdrawal ko paid mark karein?')) return;
+      try { await adminApi('admin_review_withdrawal', { withdrawal_id: id, review_action: 'approve' }); await initAdminDataSync(); alert('Withdrawal marked paid.'); }
+      catch (e) { alert('Update failed: ' + e.message); }
+    }
+    async function rejectWithdrawal(id) {
+      if (!confirm('Withdrawal reject karke wallet refund karein?')) return;
+      try { await adminApi('admin_review_withdrawal', { withdrawal_id: id, review_action: 'reject' }); await initAdminDataSync(); alert('Withdrawal rejected and refund handled by server.'); }
+      catch (e) { alert('Reject failed: ' + e.message); }
+    }
+    function toggleBlockUser() { alert('User block control abhi Supabase schema/API mein available nahi hai; Supabase se write band hai.'); }
+    function adminResetUserPassword() { alert('Password reset ko secure server-side RPC ke saath add karna baaki hai; browser se password write disabled hai.'); }
+    function adjustUserBalance() { alert('Direct balance editing disabled. Wallet ledger audited server-side adjustment RPC required hai.'); }
+    async function saveMarketSchedule(mName, idx) {
+      const frTime = document.getElementById('sch_fr_' + idx).value.trim();
+      const srTime = document.getElementById('sch_sr_' + idx).value.trim();
+      const schedules = { ...((window.__adminSettings || {}).market_schedules || {}), [mName]: { frTime, srTime } };
+      try {
+        await adminApi('admin_save_settings', { helpline: document.getElementById('cfgPhone').value.trim(), deposit_upi: document.getElementById('cfgUpi').value.trim(), marquee_text: document.getElementById('cfgMarquee').value.trim(), market_schedules: schedules });
+        window.__adminSettings = { ...(window.__adminSettings || {}), market_schedules: schedules };
+        alert(mName + ' schedule Supabase mein save ho gaya.');
+      } catch (e) { alert('Schedule save failed: ' + e.message); }
+    }
+    function sendEventNotification() { alert('Broadcast notifications ka Supabase table/API abhi pending hai.'); }
+
   </script>
 
   <!-- MODAL: FULL PAYMENT RECEIPT SCREENSHOT VIEWER -->

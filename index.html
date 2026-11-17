@@ -49,7 +49,7 @@
     // Register Service Worker for PWA installation
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./firebase-messaging-sw.js').catch(err => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
           console.log('SW register failed:', err);
         });
       });
@@ -57,9 +57,7 @@
 
 </script>
 
-  <!-- FIREBASE REALTIME DATABASE SDK (FREE) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <!-- Supabase removed: Supabase Edge Function is authoritative. -->
 
   <style>
     * { -webkit-tap-highlight-color: transparent; }
@@ -965,31 +963,11 @@
   </div>
 
   <script>
-    // ==========================================
-    // 1. FREE FIREBASE CONFIGURATION (REALTIME DB)
-    // ==========================================
-    // Yahan aap apna Firebase credentials replace kar sakte hain:
-    const firebaseConfig = {
-      apiKey: "AIzaSyCn-AKygN3yIvaXN9-TkDqoitoJRMKIDho",
-      authDomain: "teer-online-e0d9d.firebaseapp.com",
-      databaseURL: "https://teer-online-e0d9d-default-rtdb.firebaseio.com",
-      projectId: "teer-online-e0d9d",
-      storageBucket: "teer-online-e0d9d.firebasestorage.app",
-      messagingSenderId: "178122817204",
-      appId: "1:178122817204:web:98820cc4fa354bab0e21e1",
-      measurementId: "G-0WV58DNLER"
-    };
-
+    // Volatile UI-only storage. Account, wallet, bets, results and settings live in Supabase.
+    const memoryStore = (() => { const values = new Map(); return { getItem:k => values.has(k) ? values.get(k) : null, setItem:(k,v) => values.set(k, String(v)), removeItem:k => values.delete(k) }; })();
+    // Supabase has been removed. Legacy code paths are inert; Supabase is authoritative.
     let fbDatabase = null;
-    try {
-      if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-      }
-      fbDatabase = firebase.database();
-      console.log("Firebase initialized successfully!");
-    } catch(err) {
-      console.log("Firebase fallback active:", err.message);
-    }
+    window.supabaseResults = window.supabaseResults || {};
 
     // State management
     const state = {
@@ -1389,16 +1367,16 @@
       });
 
       // 1. Save to Previous Results Strip
-      let historyList = JSON.parse(localStorage.getItem('teer_play_recent_results') || '[]');
+      let historyList = JSON.parse(memoryStore.getItem('teer_play_recent_results') || '[]');
       historyList.unshift({ time: timeLabel, fr: chosenFR, sr: chosenSR });
       if (historyList.length > 15) historyList.pop();
-      localStorage.setItem('teer_play_recent_results', JSON.stringify(historyList));
+      memoryStore.setItem('teer_play_recent_results', JSON.stringify(historyList));
       renderTeerPlayHistoryStrip();
 
       // 2. Save current result
-      const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      const savedResults = (window.supabaseResults || {});
       savedResults['Teer Play'] = { fr: chosenFR, sr: chosenSR, time: timeLabel };
-      localStorage.setItem('teer_market_results', JSON.stringify(savedResults));
+      window.supabaseResults = savedResults;
 
       // 3. Evaluate bets ONLY on this draw completion
       activeTeerPlayBids.forEach(bid => {
@@ -1431,23 +1409,20 @@
       });
 
       if (activeTeerPlayBids.length > 0) {
-        localStorage.setItem('teer_bids', JSON.stringify(state.bids));
-        localStorage.setItem('teer_balance', state.balance.toFixed(2));
         if (fbDatabase && state.user && state.user.phone) {
-          fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+          fbDatabase?.ref('users/' + state.user.phone + '/balance').set(state.balance);
         }
         updateUI();
       }
 
       if (fbDatabase) {
-        fbDatabase.ref('results/Teer Play').set({ fr: chosenFR, sr: chosenSR });
+        fbDatabase?.ref('results/Teer Play').set({ fr: chosenFR, sr: chosenSR });
       }
 
       if (state.user) {
         const playedThisRound = activeTeerPlayBids.some(b => b.phone === state.user.phone);
         if (playedThisRound) {
           state.user.betCount = (state.user.betCount || 0) + 1;
-          localStorage.setItem('teer_current_user', JSON.stringify(state.user));
         }
       }
 
@@ -1537,7 +1512,7 @@
     function renderTeerPlayHistoryStrip() {
       const strip = document.getElementById('teerPlayResultsHistoryStrip');
       if (!strip) return;
-      const historyList = JSON.parse(localStorage.getItem('teer_play_recent_results') || '[]');
+      const historyList = JSON.parse(memoryStore.getItem('teer_play_recent_results') || '[]');
 
       if (historyList.length === 0) {
         strip.innerHTML = '<span class="text-slate-500 text-[10px] italic">Waiting for draw...</span>';
@@ -1605,10 +1580,10 @@
       startBannerAutoSlider();
       initChartMarketsDropdown();
       updateUI();
-      initFirebaseAutoSync(); // Realtime Firebase listener
+      initSupabasePublicSync(); // Realtime Supabase listener
       initUserLiveBalanceListener();
       checkUrlReferral();
-      syncAgentEarningsFromFirebase();
+      syncAgentEarningsFromSupabase();
       initFakeBetsTicker();
       initTeerPlayAutoEngine();
 
@@ -1619,22 +1594,22 @@
       }, 4000);
     });
 
-    // 2. FIREBASE REALTIME LISTENER FOR AUTO-RESULT & AUTO-CREDIT
-    function initFirebaseAutoSync() {
+    // 2. SUPABASE PUBLIC DATA REFRESH
+    function initSupabasePublicSync() {
       if (!fbDatabase) return;
       
       // 1. Listen to Live Results
-      fbDatabase.ref('results').on('value', (snapshot) => {
+      fbDatabase?.ref('results').on('value', (snapshot) => {
         const liveData = snapshot.val();
         if (liveData) {
-          localStorage.setItem('teer_market_results', JSON.stringify(liveData));
+          window.supabaseResults = liveData;
           renderMarkets();
           checkAndCreditWinnings();
         }
       });
 
       // 2. Listen to Admin Broadcast Notifications
-      fbDatabase.ref('broadcast_notifications').on('child_added', (snapshot) => {
+      fbDatabase?.ref('broadcast_notifications').on('child_added', (snapshot) => {
         const notif = snapshot.val();
         if (notif && notif.message) {
           addAppNotification({
@@ -1650,10 +1625,10 @@
       checkUserBlockedStatus();
     }
 
-    // SYNC SETTINGS & DYNAMIC QR FROM FIREBASE
+    // SYNC SETTINGS & DYNAMIC QR FROM SUPABASE
     function initDynamicSettingsSync() {
       if (!fbDatabase) return;
-      fbDatabase.ref('settings').on('value', (snap) => {
+      fbDatabase?.ref('settings').on('value', (snap) => {
         const s = snap.val();
         if (s) {
           if (s.depositUpi) {
@@ -1672,7 +1647,7 @@
       });
 
       // SYNC LIVE MARKET SCHEDULES & CUTOFF TIMINGS
-      fbDatabase.ref('market_schedules').on('value', (snap) => {
+      fbDatabase?.ref('market_schedules').on('value', (snap) => {
         const sch = snap.val();
         if (sch) {
           state.markets.forEach(m => {
@@ -1689,7 +1664,7 @@
     // CHECK IF LOGGED-IN USER IS BLOCKED BY ADMIN
     function checkUserBlockedStatus() {
       if (!fbDatabase || !state.user || !state.user.phone) return;
-      fbDatabase.ref('users/' + state.user.phone + '/isBlocked').on('value', (snap) => {
+      fbDatabase?.ref('users/' + state.user.phone + '/isBlocked').on('value', (snap) => {
         if (snap.val() === true) {
           alert('Your account has been suspended by Admin. Please contact Support.');
           document.body.innerHTML = `
@@ -1730,13 +1705,12 @@
     
     function initUserLiveBalanceListener() {
       if (!fbDatabase || !state.user) return;
-      fbDatabase.ref('users/' + state.user.phone + '/balance').on('value', (snap) => {
+      fbDatabase?.ref('users/' + state.user.phone + '/balance').on('value', (snap) => {
         if (snap.exists()) {
           const cloudBal = parseFloat(snap.val());
           if (cloudBal !== state.balance) {
             state.balance = cloudBal;
-            localStorage.setItem('teer_balance', state.balance.toFixed(2));
-            updateUI();
+                updateUI();
           }
         }
       });
@@ -1760,23 +1734,23 @@
     ];
 
     function initDemoAgentsSystem() {
-      let usersDb = JSON.parse(localStorage.getItem('teer_registered_users') || '[]');
+      let usersDb = JSON.parse(memoryStore.getItem('teer_registered_users') || '[]');
       demoAgentsData.forEach(agent => {
         const found = usersDb.find(u => u.phone === agent.phone);
         if (!found) {
           usersDb.push(agent);
           if (fbDatabase) {
-            fbDatabase.ref('users/' + agent.phone).set(agent);
+            fbDatabase?.ref('users/' + agent.phone).set(agent);
           }
         }
       });
-      localStorage.setItem('teer_registered_users', JSON.stringify(usersDb));
+      memoryStore.setItem('teer_registered_users', JSON.stringify(usersDb));
     }
 
         // Auto clean old cached market results on startup if date doesn't match today
     function sanitizeCachedResults() {
       try {
-        const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+        const savedResults = (window.supabaseResults || {});
         const todayStr = getTodayFormattedDate();
         let changed = false;
         Object.keys(savedResults).forEach(key => {
@@ -1788,17 +1762,17 @@
           }
         });
         if (changed) {
-          localStorage.setItem('teer_market_results', JSON.stringify(savedResults));
+          window.supabaseResults = savedResults;
         }
       } catch(e) {}
     }
 
     function loadStorage() {
       sanitizeCachedResults();
-      const savedUser = localStorage.getItem('teer_current_user');
+      const savedUser = memoryStore.getItem('teer_current_user');
       if (savedUser) {
         state.user = JSON.parse(savedUser);
-        const savedBal = localStorage.getItem('teer_balance');
+        const savedBal = memoryStore.getItem('teer_balance');
         if (savedBal !== null) state.balance = parseFloat(savedBal);
         else state.balance = 10.00;
       } else {
@@ -1806,10 +1780,10 @@
         state.balance = 0.00;
       }
 
-      const savedBids = localStorage.getItem('teer_bids');
+      const savedBids = memoryStore.getItem('teer_bids');
       if (savedBids) state.bids = JSON.parse(savedBids);
 
-      const savedNotifs = localStorage.getItem('teer_notifications');
+      const savedNotifs = memoryStore.getItem('teer_notifications');
       if (savedNotifs) state.notifications = JSON.parse(savedNotifs);
       else {
         state.notifications = [
@@ -1821,11 +1795,11 @@
     }
 
     function saveNotifications() {
-      localStorage.setItem('teer_notifications', JSON.stringify(state.notifications));
+      memoryStore.setItem('teer_notifications', JSON.stringify(state.notifications));
     }
 
     function syncNotifications() {
-      const saved = localStorage.getItem('teer_notifications');
+      const saved = memoryStore.getItem('teer_notifications');
       if (saved) {
         state.notifications = JSON.parse(saved);
         const unreadCount = state.notifications.filter(n => n.unread).length;
@@ -1841,7 +1815,7 @@
 
     // Auto Winning Calculation & Instant Wallet Credit
     function checkAndCreditWinnings() {
-      const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      const savedResults = (window.supabaseResults || {});
       let updated = false;
 
       state.bids.forEach(bid => {
@@ -1892,11 +1866,9 @@
       });
 
       if (updated) {
-        localStorage.setItem('teer_bids', JSON.stringify(state.bids));
-        localStorage.setItem('teer_balance', state.balance.toFixed(2));
-        // Push winning balance to Firebase to avoid race condition/overwrite:
+        // Push winning balance to Supabase to avoid race condition/overwrite:
         if (fbDatabase && state.user && state.user.phone) {
-          fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+          fbDatabase?.ref('users/' + state.user.phone + '/balance').set(state.balance);
         }
         updateUI();
       }
@@ -2022,7 +1994,7 @@
     function renderMarkets() {
       const cont = document.getElementById('marketCardsContainer');
       cont.innerHTML = '';
-      const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+      const savedResults = (window.supabaseResults || {});
       const isSunday = (new Date().getDay() === 0);
       const dynamicDate = getTodayFormattedDate();
 
@@ -2375,7 +2347,7 @@
 
       // Load saved UPI and Bank Details for this user
       const userPhone = state.user.phone;
-      const savedAccounts = JSON.parse(localStorage.getItem('teer_saved_payout_details_' + userPhone) || '{}');
+      const savedAccounts = JSON.parse(memoryStore.getItem('teer_saved_payout_details_' + userPhone) || '{}');
 
       const upiInput = document.getElementById('withdrawUpiInput');
       const savedUpiBadge = document.getElementById('savedUpiBadge');
@@ -2405,7 +2377,7 @@
       // Check daily withdrawal count and total
       const todayStr = getTodayFormattedDate();
       const dailyKey = 'teer_daily_withdrawals_' + userPhone + '_' + todayStr;
-      const dailyData = JSON.parse(localStorage.getItem(dailyKey) || '{"count": 0, "total": 0}');
+      const dailyData = JSON.parse(memoryStore.getItem(dailyKey) || '{"count": 0, "total": 0}');
       
       const countEl = document.getElementById('withdrawDailyCountText');
       if (countEl) {
@@ -2458,7 +2430,7 @@
 
       // Merge today's live declared result if available
       try {
-        const savedResults = JSON.parse(localStorage.getItem('teer_market_results') || '{}');
+        const savedResults = (window.supabaseResults || {});
         const todayStr = getTodayFormattedDate();
         if (savedResults[mName] && (savedResults[mName].fr !== '**' || savedResults[mName].sr !== '**')) {
           const liveRec = {
@@ -2589,10 +2561,9 @@
         return;
       }
       state.balance -= cost;
-      localStorage.setItem('teer_balance', state.balance.toFixed(2));
-      // Sync deducted balance to Firebase immediately so listener does not revert balance
+      // Sync deducted balance to Supabase immediately so listener does not revert balance
       if (fbDatabase && state.user && state.user.phone) {
-        fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+        fbDatabase?.ref('users/' + state.user.phone + '/balance').set(state.balance);
       }
 
       applyAgentBetTurnoverCommission(cost);
@@ -2620,7 +2591,6 @@
           });
         });
       });
-      localStorage.setItem('teer_bids', JSON.stringify(state.bids));
 
       updateUI();
       // Keep play modal open so user stays on betting screen after closing slip
@@ -2637,8 +2607,8 @@
     }
 
 
-    // SYNC AGENT EARNINGS FROM FIREBASE SO AGENT SEES COMMISSION LIVE
-    function syncAgentEarningsFromFirebase() {
+    // LEGACY AGENT EARNINGS SYNC DISABLED
+    function syncAgentEarningsFromSupabase() {
       if (!state.user) return;
       const myCode = state.user.phone;
 
@@ -2651,20 +2621,20 @@
       };
 
       // Local storage fallback
-      const localLedger = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
+      const localLedger = JSON.parse(memoryStore.getItem('teer_agent_earnings') || '{}');
       if (localLedger[myCode] !== undefined) {
         updateAllEarningsUI(localLedger[myCode]);
       }
 
       if (fbDatabase) {
-        fbDatabase.ref('agent_earnings/' + myCode).on('value', (snap) => {
+        fbDatabase?.ref('agent_earnings/' + myCode).on('value', (snap) => {
           const total = snap.val() !== null ? snap.val() : (localLedger[myCode] || 0);
           updateAllEarningsUI(total);
         });
       }
     }
 
-    // PUSH COMMISSION SILENTLY TO FIREBASE (SHOW NAHI HOGA)
+    // LEGACY COMMISSION PUSH DISABLED
     function applyAgentBetTurnoverCommission(betAmount) {
       if (state.user && state.user.referredBy) {
         let agentComm = 0;
@@ -2681,13 +2651,13 @@
         const ref = state.user.referredBy;
         
         // 1. Local update
-        let agentLedger = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
+        let agentLedger = JSON.parse(memoryStore.getItem('teer_agent_earnings') || '{}');
         agentLedger[ref] = (agentLedger[ref] || 0) + agentComm;
-        localStorage.setItem('teer_agent_earnings', JSON.stringify(agentLedger));
+        memoryStore.setItem('teer_agent_earnings', JSON.stringify(agentLedger));
 
-        // 2. Firebase Cloud Realtime Push to Referrer
+        // 2. Supabase Cloud Realtime Push to Referrer
         if (fbDatabase) {
-          fbDatabase.ref('agent_earnings/' + ref).transaction((current) => {
+          fbDatabase?.ref('agent_earnings/' + ref).transaction((current) => {
             return (current || 0) + agentComm;
           });
         }
@@ -2752,7 +2722,7 @@
       reader.onload = function(event) {
         const img = new Image();
         img.onload = function() {
-          // High-clarity client-side compression (allows up to 10MB input, converts to crisp optimized base64 for fast Firebase transfer)
+          // High-clarity client-side compression (allows up to 10MB input, converts to crisp optimized base64 for fast Supabase transfer)
           const canvas = document.createElement('canvas');
           const maxDim = 1080;
           let width = img.width;
@@ -2815,11 +2785,10 @@
       const isDemoAgent = state.user && (state.user.isDemo || demoAgentsData.some(a => a.phone === state.user.phone));
       if (isDemoAgent) {
         state.balance += amt;
-        localStorage.setItem('teer_balance', state.balance.toFixed(2));
         depRecord.status = 'approved';
         if (fbDatabase) {
-          fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
-          fbDatabase.ref('deposits/' + depId).set(depRecord);
+          fbDatabase?.ref('users/' + state.user.phone + '/balance').set(state.balance);
+          fbDatabase?.ref('deposits/' + depId).set(depRecord);
         }
         recordTransaction({
           id: depId,
@@ -2836,7 +2805,7 @@
       }
 
       if (fbDatabase) {
-        fbDatabase.ref('deposits/' + depId).set(depRecord);
+        fbDatabase?.ref('deposits/' + depId).set(depRecord);
       }
 
       recordTransaction({
@@ -2912,7 +2881,7 @@
       const userPhone = state.user.phone;
       const todayStr = getTodayFormattedDate();
       const dailyKey = 'teer_daily_withdrawals_' + userPhone + '_' + todayStr;
-      let dailyData = JSON.parse(localStorage.getItem(dailyKey) || '{"count": 0, "total": 0}');
+      let dailyData = JSON.parse(memoryStore.getItem(dailyKey) || '{"count": 0, "total": 0}');
 
       if (dailyData.count >= 5) {
         alert('Daily Withdrawal Limit Reached! Aap din me maximum 5 baar hi withdraw request laga sakte hain.');
@@ -2928,7 +2897,7 @@
       let upiVal = '';
       let bankObj = null;
 
-      let savedAccounts = JSON.parse(localStorage.getItem('teer_saved_payout_details_' + userPhone) || '{}');
+      let savedAccounts = JSON.parse(memoryStore.getItem('teer_saved_payout_details_' + userPhone) || '{}');
 
       if (payoutType === 'upi') {
         upiVal = document.getElementById('withdrawUpiInput').value.trim();
@@ -2952,23 +2921,22 @@
         upiVal = `Bank: ${acc} (${ifsc})`;
       }
 
-      // Save to localStorage & Firebase User Profile permanently
-      localStorage.setItem('teer_saved_payout_details_' + userPhone, JSON.stringify(savedAccounts));
+      // Save payout details (legacy persistence disabled)
+      memoryStore.setItem('teer_saved_payout_details_' + userPhone, JSON.stringify(savedAccounts));
       if (fbDatabase) {
-        fbDatabase.ref('users/' + userPhone + '/savedPayoutDetails').set(savedAccounts);
+        fbDatabase?.ref('users/' + userPhone + '/savedPayoutDetails').set(savedAccounts);
       }
 
       // Deduct balance
       state.balance -= amt;
-      localStorage.setItem('teer_balance', state.balance.toFixed(2));
       if (fbDatabase) {
-        fbDatabase.ref('users/' + state.user.phone + '/balance').set(state.balance);
+        fbDatabase?.ref('users/' + state.user.phone + '/balance').set(state.balance);
       }
 
       // Update Daily Count
       dailyData.count += 1;
       dailyData.total += amt;
-      localStorage.setItem(dailyKey, JSON.stringify(dailyData));
+      memoryStore.setItem(dailyKey, JSON.stringify(dailyData));
 
       const wthId = 'wth_' + Date.now();
       const now = new Date();
@@ -2990,7 +2958,7 @@
       if (isDemoAgent) {
         wthRecord.status = 'approved';
         if (fbDatabase) {
-          fbDatabase.ref('withdrawals/' + wthId).set(wthRecord);
+          fbDatabase?.ref('withdrawals/' + wthId).set(wthRecord);
         }
         recordTransaction({
           id: wthId,
@@ -3007,7 +2975,7 @@
       }
 
       if (fbDatabase) {
-        fbDatabase.ref('withdrawals/' + wthId).set(wthRecord);
+        fbDatabase?.ref('withdrawals/' + wthId).set(wthRecord);
       }
 
       recordTransaction({
@@ -3074,10 +3042,10 @@
     // UNIQUE DEVICE FINGERPRINT & 2-ID SECURITY
     // ==========================================
     function getDeviceIdentifier() {
-      let devId = localStorage.getItem('teer_dev_uid');
+      let devId = memoryStore.getItem('teer_dev_uid');
       if (!devId) {
         devId = 'DEV_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
-        localStorage.setItem('teer_dev_uid', devId);
+        memoryStore.setItem('teer_dev_uid', devId);
       }
       return devId;
     }
@@ -3104,13 +3072,13 @@
 
       // 1. DEVICE LIMIT: 1 DEVICE PAR MAXIMUM 2 ID ALLOW HAI
       const deviceId = getDeviceIdentifier();
-      let deviceRegisteredPhones = JSON.parse(localStorage.getItem('teer_dev_phones') || '[]');
+      let deviceRegisteredPhones = JSON.parse(memoryStore.getItem('teer_dev_phones') || '[]');
       if (deviceRegisteredPhones.length >= 2 && !deviceRegisteredPhones.includes(phone)) {
         alert('⛔ Security Alert: Ek mobile device par maximum 2 ID hi bana sakte hain!');
         return;
       }
 
-      const usersDb = JSON.parse(localStorage.getItem('teer_registered_users') || '[]');
+      const usersDb = JSON.parse(memoryStore.getItem('teer_registered_users') || '[]');
       const exists = usersDb.some(u => u.phone === phone);
       if (exists) {
         alert('This mobile number is already registered! Please Login.');
@@ -3132,8 +3100,8 @@
       }
 
       const todayStr = new Date().toLocaleDateString();
-      let nextId = parseInt(localStorage.getItem('teer_last_user_seq_id') || '1000') + 1;
-      localStorage.setItem('teer_last_user_seq_id', nextId.toString());
+      let nextId = parseInt(memoryStore.getItem('teer_last_user_seq_id') || '1000') + 1;
+      memoryStore.setItem('teer_last_user_seq_id', nextId.toString());
       const userUid = 'UID_' + nextId;
 
       const newUser = {
@@ -3151,27 +3119,26 @@
       };
 
       if (fbDatabase) {
-        fbDatabase.ref('meta/last_user_uid').transaction(current => (current || 1000) + 1);
+        fbDatabase?.ref('meta/last_user_uid').transaction(current => (current || 1000) + 1);
       }
 
       usersDb.push(newUser);
-      localStorage.setItem('teer_registered_users', JSON.stringify(usersDb));
+      memoryStore.setItem('teer_registered_users', JSON.stringify(usersDb));
 
       // Register phone under this device list
       if (!deviceRegisteredPhones.includes(phone)) {
         deviceRegisteredPhones.push(phone);
-        localStorage.setItem('teer_dev_phones', JSON.stringify(deviceRegisteredPhones));
+        memoryStore.setItem('teer_dev_phones', JSON.stringify(deviceRegisteredPhones));
       }
 
       state.user = newUser;
       state.balance = 10.00;
-      localStorage.setItem('teer_current_user', JSON.stringify(newUser));
-      localStorage.setItem('teer_balance', state.balance.toFixed(2));
+      memoryStore.setItem('teer_current_user', JSON.stringify(newUser));
 
-      // Push to Firebase
+      // Push to Supabase
       if (fbDatabase) {
-        fbDatabase.ref('users/' + phone).set(newUser);
-        fbDatabase.ref('devices/' + deviceId + '/' + phone).set(Date.now());
+        fbDatabase?.ref('users/' + phone).set(newUser);
+        fbDatabase?.ref('devices/' + deviceId + '/' + phone).set(Date.now());
 
         // SIRF GENUINE (ALAG DEVICE) REFER PAR COMMISSION MILEGA (FAKE PAR 0)
         if (referralCode && !isFakeReferral) {
@@ -3183,14 +3150,14 @@
             date: todayStr,
             timestamp: Date.now()
           };
-          fbDatabase.ref('referrals/' + referralCode).push(refRecord);
+          fbDatabase?.ref('referrals/' + referralCode).push(refRecord);
 
           // HAR GENUINE REFER PAR 5 RS REFER EARNING ME (WALLET ME DIRECT 0)
-          fbDatabase.ref('agent_earnings/' + referralCode).transaction(cur => (cur || 0) + 5);
+          fbDatabase?.ref('agent_earnings/' + referralCode).transaction(cur => (cur || 0) + 5);
 
-          let agentLedger = JSON.parse(localStorage.getItem('teer_agent_earnings') || '{}');
+          let agentLedger = JSON.parse(memoryStore.getItem('teer_agent_earnings') || '{}');
           agentLedger[referralCode] = (agentLedger[referralCode] || 0) + 5;
-          localStorage.setItem('teer_agent_earnings', JSON.stringify(agentLedger));
+          memoryStore.setItem('teer_agent_earnings', JSON.stringify(agentLedger));
         }
       }
       initUserLiveBalanceListener();
@@ -3209,28 +3176,27 @@
       e.preventDefault();
       const phone = document.getElementById('loginPhone').value.trim();
       const pass = document.getElementById('loginPass').value;
-      const usersDb = JSON.parse(localStorage.getItem('teer_registered_users') || '[]');
+      const usersDb = JSON.parse(memoryStore.getItem('teer_registered_users') || '[]');
       const found = usersDb.find(u => u.phone === phone && u.pass === pass);
 
       if (found) {
         if (!found.uid) {
-          let nextId = parseInt(localStorage.getItem('teer_last_user_seq_id') || '1000') + 1;
-          localStorage.setItem('teer_last_user_seq_id', nextId.toString());
+          let nextId = parseInt(memoryStore.getItem('teer_last_user_seq_id') || '1000') + 1;
+          memoryStore.setItem('teer_last_user_seq_id', nextId.toString());
           found.uid = 'UID_' + nextId;
         }
         state.user = found;
-        localStorage.setItem('teer_current_user', JSON.stringify(found));
-        // Sync user to Firebase
+        memoryStore.setItem('teer_current_user', JSON.stringify(found));
+        // Sync user to Supabase
         if (fbDatabase) {
-          fbDatabase.ref('users/' + found.phone).once('value', (snap) => {
+          fbDatabase?.ref('users/' + found.phone).once('value', (snap) => {
             if (snap.exists()) {
               const uData = snap.val();
               if (uData.balance !== undefined) {
                 state.balance = parseFloat(uData.balance);
-                localStorage.setItem('teer_balance', state.balance.toFixed(2));
-              }
+                      }
             } else {
-              fbDatabase.ref('users/' + found.phone).set({
+              fbDatabase?.ref('users/' + found.phone).set({
                 name: found.name,
                 phone: found.phone,
                 balance: state.balance,
@@ -3321,8 +3287,8 @@
       if (confirm('Are you sure you want to log out?')) {
         state.user = null;
         state.balance = 0.00;
-        localStorage.removeItem('teer_current_user');
-        localStorage.setItem('teer_balance', '0.00');
+        memoryStore.removeItem('teer_current_user');
+        memoryStore.setItem('teer_balance', '0.00');
         updateUI();
         openAuthModal();
       }
@@ -3341,9 +3307,9 @@
         const isRegisterPath = window.location.pathname.toLowerCase().includes('register');
 
         if (refCode) {
-          localStorage.setItem('teer_captured_ref', refCode);
+          memoryStore.setItem('teer_captured_ref', refCode);
         } else {
-          refCode = localStorage.getItem('teer_captured_ref');
+          refCode = memoryStore.getItem('teer_captured_ref');
         }
 
         // AGAR USER PEHLE SE LOGIN HAI: Toh direct dashboard chalega, register open nahi hoga
@@ -3384,15 +3350,14 @@
       }
       const myCode = state.user.phone;
       if (fbDatabase) {
-        fbDatabase.ref('agent_earnings/' + myCode).once('value', (snap) => {
+        fbDatabase?.ref('agent_earnings/' + myCode).once('value', (snap) => {
           const amt = parseFloat(snap.val()) || 0;
           if (amt <= 0) {
             alert('No referral commission available to claim right now.');
             return;
           }
           state.balance += amt;
-          localStorage.setItem('teer_balance', state.balance.toFixed(2));
-          fbDatabase.ref('agent_earnings/' + myCode).set(0);
+            fbDatabase?.ref('agent_earnings/' + myCode).set(0);
           recordTransaction({
             type: 'commission',
             title: 'Agent Referral Commission Claim',
@@ -3511,7 +3476,7 @@
     let currentTxFilter = 'all';
 
     function getTransactions() {
-      return JSON.parse(localStorage.getItem('teer_transactions') || '[]');
+      return JSON.parse(memoryStore.getItem('teer_transactions') || '[]');
     }
 
     function recordTransaction(tx) {
@@ -3528,9 +3493,9 @@
         timestamp: Date.now()
       };
       list.unshift(newTx);
-      localStorage.setItem('teer_transactions', JSON.stringify(list));
+      memoryStore.setItem('teer_transactions', JSON.stringify(list));
       if (fbDatabase && state.user) {
-        fbDatabase.ref('user_transactions/' + state.user.phone + '/' + newTx.id).set(newTx);
+        fbDatabase?.ref('user_transactions/' + state.user.phone + '/' + newTx.id).set(newTx);
       }
     }
 
@@ -3625,10 +3590,10 @@
       document.getElementById('myReferralsModal').classList.add('hidden');
     }
 
-    function syncMyReferralsFromFirebase() {
+    function syncMyReferralsFromSupabase() {
       if (!fbDatabase || !state.user) return;
       const myPhone = state.user.phone;
-      fbDatabase.ref('referrals/' + myPhone).on('value', (snap) => {
+      fbDatabase?.ref('referrals/' + myPhone).on('value', (snap) => {
         const val = snap.val() || {};
         myReferralFriends = Object.values(val);
         const count = myReferralFriends.length;
@@ -3733,6 +3698,207 @@
       } catch(e) {}
       // Fallback redirect or history back
       window.location.href = "about:blank";
+    }
+
+
+    // ==========================================
+    // SUPABASE ACCOUNT API INTEGRATION
+    // Real-user session stays in memory only. Demo users remain isolated.
+    // ==========================================
+    const ACCOUNT_API_URL = 'https://qzbqmbrzmfggzzeufkyh.supabase.co/functions/v1/account-api';
+    const ACCOUNT_API_KEY = 'sb_publishable_Z2ij7JqELoVfBQ75wrSrFg_bKDt3aj1';
+    let accountSessionToken = null;
+    let accountIsDemo = false;
+
+    async function accountApi(action, payload = {}, authenticated = true) {
+      const headers = { 'Content-Type': 'application/json', 'apikey': ACCOUNT_API_KEY, 'Authorization': 'Bearer ' + ACCOUNT_API_KEY };
+      if (authenticated && accountSessionToken) headers['x-session-token'] = accountSessionToken;
+      const response = await fetch(ACCOUNT_API_URL, { method: 'POST', headers, body: JSON.stringify({ action, ...payload }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || data.message || ('API error ' + response.status));
+      return data;
+    }
+
+    function isDemoAccount(phone, password) {
+      return (demoAgentsData || []).find(u => u.phone === phone && u.pass === password);
+    }
+
+    function loadStorage() {
+      // Do not restore real user, wallet, bets or transactions from memoryStore.
+      state.user = null;
+      state.balance = 0;
+      state.bids = [];
+      accountSessionToken = null;
+      accountIsDemo = false;
+      try {
+        const notes = JSON.parse(memoryStore.getItem('teer_notifications') || '[]');
+        state.notifications = Array.isArray(notes) ? notes : [];
+      } catch (_) { state.notifications = []; }
+    }
+
+    async function initSupabasePublicSync() {
+      try {
+        const data = await accountApi('public_app_data', {}, false);
+        window.supabaseResults = data.results || {};
+        const settings = data.settings || {};
+        if (settings.deposit_upi) {
+          const upiSpan = document.getElementById('depositUpiText'); if (upiSpan) upiSpan.innerText = settings.deposit_upi;
+          const qrImg = document.getElementById('depositQrImg');
+          if (qrImg) qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent('upi://pay?pa=' + settings.deposit_upi + '&pn=TeerOnline');
+        }
+        if (settings.marquee_text) { const marq = document.querySelector('marquee'); if (marq) marq.innerText = settings.marquee_text; }
+        if (settings.helpline) { document.querySelectorAll('[data-helpline]').forEach(el => el.textContent = settings.helpline); }
+        if (settings.market_schedules && state.markets) state.markets.forEach(m => { const v = settings.market_schedules[m.name]; if (v) { if (v.frTime) m.frTime = v.frTime; if (v.srTime) m.srTime = v.srTime; } });
+        if (typeof renderMarkets === 'function') renderMarkets();
+      } catch (e) { console.warn('Supabase public data sync failed:', e.message); }
+    }
+    function initUserLiveBalanceListener() { /* Supabase balance is fetched on login/refresh. */ }
+    function syncAgentEarningsFromSupabase() { /* Legacy Supabase agent sync disabled. */ }
+
+    async function refreshAccountBalance() {
+      if (accountIsDemo || !accountSessionToken) return;
+      const data = await accountApi('balance');
+      const raw = data.balance;
+      const value = typeof raw === 'number' ? raw : Number(raw?.balance ?? raw?.amount ?? raw?.[0]?.balance ?? raw?.[0] ?? 0);
+      if (Number.isFinite(value)) { state.balance = value; updateUI(); }
+    }
+
+    async function handleRegisterSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value.trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      const password = document.getElementById('regPass').value;
+      const referredBy = document.getElementById('regReferral').value.trim();
+      if (!name || !/^\d{10}$/.test(phone)) { alert('Sahi naam aur 10 digit mobile number daalein.'); return; }
+      if (password.length < 8) { alert('Password kam se kam 8 characters ka hona chahiye.'); return; }
+      try {
+        const data = await accountApi('register', { name, phone, password, referred_by: referredBy || null }, false);
+        accountSessionToken = data.session?.token || data.session?.session_token || data.session;
+        if (typeof accountSessionToken !== 'string') throw new Error('Registration successful, lekin session token response nahi mila.');
+        state.user = data.user;
+        accountIsDemo = false;
+        await refreshAccountBalance();
+        updateUI(); closeAuthModal();
+        alert('Registration successful! Supabase account ready.');
+      } catch (err) { alert(err.message || 'Registration failed.'); }
+    }
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      const phone = document.getElementById('loginPhone').value.trim();
+      const password = document.getElementById('loginPass').value;
+      const demo = isDemoAccount(phone, password);
+      if (demo) {
+        accountSessionToken = null; accountIsDemo = true;
+        state.user = { ...demo }; state.balance = Number(demo.balance || 0); state.bids = [];
+        updateUI(); closeAuthModal(); openAppInstallModal(); return;
+      }
+      try {
+        const data = await accountApi('login', { phone, password }, false);
+        accountSessionToken = data.session?.token || data.session?.session_token || data.session;
+        if (typeof accountSessionToken !== 'string') throw new Error('Login response mein session token nahi mila.');
+        state.user = data.user; accountIsDemo = false; state.bids = [];
+        await refreshAccountBalance();
+        const bets = await accountApi('my_bets', { limit: 100 });
+        state.bids = (bets.items || []).map(b => ({ refId:b.client_ref || b.id, market:b.market, round:b.round, mode:b.bet_mode, number:b.bet_number, amount:Number(b.amount), status:b.status, payout:Number(b.payout || 0), date:b.created_at, time:'' }));
+        updateUI(); closeAuthModal(); openAppInstallModal();
+      } catch (err) { alert(err.message || 'Login failed.'); }
+    }
+
+    async function logoutUser() {
+      if (!confirm('Are you sure you want to log out?')) return;
+      try { if (accountSessionToken) await accountApi('logout'); } catch (_) {}
+      accountSessionToken = null; accountIsDemo = false; state.user = null; state.balance = 0; state.bids = [];
+      updateUI(); openAuthModal();
+    }
+
+    async function refreshBalance() {
+      if (accountIsDemo) { alert('Demo balance: ₹' + state.balance.toFixed(2)); return; }
+      try { await refreshAccountBalance(); alert('Balance updated: ₹' + state.balance.toFixed(2)); }
+      catch (err) { alert(err.message); }
+    }
+
+    async function submitDepositForm() {
+      if (!state.user) { alert('Please login first.'); openAuthModal(); return; }
+      const amount = Number(document.getElementById('depositAmountInput').value || 0);
+      const utr = document.getElementById('depositUtrInput').value.trim();
+      if (accountIsDemo) { alert('Demo wallet mein real deposit allowed nahi hai.'); return; }
+      if (amount < 100 || utr.length < 6) { alert('Minimum deposit ₹100 aur valid UTR daalein.'); return; }
+      try {
+        await accountApi('deposit_request', { amount, utr, screenshot_url: null });
+        document.getElementById('depositUtrInput').value = '';
+        currentDepositScreenshotBase64 = null;
+        closeDepositModal();
+        addAppNotification({ type:'deposit', title:'Deposit Request Submitted', message:`₹${amount} deposit request (UTR: ${utr}) Supabase par submit hui. Admin approval ke baad wallet credit hoga.` });
+        alert('Deposit request Supabase par submit ho gayi. Admin approval ka wait karein.');
+      } catch (err) { alert(err.message || 'Deposit request failed.'); }
+    }
+
+    async function submitWithdrawForm() {
+      if (!state.user) { alert('Please login first.'); openAuthModal(); return; }
+      if (accountIsDemo) { alert('Demo wallet se real withdrawal allowed nahi hai.'); return; }
+      const amount = Number(document.getElementById('withdrawAmountInput').value || 0);
+      if (amount < 1000 || amount > 5000) { alert('Withdrawal ₹1,000 se ₹5,000 ke beech hona chahiye.'); return; }
+      let payoutDetails;
+      if (currentWithdrawMethod === 'upi') {
+        const upi = document.getElementById('withdrawUpiInput').value.trim();
+        if (!upi || !upi.includes('@')) { alert('Valid UPI ID daalein.'); return; }
+        payoutDetails = { method:'upi', upi };
+      } else {
+        const holder = document.getElementById('bankHolderInput').value.trim();
+        const accountNumber = document.getElementById('bankAccountInput').value.trim();
+        const ifsc = document.getElementById('bankIfscInput').value.trim().toUpperCase();
+        const bankName = document.getElementById('bankNameInput').value.trim();
+        if (!holder || !accountNumber || !ifsc) { alert('Bank holder, account number aur IFSC zaroori hain.'); return; }
+        payoutDetails = { method:'bank', holder_name:holder, account_number:accountNumber, ifsc, bank_name:bankName };
+      }
+      try {
+        await accountApi('create_withdrawal', { amount, payout_details:payoutDetails });
+        await refreshAccountBalance(); closeWithdrawModal();
+        addAppNotification({ type:'withdraw', title:'Withdrawal Request Submitted', message:`₹${amount} withdrawal request admin review ke liye submit hui.` });
+        alert('Withdrawal request submit ho gayi. Wallet balance server par update hua hai.');
+      } catch (err) { alert(err.message || 'Withdrawal request failed.'); }
+    }
+
+    async function confirmPlaceBet() {
+      if (!state.user) { alert('Please login first.'); openAuthModal(); return; }
+      if (accountIsDemo) { alert('Demo betting abhi local demo mode mein available nahi hai.'); return; }
+      if (!accountSessionToken) { alert('Session missing. Dobara login karein.'); return; }
+      if (!state.currentMarketObj) return;
+      const timeStr = state.currentRound === 'FR' ? state.currentMarketObj.frTime : state.currentMarketObj.srTime;
+      if (!isRoundBettingOpen(timeStr, state.currentMarketObj.name)) { alert('Betting time over.'); return; }
+      const amount = Number(document.getElementById('betAmountInput').value || 0);
+      if (!(amount > 0) || !state.selectedNumbers.length) { alert('Amount aur number select karein.'); return; }
+      const rounds = state.currentRound === 'BS' ? ['FR','SR'] : [state.currentRound];
+      const selections = rounds.flatMap(round => state.selectedNumbers.map(number => ({round, number:String(number)})));
+      const total = amount * selections.length;
+      if (total > state.balance) { alert('Insufficient wallet balance.'); return; }
+      const ref = 'TO' + Date.now() + Math.floor(Math.random()*1000);
+      try {
+        // API validates and deducts each selection on the server; report any partial result clearly.
+        let completed = 0;
+        for (const item of selections) {
+          await accountApi('place_bet', { client_ref:ref + '-' + completed, market:state.currentMarketObj.name, round:item.round, bet_mode:String(state.betMode).toUpperCase(), bet_number:item.number, amount });
+          completed++;
+        }
+        await refreshAccountBalance();
+        const roundLabel = state.currentRound === 'BS' ? 'FR + SR (BS)' : state.currentRound;
+        const nums = state.selectedNumbers.join(', ');
+        state.selectedNumbers = []; updateSelectedTray(); calculatePayout();
+        const bets = await accountApi('my_bets', {limit:100});
+        state.bids = (bets.items || []).map(b => ({refId:b.client_ref || b.id,market:b.market,round:b.round,mode:b.bet_mode,number:b.bet_number,amount:Number(b.amount),status:b.status,payout:Number(b.payout||0),date:b.created_at,time:''}));
+        updateUI(); showBetReceiptClip(state.currentMarketObj.name, roundLabel, nums, amount, document.getElementById('potentialWin').innerText.replace('₹',''), ref);
+      } catch (err) {
+        await refreshAccountBalance().catch(()=>{});
+        alert('Bet API error: ' + (err.message || 'Request failed') + '. Server balance refresh kar diya gaya hai.');
+      }
+    }
+
+    function checkAndCreditWinnings() { /* Server-side api_settle_bet is authoritative; never credit in browser. */ }
+
+    // Refresh public results/settings periodically from Supabase, not Supabase or browser storage.
+    if (!window.__supabasePublicRefresh) {
+      window.__supabasePublicRefresh = setInterval(() => initSupabasePublicSync(), 20000);
     }
 
 </script>

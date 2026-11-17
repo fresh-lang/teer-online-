@@ -1,5 +1,5 @@
 // Teer Online Standalone Service Worker for PWA
-const CACHE_NAME = 'teer-online-v1';
+const CACHE_NAME = 'teer-online-supabase-v2';
 const urlsToCache = [
   './',
   './index.html',
@@ -19,7 +19,11 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith('teer-online-') && key !== CACHE_NAME).map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
