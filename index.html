@@ -350,59 +350,27 @@
           <button id="profileAuthBtn" onclick="openAuthModal()" class="text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg shadow">Login</button>
         </div>
 
-        <!-- Refer & Agent Earnings Card -->
-        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 text-slate-800 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2 text-amber-900 font-black text-sm">
-              <i class="fa-solid fa-crown text-amber-600"></i> Refer &amp; Earn Rules (Mega Commission)
-            </div>
-            <span class="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">10% Active</span>
+        <!-- Referral information: only currently implemented features -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 text-slate-800 space-y-2.5">
+          <div class="flex items-center gap-2 text-teal-950 font-black text-sm">
+            <i class="fa-solid fa-gift text-emerald-600"></i> Welcome Bonus &amp; Referral
           </div>
-
-          <!-- User Display Rules (Fake Display to attract users) -->
-          <div class="bg-white/90 p-3 rounded-xl border border-amber-200 text-xs space-y-1.5 text-slate-700 shadow-sm">
-            <p class="flex items-center gap-2 font-semibold">
-              <i class="fa-solid fa-gift text-emerald-600"></i>
-              <span>Har Refer Par: <b class="text-emerald-700 font-bold">Flat ₹10 Instant Bonus</b></span>
-            </p>
-            <p class="flex items-center gap-2 font-semibold">
-              <i class="fa-solid fa-wallet text-amber-600"></i>
-              <span>Friend Har Deposit Par: <b class="text-amber-700 font-bold">Flat 10% Extra Commission</b></span>
-            </p>
-            <p class="flex items-center gap-2 font-semibold">
-              <i class="fa-solid fa-bullseye text-teal-700"></i>
-              <span>Friend Game Betting Par: <b class="text-teal-800 font-bold">Flat 10% Turnover Commission</b></span>
-            </p>
+          <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+            <p class="text-xs font-bold text-emerald-900">₹10 One-Time Registration Bonus</p>
+            <p class="text-[11px] text-emerald-800 mt-1">New account registration par ₹10 welcome bonus wallet mein credit hota hai. Ye referral commission nahi hai.</p>
           </div>
-          
-          <!-- Real Earnings Box -->
-          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex justify-between items-center shadow-sm">
-            <div>
-              <span class="text-[11px] text-emerald-800 font-bold block">Aapki Total Referral Kamai:</span>
-              <span id="myAgentEarnedText" class="text-base font-black text-emerald-950">₹0.00</span>
-            </div>
-            <button onclick="claimAgentCommission()" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs shadow transition">Wallet Me Transfer</button>
+          <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+            <p class="text-xs font-bold text-slate-800">Referral Code (Optional)</p>
+            <p class="text-[11px] text-slate-600 mt-1">Registration ke waqt referral code submit kiya ja sakta hai. Referral earnings, deposit commission aur betting commission abhi active nahi hain.</p>
           </div>
-
-          <!-- Referral Team Counter -->
-          <div class="bg-white p-2.5 rounded-xl flex items-center justify-between border border-amber-200 shadow-sm">
-            <div>
-              <span class="text-[11px] font-bold text-amber-950 block">👥 My Referral Team:</span>
-              <span id="cardJoinedCountText" class="text-xs text-amber-900 font-extrabold">0 Friends Joined</span>
-            </div>
-            <button onclick="openMyReferralsModal()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-teal-950 font-black rounded-lg text-xs shadow transition">View Referrals</button>
-          </div>
-          
-          <!-- Share buttons -->
           <div class="pt-1 flex gap-2">
             <button onclick="shareReferralWhatsApp()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
-              <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Share
+              <i class="fa-brands fa-whatsapp text-sm"></i> Share Registration Link
             </button>
             <button onclick="copyReferralLink()" class="px-3 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs font-bold">Copy Link</button>
           </div>
         </div>
 
-        
         <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 divide-y divide-slate-100 text-sm">
           <div onclick="switchTab('bids')" class="p-3 flex justify-between items-center cursor-pointer">
             <span class="text-slate-700 font-medium"><i class="fa-solid fa-ticket w-5 text-teal-700"></i> Saved Bet Slips &amp; History</span>
@@ -531,7 +499,7 @@
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
         </a>
         <a onclick="switchTab('profile'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
-          <span class="flex items-center gap-3"><i class="fa-solid fa-gift w-4 text-teal-800"></i> Refer &amp; Agent Rules</span>
+          <span class="flex items-center gap-3"><i class="fa-solid fa-gift w-4 text-teal-800"></i> Welcome Bonus &amp; Referral Info</span>
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
         </a>
         <a onclick="openNotificationModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
@@ -2481,7 +2449,7 @@
       const myRefCode = state.user ? (state.user.phone || state.user.uid || '8134678') : '8134678';
       const baseUrl = getBaseShareUrl();
       const shareUrl = `${baseUrl}?ref=${myRefCode}`;
-      const text = encodeURIComponent(`🎯 TEER ONLINE Official Registration!\n🎁 Mere link se register karein aur ₹10 Free Login Bonus paayein!\n\n👉 Referral Code: ${myRefCode}\n👉 Direct Register Link: ${shareUrl}`);
+      const text = encodeURIComponent(`🎯 TEER ONLINE Official Registration!\n🎁 Naye account par ₹10 one-time registration welcome bonus milta hai!\n\n👉 Referral Code: ${myRefCode}\n👉 Direct Register Link: ${shareUrl}`);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     }
 
@@ -2768,7 +2736,7 @@
       const cont = document.getElementById('myReferralsListContainer');
       if (!cont) return;
       if (myReferralFriends.length === 0) {
-        cont.innerHTML = '<div class="p-8 text-center text-slate-400">No friends joined yet. Share your link to start earning!</div>';
+        cont.innerHTML = '<div class="p-8 text-center text-slate-400">Referral member tracking and payouts are not active yet.</div>';
         return;
       }
 
@@ -3193,7 +3161,7 @@
             <h3 class="font-bold text-sm text-teal-950 flex items-center gap-1.5">
               <i class="fa-solid fa-users-viewfinder text-amber-600"></i> My Referral Team
             </h3>
-            <p class="text-[10px] text-slate-500">Friends who registered using your referral link</p>
+            <p class="text-[10px] text-slate-500">Referral earnings and commission are not active yet</p>
           </div>
           <button onclick="closeMyReferralsModal()" class="text-slate-400 hover:text-slate-700 p-1">
             <i class="fa-solid fa-xmark text-lg"></i>
@@ -3202,11 +3170,11 @@
 
         <div class="bg-gradient-to-r from-teal-900 to-[#021d20] text-white p-3 rounded-2xl flex justify-between items-center">
           <div>
-            <p class="text-[10px] text-teal-300">Total Joined Friends</p>
+            <p class="text-[10px] text-teal-300">Referral Tracking (Not Active)</p>
             <p id="modalRefFriendsCount" class="text-xl font-black text-amber-300">0 Members</p>
           </div>
           <div class="text-right">
-            <p class="text-[10px] text-teal-300">Total Commission Earned</p>
+            <p class="text-[10px] text-teal-300">Referral Commission (Not Active)</p>
             <p id="modalRefTotalEarned" class="text-xl font-black text-emerald-400">₹0.00</p>
           </div>
         </div>
