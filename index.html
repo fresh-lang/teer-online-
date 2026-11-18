@@ -2054,7 +2054,51 @@
       const tbody = document.getElementById('chartTableBody');
       tbody.innerHTML = '';
 
-      let records = [...(historicalMarketData[mName] || [
+      if (mName === 'Teer Play') {
+        const grouped = new Map();
+        (state.teerPlayRounds || []).forEach(round => {
+          const key = new Date(round.starts_at).toISOString();
+          if (!grouped.has(key)) grouped.set(key, { starts_at: round.starts_at, FR: null, SR: null });
+          const group = grouped.get(key);
+          if (round.result_type === 'FR') group.FR = round;
+          if (round.result_type === 'SR') group.SR = round;
+        });
+        const rows = [...grouped.values()].sort((a,b) =>
+          new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime()
+        );
+        if (!rows.length) {
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 5;
+          td.className = 'p-4 text-slate-500';
+          td.textContent = 'No server round records yet.';
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+          return;
+        }
+        rows.forEach(group => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-50 border-b';
+          const date = new Date(group.starts_at).toLocaleString([], {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+          const cells = [
+            date,
+            group.FR ? '#' + group.FR.id : '--',
+            group.FR && group.FR.result_number != null ? String(group.FR.result_number).padStart(2,'0') : '--',
+            group.SR ? '#' + group.SR.id : '--',
+            group.SR && group.SR.result_number != null ? String(group.SR.result_number).padStart(2,'0') : '--'
+          ];
+          cells.forEach((value,index) => {
+            const td = document.createElement('td');
+            td.className = 'p-2 border border-slate-200 ' + (index === 2 ? 'text-teal-900' : index === 4 ? 'text-amber-700' : 'text-slate-600');
+            td.textContent = value;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        return;
+      }
+
+      const records = [...(historicalMarketData[mName] || [
         { d: '02/11/2026', fr: '45', sr: '82' },
         { d: '01/11/2026', fr: '30', sr: '19' },
         { d: '31/10/2026', fr: '67', sr: '53' },
@@ -2064,46 +2108,23 @@
         { d: '27/10/2026', fr: '91', sr: '66' },
         { d: '26/10/2026', fr: '23', sr: '48' }
       ])];
-
-      if (mName === 'Teer Play') {
-        const grouped = new Map();
-        (state.teerPlayRounds || []).filter(r => r.status === 'settled').forEach(r => {
-          const key = r.starts_at;
-          const row = grouped.get(key) || { d:new Date(r.starts_at).toLocaleString(), fr:'**', sr:'**', frId:'--', srId:'--', sortTime:new Date(r.starts_at).getTime() };
-          const result = String(r.result_number ?? '**').padStart(2,'0');
-          if (r.result_type === 'FR') { row.fr = result; row.frId = String(r.id); }
-          if (r.result_type === 'SR') { row.sr = result; row.srId = String(r.id); }
-          grouped.set(key,row);
-        });
-        records = Array.from(grouped.values()).sort((a,b)=>b.sortTime-a.sortTime).slice(0,100);
+      const savedResults = window.supabaseResults || {};
+      const todayStr = getTodayFormattedDate();
+      if (savedResults[mName] && (savedResults[mName].fr !== '**' || savedResults[mName].sr !== '**')) {
+        const liveRec = { d: savedResults[mName].date || todayStr, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**' };
+        const idx = records.findIndex(r => r.d === liveRec.d);
+        if (idx >= 0) records[idx] = liveRec;
+        else records.unshift(liveRec);
       }
-
-      // Merge today's live declared result if available
-      try {
-        const savedResults = (window.supabaseResults || {});
-        const todayStr = getTodayFormattedDate();
-        if (savedResults[mName] && (savedResults[mName].fr !== '**' || savedResults[mName].sr !== '**')) {
-          const liveRec = {
-            d: savedResults[mName].date || todayStr,
-            fr: savedResults[mName].fr || '**',
-            sr: savedResults[mName].sr || '**'
-          };
-          // Remove if duplicate date already exists in static records, then prepend
-          records = records.filter(r => r.d !== liveRec.d);
-          records.unshift(liveRec);
-        }
-      } catch(e) {}
-
       records.forEach(r => {
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 border-b";
-        tr.innerHTML = `
-          <td class="p-2 border border-slate-200 text-slate-600 font-semibold">${r.d}</td>
-          <td class="p-2 border border-slate-200 text-slate-500 text-[10px]">${r.frId || '--'}</td>
-          <td class="p-2 border border-slate-200 text-teal-900 font-black text-sm">${r.fr}</td>
-          <td class="p-2 border border-slate-200 text-slate-500 text-[10px]">${r.srId || '--'}</td>
-          <td class="p-2 border border-slate-200 text-amber-700 font-black text-sm">${r.sr}</td>
-        `;
+        tr.className = 'hover:bg-slate-50 border-b';
+        [r.d, r.fr, r.sr].forEach((value,index) => {
+          const td = document.createElement('td');
+          td.className = 'p-2 border border-slate-200 ' + (index === 1 ? 'text-teal-900' : index === 2 ? 'text-amber-700' : 'text-slate-600');
+          td.textContent = value;
+          tr.appendChild(td);
+        });
         tbody.appendChild(tr);
       });
     }
