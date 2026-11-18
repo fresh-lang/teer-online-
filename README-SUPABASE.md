@@ -21,3 +21,5 @@ This repository includes Capacitor configuration and a GitHub Actions workflow. 
 
 ## Not enabled yet
 User block/unblock, admin password reset, manual wallet adjustment, broadcast notifications and referral commission payout remain disabled until dedicated secure server-side APIs and audited ledger operations are implemented. The Teer Play countdown is display-only; results must come from Supabase admin publication.
+
+- Teer Play UI reads server minute-round IDs and published results from Supabase; each new Teer Play bet must include the active FR/SR round ID.

@@ -63,10 +63,15 @@ async function verifyPassword(password: string, stored: string): Promise<{ valid
       return { valid: false, legacyBcrypt: false };
     }
   }
-  // Older registrations used bcrypt. Accept them once and upgrade the hash after successful login.
+
+  // Older bright-task registrations used bcrypt. Accept them once, then upgrade
+  // the stored hash to PBKDF2 after a successful login.
   if (/^\$2[aby]\$/.test(stored)) {
-    try { return { valid: await bcrypt.compare(password, stored), legacyBcrypt: true }; }
-    catch { return { valid: false, legacyBcrypt: true }; }
+    try {
+      return { valid: await bcrypt.compare(password, stored), legacyBcrypt: true };
+    } catch {
+      return { valid: false, legacyBcrypt: true };
+    }
   }
   return { valid: false, legacyBcrypt: false };
 }
@@ -172,19 +177,22 @@ Deno.serve(async (req) => {
       const user = asOne(created as Record<string, unknown> | Record<string, unknown>[] | null);
       if (!user || !user.user_id) throw new Error("Registration did not return a user id");
       const session = await makeSession(String(user.user_id));
-      return json({ user: { id: user.user_id, uid: user.uid, name, phone }, session }, 200, origin);
+      return json({ user: { id: user.user_id, uid: user.uid, name, phone, vip_level: 0 }, registration_bonus: Number(user.registration_bonus ?? 0), session }, 200, origin);
     }
 
     if (action === "login" || action === "admin_login") {
       const phone = cleanPhone(body.phone);
       const password = body.password;
-      // Existing app accounts may have 4+ character legacy passwords; new registration still requires 8+.
+      // Accept 4+ character legacy passwords for login compatibility. New registrations
+      // still require 8+ characters in the register action.
       if (phone.length !== 10 || typeof password !== "string" || password.length < 4 || password.length > 128) {
         return json({ error: "Invalid phone or password" }, 400, origin);
       }
       const found = await rpc<unknown>("api_auth_lookup", { p_phone: phone });
       const user = asOne(found as Record<string, unknown> | Record<string, unknown>[] | null);
-      if (!user || typeof user.password_hash !== "string") return json({ error: "Invalid phone or password" }, 401, origin);
+      if (!user || typeof user.password_hash !== "string") {
+        return json({ error: "Invalid phone or password" }, 401, origin);
+      }
       const passwordCheck = await verifyPassword(password, user.password_hash);
       if (!passwordCheck.valid) return json({ error: "Invalid phone or password" }, 401, origin);
       if (passwordCheck.legacyBcrypt) {
@@ -211,7 +219,7 @@ Deno.serve(async (req) => {
       if (!userId) throw new Error("Login lookup did not return a user id");
       const session = await makeSession(String(userId));
       return json({
-        user: { id: userId, uid: user.uid, name: user.name, phone: user.phone },
+        user: { id: userId, uid: user.uid, name: user.name, phone: user.phone, vip_level: Number(user.vip_level ?? 0) },
         is_admin: isAdmin,
         session,
       }, 200, origin);
@@ -235,14 +243,31 @@ Deno.serve(async (req) => {
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
       const clientRef = String(body.client_ref ?? "").trim();
       const market = String(body.market ?? "").trim();
-      const round = String(body.round ?? "").trim();
+      const round = String(body.round ?? "").trim().toUpperCase();
       const betMode = String(body.bet_mode ?? "").trim();
       const betNumber = String(body.bet_number ?? "").trim();
       const amount = Number(body.amount);
+      const roundId = body.round_id == null ? null : Number(body.round_id);
       if (!clientRef || clientRef.length > 100 || !market || market.length > 80 ||
           !round || round.length > 40 || !betMode || betMode.length > 30 ||
           !/^\d{1,2}$/.test(betNumber) || !Number.isFinite(amount) || amount <= 0 || amount > 100000) {
         return json({ error: "Invalid bet details" }, 400, origin);
+      }
+      if (market === "Teer Play") {
+        if (!Number.isSafeInteger(roundId) || roundId < 1 || !["FR", "SR"].includes(round)) {
+          return json({ error: "Select a valid open Teer Play FR/SR round ID" }, 400, origin);
+        }
+        const result = await rpc("api_place_bet", {
+          p_user_id: user.id,
+          p_client_ref: clientRef,
+          p_market: market,
+          p_round: round,
+          p_bet_mode: betMode,
+          p_bet_number: betNumber,
+          p_amount: amount,
+          p_round_id: roundId,
+        });
+        return json({ success: true, result }, 200, origin);
       }
       const result = await rpc("api_place_bet", {
         p_user_id: user.id,
@@ -265,7 +290,7 @@ Deno.serve(async (req) => {
         action === "my_transactions" ? "wallet_transactions" :
         action === "my_deposit_requests" ? "deposit_requests" : "withdrawal_requests";
       const columns = action === "my_bets"
-        ? "id,client_ref,market,round,bet_mode,bet_number,amount,status,payout,created_at,settled_at"
+        ? "id,client_ref,market,round,round_id,bet_mode,bet_number,amount,status,payout,created_at,settled_at"
         : action === "my_transactions"
         ? "id,type,amount,status,description,created_at,ref_id"
         : action === "my_deposit_requests"
@@ -295,22 +320,59 @@ Deno.serve(async (req) => {
       }
       const limit = Math.min(200, Math.max(1, Number.isInteger(Number(body.limit)) ? Number(body.limit) : 100));
       const { data, error } = await supabase.from("bets")
-        .select("id,user_id,client_ref,market,round,bet_mode,bet_number,amount,status,payout,created_at,settled_at")
+        .select("id,user_id,client_ref,market,round,round_id,bet_mode,bet_number,amount,status,payout,created_at,settled_at")
         .order("created_at", { ascending: false }).limit(limit);
       if (error) throw error;
       return json({ success: true, items: data ?? [] }, 200, origin);
     }
 
+    if (action === "rounds") {
+      const limit = Math.min(300, Math.max(1, Number.isInteger(Number(body.limit)) ? Number(body.limit) : 100));
+      const { data, error } = await supabase.from("teer_minute_rounds")
+        .select("id,result_type,starts_at,ends_at,result_number,result_source,status,published_at")
+        .order("starts_at", { ascending: false }).limit(limit);
+      if (error) throw error;
+      return json({ success: true, items: data ?? [] }, 200, origin);
+    }
+
+    if (action === "admin_list_rounds" || action === "admin_set_round_result") {
+      const admin = await getSession(req);
+      if (!admin || !admin.id) return json({ error: "Please login again" }, 401, origin);
+      if (!(await requireAdmin(admin))) return json({ error: "Admin access denied" }, 403, origin);
+      if (action === "admin_list_rounds") {
+        const limit = Math.min(300, Math.max(1, Number.isInteger(Number(body.limit)) ? Number(body.limit) : 100));
+        const { data, error } = await supabase.from("teer_minute_rounds")
+          .select("id,result_type,starts_at,ends_at,result_number,result_source,status,published_at")
+          .order("starts_at", { ascending: false }).limit(limit);
+        if (error) throw error;
+        return json({ success: true, items: data ?? [] }, 200, origin);
+      }
+      const roundId = Number(body.round_id);
+      const resultNumber = Number(body.result_number);
+      if (!Number.isSafeInteger(roundId) || roundId < 1 || !Number.isInteger(resultNumber) || resultNumber < 0 || resultNumber > 99) {
+        return json({ error: "Valid round_id and result_number (00-99) required" }, 400, origin);
+      }
+      const token = (req.headers.get("x-session-token") ?? "").trim();
+      const result = await rpc("api_admin_set_teer_round_result", {
+        p_admin_token_hash: await sha256Hex(token),
+        p_round_id: roundId,
+        p_result_number: resultNumber,
+      });
+      return json({ success: true, result }, 200, origin);
+    }
+
     if (action === "public_app_data") {
-      const [{ data: results, error: resultsError }, { data: settings, error: settingsError }] = await Promise.all([
+      const [{ data: results, error: resultsError }, { data: settings, error: settingsError }, { data: rounds, error: roundsError }] = await Promise.all([
         supabase.from("teer_results").select("market,fr,sr,result_date,updated_at"),
         supabase.from("app_settings").select("helpline,deposit_upi,marquee_text,market_schedules").eq("id", 1).maybeSingle(),
+        supabase.from("teer_minute_rounds").select("id,result_type,starts_at,ends_at,result_number,result_source,status,published_at").order("starts_at", { ascending: false }).limit(100),
       ]);
       if (resultsError) throw resultsError;
       if (settingsError) throw settingsError;
+      if (roundsError) throw roundsError;
       const resultMap: Record<string, unknown> = {};
       for (const row of results ?? []) resultMap[row.market] = { fr: row.fr ?? "**", sr: row.sr ?? "**", date: row.result_date ?? "" };
-      return json({ success: true, results: resultMap, settings: settings ?? {} }, 200, origin);
+      return json({ success: true, results: resultMap, settings: settings ?? {}, rounds: rounds ?? [] }, 200, origin);
     }
 
     if (["admin_dashboard", "admin_save_result", "admin_reset_result", "admin_save_settings"].includes(action)) {
@@ -324,7 +386,7 @@ Deno.serve(async (req) => {
           supabase.from("wallet_accounts").select("user_id,balance"),
           supabase.from("deposit_requests").select("id,user_id,amount,utr,screenshot_url,status,credited_amount,created_at,reviewed_at").order("created_at", { ascending: false }).limit(300),
           supabase.from("withdrawal_requests").select("id,user_id,amount,payout_details,status,created_at,reviewed_at").order("created_at", { ascending: false }).limit(300),
-          supabase.from("bets").select("id,user_id,market,round,bet_mode,bet_number,amount,status,payout,created_at").order("created_at", { ascending: false }).limit(500),
+          supabase.from("bets").select("id,user_id,market,round,round_id,bet_mode,bet_number,amount,status,payout,created_at").order("created_at", { ascending: false }).limit(500),
           supabase.from("teer_results").select("market,fr,sr,result_date,updated_at"),
           supabase.from("app_settings").select("helpline,deposit_upi,marquee_text,market_schedules").eq("id", 1).maybeSingle(),
         ]);
@@ -352,10 +414,10 @@ Deno.serve(async (req) => {
         if (action === "admin_save_result") {
           for (const [round, resultNumber] of [["FR", fr], ["SR", sr]] as const) {
             if (!/^\d{1,2}$/.test(resultNumber)) continue;
-            const { data: pendingBets, error: betsError } = await supabase.from("bets").select("id")
+            const { data: activeBets, error: betsError } = await supabase.from("bets").select("id")
               .eq("market", market).eq("round", round).eq("status", "active").limit(1000);
             if (betsError) throw betsError;
-            for (const bet of pendingBets ?? []) {
+            for (const bet of activeBets ?? []) {
               settlements.push(await rpc("api_settle_bet", { p_bet_id: bet.id, p_result_number: resultNumber }));
             }
           }

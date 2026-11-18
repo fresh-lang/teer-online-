@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "prepare:web": "node scripts/prepare-web.js",
+    "prepare:web": "node prepare-web.js",
     "android:sync": "npm run prepare:web && cap sync android",
-    "android:debug": "npm run android:sync && cd android && ./gradlew assembleDebug"
+    "android:debug": "npm run prepare:web && (test -d android || npx cap add android) && npx cap sync android && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

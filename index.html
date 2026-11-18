@@ -105,7 +105,7 @@
     <div class="bg-[#02181a] border-b border-teal-900/40 py-1.5 px-2 flex items-center gap-2 overflow-hidden text-[11px] text-amber-300 font-semibold shadow-inner">
       <i class="fa-solid fa-bullhorn text-amber-400 animate-pulse text-xs shrink-0"></i>
       <marquee behavior="scroll" direction="left" scrollamount="4">
-        WINNING INSTANT WALLET &bull; 6 DAYS OPEN (SUNDAY OFF) &bull; 10 MIN CUTOFF &bull; HELPLINE +918134834380
+        WINNING INSTANT WALLET &bull; 6 DAYS OPEN (SUNDAY OFF) &bull; HELPLINE +918134834380
       </marquee>
     </div>
 
@@ -203,7 +203,7 @@
           </a>
         </div>
 
-        <!-- 1 Minute Online Teer Play Banner Card & Fake Bets -->
+        <!-- 1 Minute Online Teer Play Banner Card -->
         <div class="p-3 space-y-2.5">
           <div onclick="openPlayModalByName('Teer Play')" class="bg-gradient-to-r from-[#032427] via-teal-900 to-[#02181a] rounded-2xl p-3.5 border-2 border-amber-400/60 shadow-xl cursor-pointer relative overflow-hidden flex items-center justify-between">
             <div class="space-y-1 z-10">
@@ -226,6 +226,7 @@
               <i class="fa-solid fa-bullseye"></i>
             </div>
           </div>
+
 
           <!-- Realtime Fake UID Bets Feed on Teer Play -->
           <div class="bg-[#02181a] border border-teal-900/60 rounded-xl p-2.5 shadow-inner">
@@ -585,7 +586,7 @@
         <div class="bg-[#032427] text-white p-3.5 rounded-t-3xl flex items-center justify-between">
           <div>
             <h3 id="playMarketTitle" class="font-bold text-base text-amber-300">Shillong Teer</h3>
-            <p id="marketCutoffNotice" class="text-[10px] text-amber-300 font-semibold">⚠️ Cutoff: 10 mins before draw time</p>
+            <p id="marketCutoffNotice" class="text-[10px] text-amber-300 font-semibold"></p>
           </div>
           <div class="flex items-center gap-2">
             <button id="btnTeerPlayHistory" onclick="openTeerPlayHistoryModal()" class="hidden px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-black rounded-lg text-[10px] shadow flex items-center gap-1 transition">
@@ -675,6 +676,7 @@
             </div>
             <div id="modalFakeBetsFeed" class="space-y-1 max-h-16 overflow-hidden font-mono text-[9px]"></div>
           </div>
+
 
           <div class="bg-teal-50 border border-teal-200 rounded-xl p-2.5 flex justify-between items-center text-xs">
             <div>
@@ -874,8 +876,10 @@
           <table class="w-full text-center border-collapse">
             <thead>
               <tr class="bg-teal-950 text-amber-300 font-bold text-[11px]">
-                <th class="p-2 border border-teal-800">Date</th>
+                <th class="p-2 border border-teal-800">Date / Time</th>
+                <th class="p-2 border border-teal-800">FR ID</th>
                 <th class="p-2 border border-teal-800">FR Result</th>
+                <th class="p-2 border border-teal-800">SR ID</th>
                 <th class="p-2 border border-teal-800">SR Result</th>
               </tr>
             </thead>
@@ -986,7 +990,9 @@
         { name: 'Teer Play', frTime: '1 Min', srTime: '1 Min', defaultFr: '**', defaultSr: '**', isFast: true }
       ],
       bids: [],
-      notifications: []
+      notifications: [],
+      teerPlayRounds: [],
+      transactions: []
     };
 
     const historicalMarketData = {
@@ -1273,7 +1279,23 @@
       if (window.__teerPlayTimer) return;
       window.__teerPlayTimer = setInterval(() => {
         const timer = document.getElementById('teerPlayLiveModalTimer');
-        if (timer) timer.innerText = `00:${String(60 - new Date().getSeconds()).padStart(2, '0')}s`;
+        const roundType = state.currentRound === 'SR' ? 'SR' : 'FR';
+        const rounds = state.teerPlayRounds || [];
+        const active = rounds.find(r => r.result_type === roundType && r.status === 'open' &&
+          new Date(r.ends_at).getTime() > Date.now());
+        if (timer && active) {
+          const seconds = Math.max(0, Math.ceil((new Date(active.ends_at).getTime() - Date.now()) / 1000));
+          timer.innerText = `${String(Math.floor(seconds / 60)).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}s`;
+        } else if (timer) {
+          timer.innerText = '00:00s';
+        }
+        renderTeerPlayRoundIds();
+        renderTeerPlayHistoryStrip();
+        if (document.getElementById('playGameModal')?.classList.contains('hidden') === false &&
+            (!window.__teerPlayLastRefresh || Date.now() - window.__teerPlayLastRefresh > 5000)) {
+          window.__teerPlayLastRefresh = Date.now();
+          initSupabasePublicSync();
+        }
       }, 1000);
     }
 
@@ -1353,22 +1375,44 @@
 
     
     // Render Previous Results Strip
+    function getCurrentTeerPlayRoundId(roundType) {
+      const now = Date.now();
+      const row = (state.teerPlayRounds || []).find(r =>
+        r.result_type === roundType &&
+        r.status === 'open' &&
+        new Date(r.starts_at).getTime() <= now &&
+        new Date(r.ends_at).getTime() > now
+      );
+      return row ? Number(row.id) : null;
+    }
+
+    function renderTeerPlayRoundIds() {
+      const meta = document.getElementById('teerPlayRoundMeta');
+      if (!meta) return;
+      const fr = getCurrentTeerPlayRoundId('FR');
+      const sr = getCurrentTeerPlayRoundId('SR');
+      meta.textContent = `FR ID: ${fr || '--'}  |  SR ID: ${sr || '--'}`;
+    }
+
     function renderTeerPlayHistoryStrip() {
       const strip = document.getElementById('teerPlayResultsHistoryStrip');
       if (!strip) return;
-      const historyList = JSON.parse(memoryStore.getItem('teer_play_recent_results') || '[]');
-
-      if (historyList.length === 0) {
+      const rounds = (state.teerPlayRounds || [])
+        .filter(r => r.status === 'settled' && r.result_number !== null && r.result_number !== undefined)
+        .sort((a,b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
+        .slice(-24);
+      if (!rounds.length) {
         strip.innerHTML = '<span class="text-slate-500 text-[10px] italic">Waiting for draw...</span>';
         return;
       }
-
-      strip.innerHTML = historyList.map(item => `
-        <div class="bg-teal-950/80 border border-amber-400/40 rounded-lg px-2 py-0.5 text-center flex-shrink-0 shadow">
-          <span class="text-[8px] text-slate-400 block">${item.time}</span>
-          <span class="text-amber-300 font-black">FR ${item.fr}</span> | <span class="text-emerald-400 font-black">SR ${item.sr}</span>
-        </div>
-      `).join('');
+      strip.innerHTML = rounds.map(r => {
+        const value = String(r.result_number).padStart(2,'0');
+        const time = new Date(r.starts_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        return `<div class="bg-teal-950/80 border border-amber-400/40 rounded-lg px-2 py-0.5 text-center flex-shrink-0 shadow">
+          <span class="text-[8px] text-slate-400 block">${time} • #${r.id}</span>
+          <span class="${r.result_type === 'FR' ? 'text-amber-300' : 'text-emerald-400'} font-black">${r.result_type} ${value}</span>
+        </div>`;
+      }).join('');
     }
 
     function renderTeerPlayHistoryList() {
@@ -1401,7 +1445,7 @@
         return `
           <div class="bg-black/50 border border-teal-900/60 rounded-xl p-2.5 flex justify-between items-center text-xs">
             <div>
-              <div class="font-bold text-teal-200">${b.mode} [${b.number}] <span class="text-[10px] text-slate-400 font-normal">(${b.round})</span></div>
+              <div class="font-bold text-teal-200">${b.mode} [${b.number}] <span class="text-[10px] text-slate-400 font-normal">(${b.round} • ID #${b.roundId || "--"})</span></div>
               <div class="text-[10px] text-slate-400">${b.time || ''}</div>
             </div>
             <div class="text-right flex flex-col items-end gap-1">
@@ -1541,6 +1585,37 @@
       state.notifications.unshift(item);
       saveNotifications();
       syncNotifications();
+    }
+
+    async function syncUserRequestNotifications(silent = false) {
+      if (!state.user || accountIsDemo || !accountSessionToken) return;
+      try {
+        const [deposits, withdrawals] = await Promise.all([
+          accountApi('my_deposit_requests', { limit: 30 }),
+          accountApi('my_withdrawal_requests', { limit: 30 })
+        ]);
+        const check = (items, kind) => (items || []).forEach(item => {
+          const status = String(item.status || 'pending').toLowerCase();
+          const key = `request_status_${kind}_${item.id}`;
+          const previous = memoryStore.getItem(key);
+          if (previous !== null && previous !== status && !silent) {
+            const amount = Number(item.amount || 0);
+            if (kind === 'deposit') {
+              const approved = status === 'approved';
+              addAppNotification({ type:'deposit', title:approved?'Deposit Approved':'Deposit Rejected', message:approved?`₹${amount} deposit approved and wallet credited.`:`₹${amount} deposit request was rejected.` });
+            } else {
+              const paid = status === 'approved';
+              const rejected = status === 'rejected';
+              addAppNotification({ type:'withdraw', title:paid?'Withdrawal Paid':(rejected?'Withdrawal Rejected':'Withdrawal Updated'), message:paid?`₹${amount} withdrawal marked paid.`:(rejected?`₹${amount} withdrawal rejected; wallet refund processed.`:`₹${amount} withdrawal status: ${status}.`) });
+            }
+          }
+          memoryStore.setItem(key, status);
+        });
+        check(deposits.items, 'deposit');
+        check(withdrawals.items, 'withdrawal');
+      } catch (e) {
+        console.warn('User request notification sync failed:', e.message);
+      }
     }
 
     function playChimeSound() {
@@ -1718,7 +1793,7 @@
             <div class="flex justify-between items-center pt-1">
               <div>
                 <span class="font-decorative text-base text-slate-700">Start your game here</span>
-                <span class="block text-[9px] text-amber-700 font-bold">10 min cutoff apply</span>
+                
               </div>
               <div class="flex items-center gap-1.5">
                 <button onclick="openChartModal('${m.name}')" class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800">
@@ -1874,7 +1949,7 @@
         notice.classList.remove('hidden');
         confirmBtn.disabled = true;
         confirmBtn.className = "flex-1 py-2.5 rounded-xl bg-slate-300 text-slate-500 font-bold text-xs cursor-not-allowed";
-        confirmBtn.innerText = "Time Over (10 Min Cutoff)";
+        confirmBtn.innerText = "Time Over";
       } else {
         notice.classList.add('hidden');
         confirmBtn.disabled = false;
@@ -1945,7 +2020,8 @@
       if (mName === 'Teer Play') {
         const remainingSecs = 60 - new Date().getSeconds();
         noticeEl.className = "text-[11px] text-amber-300 font-mono font-bold flex items-center gap-1.5";
-        noticeEl.innerHTML = `⏱️ Draw In: <span id="teerPlayLiveModalTimer" class="bg-amber-400 text-teal-950 px-2 py-0.5 rounded-full font-black animate-pulse">00:${String(remainingSecs).padStart(2, '0')}s</span>`;
+        noticeEl.innerHTML = `⏱️ Draw In: <span id="teerPlayLiveModalTimer" class="bg-amber-400 text-teal-950 px-2 py-0.5 rounded-full font-black animate-pulse">00:${String(remainingSecs).padStart(2, '0')}s</span> <span id="teerPlayRoundMeta" class="text-[9px] text-teal-200 ml-1">FR ID: -- | SR ID: --</span>`;
+        initSupabasePublicSync();
         if (histBtn) histBtn.classList.remove('hidden');
         if (stripContainer) {
           stripContainer.classList.remove('hidden');
@@ -1953,7 +2029,7 @@
         }
       } else {
         noticeEl.className = "text-[10px] text-amber-300 font-semibold";
-        noticeEl.innerText = "⚠️ Cutoff: 10 mins before draw time";
+        noticeEl.innerText = "";
         if (histBtn) histBtn.classList.add('hidden');
         if (stripContainer) stripContainer.classList.add('hidden');
       }
@@ -2041,7 +2117,7 @@
       
       const countEl = document.getElementById('withdrawDailyCountText');
       if (countEl) {
-        countEl.innerText = `Daily Requests: ${dailyData.count}/5 (Max ₹50,000)`;
+        countEl.innerText = 'Daily limit is controlled by your account VIP level.';
       }
 
       document.getElementById('withdrawModal').classList.remove('hidden');
@@ -2077,7 +2153,51 @@
       const tbody = document.getElementById('chartTableBody');
       tbody.innerHTML = '';
 
-      let records = [...(historicalMarketData[mName] || [
+      if (mName === 'Teer Play') {
+        const grouped = new Map();
+        (state.teerPlayRounds || []).forEach(round => {
+          const key = new Date(round.starts_at).toISOString();
+          if (!grouped.has(key)) grouped.set(key, { starts_at: round.starts_at, FR: null, SR: null });
+          const group = grouped.get(key);
+          if (round.result_type === 'FR') group.FR = round;
+          if (round.result_type === 'SR') group.SR = round;
+        });
+        const rows = [...grouped.values()].sort((a,b) =>
+          new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime()
+        );
+        if (!rows.length) {
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 5;
+          td.className = 'p-4 text-slate-500';
+          td.textContent = 'No server round records yet.';
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+          return;
+        }
+        rows.forEach(group => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-50 border-b';
+          const date = new Date(group.starts_at).toLocaleString([], {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+          const cells = [
+            date,
+            group.FR ? '#' + group.FR.id : '--',
+            group.FR && group.FR.result_number != null ? String(group.FR.result_number).padStart(2,'0') : '--',
+            group.SR ? '#' + group.SR.id : '--',
+            group.SR && group.SR.result_number != null ? String(group.SR.result_number).padStart(2,'0') : '--'
+          ];
+          cells.forEach((value,index) => {
+            const td = document.createElement('td');
+            td.className = 'p-2 border border-slate-200 ' + (index === 2 ? 'text-teal-900' : index === 4 ? 'text-amber-700' : 'text-slate-600');
+            td.textContent = value;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        return;
+      }
+
+      const records = [...(historicalMarketData[mName] || [
         { d: '02/11/2026', fr: '45', sr: '82' },
         { d: '01/11/2026', fr: '30', sr: '19' },
         { d: '31/10/2026', fr: '67', sr: '53' },
@@ -2087,31 +2207,23 @@
         { d: '27/10/2026', fr: '91', sr: '66' },
         { d: '26/10/2026', fr: '23', sr: '48' }
       ])];
-
-      // Merge today's live declared result if available
-      try {
-        const savedResults = (window.supabaseResults || {});
-        const todayStr = getTodayFormattedDate();
-        if (savedResults[mName] && (savedResults[mName].fr !== '**' || savedResults[mName].sr !== '**')) {
-          const liveRec = {
-            d: savedResults[mName].date || todayStr,
-            fr: savedResults[mName].fr || '**',
-            sr: savedResults[mName].sr || '**'
-          };
-          // Remove if duplicate date already exists in static records, then prepend
-          records = records.filter(r => r.d !== liveRec.d);
-          records.unshift(liveRec);
-        }
-      } catch(e) {}
-
+      const savedResults = window.supabaseResults || {};
+      const todayStr = getTodayFormattedDate();
+      if (savedResults[mName] && (savedResults[mName].fr !== '**' || savedResults[mName].sr !== '**')) {
+        const liveRec = { d: savedResults[mName].date || todayStr, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**' };
+        const idx = records.findIndex(r => r.d === liveRec.d);
+        if (idx >= 0) records[idx] = liveRec;
+        else records.unshift(liveRec);
+      }
       records.forEach(r => {
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 border-b";
-        tr.innerHTML = `
-          <td class="p-2 border border-slate-200 text-slate-600 font-semibold">${r.d}</td>
-          <td class="p-2 border border-slate-200 text-teal-900 font-black text-sm">${r.fr}</td>
-          <td class="p-2 border border-slate-200 text-amber-700 font-black text-sm">${r.sr}</td>
-        `;
+        tr.className = 'hover:bg-slate-50 border-b';
+        [r.d, r.fr, r.sr].forEach((value,index) => {
+          const td = document.createElement('td');
+          td.className = 'p-2 border border-slate-200 ' + (index === 1 ? 'text-teal-900' : index === 2 ? 'text-amber-700' : 'text-slate-600');
+          td.textContent = value;
+          tr.appendChild(td);
+        });
         tbody.appendChild(tr);
       });
     }
@@ -2552,13 +2664,29 @@
     let currentTxFilter = 'all';
 
     function getTransactions() {
-      return JSON.parse(memoryStore.getItem('teer_transactions') || '[]');
+      return Array.isArray(state.transactions) ? state.transactions : [];
     }
 
     /* Removed disabled legacy recordTransaction handler. */
 
-    function openTransactionModal() {
+    async function openTransactionModal() {
       document.getElementById('txModal').classList.remove('hidden');
+      if (state.user && !accountIsDemo) {
+        try {
+          const data = await accountApi('my_transactions', { limit: 100 });
+          state.transactions = (data.items || []).map(t => {
+            const rawType = String(t.type || '').toLowerCase();
+            const type = rawType === 'withdrawal' ? 'withdraw' : rawType;
+            const isCredit = statusRaw === 'refunded' || ['deposit','win','bonus','welcome','commission'].includes(type);
+            const statusRaw = String(t.status || 'pending').toLowerCase();
+            const status = statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
+            const date = t.created_at ? new Date(t.created_at) : new Date();
+            return { id:t.id, type, title:t.description || (type === 'withdraw' ? 'Withdrawal' : type.charAt(0).toUpperCase()+type.slice(1)), amount:Number(t.amount || 0), isCredit, status, date:date.toLocaleDateString('en-GB'), time:date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) };
+          });
+        } catch (e) {
+          showAppToast('Transaction history could not be refreshed.');
+        }
+      }
       renderTransactions();
     }
 
@@ -2605,7 +2733,7 @@
         let badgeColor = 'bg-slate-100 text-slate-700';
         if (t.status === 'Completed' || t.status === 'Approved') badgeColor = 'bg-emerald-100 text-emerald-800';
         else if (t.status === 'Pending' || t.status === 'Processing') badgeColor = 'bg-amber-100 text-amber-800';
-        else if (t.status === 'Rejected' || t.status === 'Failed') badgeColor = 'bg-rose-100 text-rose-800';
+        else if (t.status === 'Rejected' || t.status === 'Failed' || t.status === 'Refunded') badgeColor = 'bg-rose-100 text-rose-800';
 
         return `
           <div class="py-2.5 flex items-center justify-between gap-2">
@@ -2748,6 +2876,17 @@
     // ==========================================
     // SUPABASE ACCOUNT API INTEGRATION
     // Real-user session stays in memory only. Demo users remain isolated.
+    function showAppToast(message) {
+      let toast = document.getElementById('appToast');
+      if (!toast) {
+        toast = document.createElement('div'); toast.id = 'appToast';
+        toast.className = 'fixed top-16 left-1/2 -translate-x-1/2 z-[100] bg-teal-950 text-white px-4 py-3 rounded-xl shadow-2xl text-xs font-bold max-w-[90vw] text-center transition-opacity';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = message; toast.classList.remove('hidden'); toast.style.opacity = '1';
+      clearTimeout(window.__appToastTimer);
+      window.__appToastTimer = setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.classList.add('hidden'), 250); }, 2600);
+    }
     // ==========================================
     const ACCOUNT_API_URL = 'https://qzbqmbrzmfggzzeufkyh.supabase.co/functions/v1/account-api';
     const ACCOUNT_API_KEY = 'sb_publishable_Z2ij7JqELoVfBQ75wrSrFg_bKDt3aj1';
@@ -2784,6 +2923,9 @@
       try {
         const data = await accountApi('public_app_data', {}, false);
         window.supabaseResults = data.results || {};
+        state.teerPlayRounds = Array.isArray(data.rounds) ? data.rounds : [];
+        renderTeerPlayRoundIds();
+        renderTeerPlayHistoryStrip();
         const settings = data.settings || {};
         if (settings.deposit_upi) {
           const upiSpan = document.getElementById('depositUpiText'); if (upiSpan) upiSpan.innerText = settings.deposit_upi;
@@ -2826,7 +2968,7 @@
         try { await refreshAccountBalance(); }
         catch (balanceError) { console.warn('Initial balance refresh failed:', balanceError); state.balance = 0; }
         updateUI(); closeAuthModal();
-        alert('Registration successful! Supabase account ready.');
+        showAppToast('Registration successful! ₹10 welcome bonus added to your wallet.');
       } catch (err) { alert(err.message || 'Registration failed.'); }
     }
 
@@ -2838,7 +2980,8 @@
       if (demo) {
         accountSessionToken = null; accountIsDemo = true;
         state.user = { ...demo }; state.balance = Number(demo.balance || 0); state.bids = [];
-        updateUI(); closeAuthModal(); openAppInstallModal(); return;
+        await syncUserRequestNotifications(true);
+        updateUI(); closeAuthModal(); showAppToast('Login successful. Welcome back!'); return;
       }
       try {
         const data = await accountApi('login', { phone, password }, false);
@@ -2847,8 +2990,8 @@
         state.user = data.user; accountIsDemo = false; state.bids = [];
         await refreshAccountBalance();
         const bets = await accountApi('my_bets', { limit: 100 });
-        state.bids = (bets.items || []).map(b => ({ refId:b.client_ref || b.id, market:b.market, round:b.round, mode:b.bet_mode, number:b.bet_number, amount:Number(b.amount), status:b.status, payout:Number(b.payout || 0), date:b.created_at, time:'' }));
-        updateUI(); closeAuthModal(); openAppInstallModal();
+        state.bids = (bets.items || []).map(b => ({ refId:b.client_ref || b.id, market:b.market, round:b.round, roundId:b.round_id, mode:b.bet_mode, number:b.bet_number, amount:Number(b.amount), status:(String(b.status).toLowerCase()==='active'?'Active':String(b.status).toUpperCase()), payout:Number(b.payout || 0), date:b.created_at, time:'' }));
+        updateUI(); closeAuthModal(); showAppToast('Login successful. Welcome back!');
       } catch (err) { alert(err.message || 'Login failed.'); }
     }
 
@@ -2876,8 +3019,9 @@
         document.getElementById('depositUtrInput').value = '';
         currentDepositScreenshotBase64 = null;
         closeDepositModal();
-        addAppNotification({ type:'deposit', title:'Deposit Request Submitted', message:`₹${amount} deposit request (UTR: ${utr}) Supabase par submit hui. Admin approval ke baad wallet credit hoga.` });
-        alert('Deposit request Supabase par submit ho gayi. Admin approval ka wait karein.');
+        addAppNotification({ type:'deposit', title:'Deposit Request Submitted', message:`₹${amount} deposit request Supabase par submit hui. Admin approval ke baad wallet credit hoga.` });
+        await syncUserRequestNotifications(true);
+        showAppToast('Deposit request submitted. Admin approval ke baad wallet credit hoga.');
       } catch (err) { alert(err.message || 'Deposit request failed.'); }
     }
 
@@ -2903,7 +3047,8 @@
         await accountApi('create_withdrawal', { amount, payout_details:payoutDetails });
         await refreshAccountBalance(); closeWithdrawModal();
         addAppNotification({ type:'withdraw', title:'Withdrawal Request Submitted', message:`₹${amount} withdrawal request admin review ke liye submit hui.` });
-        alert('Withdrawal request submit ho gayi. Wallet balance server par update hua hai.');
+        await syncUserRequestNotifications(true);
+        showAppToast('Withdrawal request submitted. Wallet balance server par update hua hai.');
       } catch (err) { alert(err.message || 'Withdrawal request failed.'); }
     }
 
@@ -2925,7 +3070,9 @@
         // API validates and deducts each selection on the server; report any partial result clearly.
         let completed = 0;
         for (const item of selections) {
-          await accountApi('place_bet', { client_ref:ref + '-' + completed, market:state.currentMarketObj.name, round:item.round, bet_mode:String(state.betMode).toUpperCase(), bet_number:item.number, amount });
+          const roundId = state.currentMarketObj.name === 'Teer Play' ? getCurrentTeerPlayRoundId(item.round) : null;
+          if (state.currentMarketObj.name === 'Teer Play' && !roundId) throw new Error('Is round ka active ID nahi mila. Refresh karke dobara try karein.');
+          await accountApi('place_bet', { client_ref:ref + '-' + completed, market:state.currentMarketObj.name, round:item.round, round_id:roundId, bet_mode:String(state.betMode).toUpperCase(), bet_number:item.number, amount });
           completed++;
         }
         await refreshAccountBalance();
@@ -2933,7 +3080,7 @@
         const nums = state.selectedNumbers.join(', ');
         state.selectedNumbers = []; updateSelectedTray(); calculatePayout();
         const bets = await accountApi('my_bets', {limit:100});
-        state.bids = (bets.items || []).map(b => ({refId:b.client_ref || b.id,market:b.market,round:b.round,mode:b.bet_mode,number:b.bet_number,amount:Number(b.amount),status:b.status,payout:Number(b.payout||0),date:b.created_at,time:''}));
+        state.bids = (bets.items || []).map(b => ({refId:b.client_ref || b.id,market:b.market,round:b.round,roundId:b.round_id,mode:b.bet_mode,number:b.bet_number,amount:Number(b.amount),status:(String(b.status).toLowerCase()==='active'?'Active':String(b.status).toUpperCase()),payout:Number(b.payout||0),date:b.created_at,time:''}));
         updateUI(); showBetReceiptClip(state.currentMarketObj.name, roundLabel, nums, amount, document.getElementById('potentialWin').innerText.replace('₹',''), ref);
       } catch (err) {
         await refreshAccountBalance().catch(()=>{});
@@ -2945,7 +3092,7 @@
 
     // Refresh public results/settings periodically from Supabase, not Supabase or browser storage.
     if (!window.__supabasePublicRefresh) {
-      window.__supabasePublicRefresh = setInterval(() => initSupabasePublicSync(), 20000);
+      window.__supabasePublicRefresh = setInterval(() => { initSupabasePublicSync(); syncUserRequestNotifications(false); }, 20000);
     }
 
     // Safe placeholders for features without an audited server-side Supabase API.
