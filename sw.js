@@ -1,5 +1,5 @@
-// Teer Online Standalone Service Worker for PWA
-const CACHE_NAME = 'teer-online-supabase-v2';
+// Teer Online service worker: refresh HTML from GitHub Pages instead of serving stale app UI.
+const CACHE_NAME = 'teer-online-supabase-v3';
 const urlsToCache = [
   './',
   './index.html',
@@ -10,26 +10,54 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache).catch(() => {});
-    })
-  );
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    try { await cache.addAll(urlsToCache); } catch (_) {}
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(key => key.startsWith('teer-online-') && key !== CACHE_NAME).map(key => caches.delete(key)));
+    await Promise.all(keys
+      .filter(key => key.startsWith('teer-online-') && key !== CACHE_NAME)
+      .map(key => caches.delete(key)));
     await self.clients.claim();
   })());
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).catch(() => {});
-    })
-  );
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  const isAppHtml = event.request.mode === 'navigate' || /\/index\.html$/.test(url.pathname);
+
+  if (isAppHtml) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const fresh = await fetch(event.request, { cache: 'no-store' });
+        if (fresh && fresh.ok) await cache.put(event.request, fresh.clone());
+        return fresh;
+      } catch (_) {
+        return (await cache.match(event.request)) || (await cache.match('./index.html'));
+      }
+    })());
+    return;
+  }
+
+  event.respondWith((async () => {
+    const cached = await caches.match(event.request);
+    if (cached) return cached;
+    try {
+      const fresh = await fetch(event.request);
+      if (fresh && fresh.ok && url.origin === self.location.origin) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(event.request, fresh.clone());
+      }
+      return fresh;
+    } catch (_) {
+      return undefined;
+    }
+  })());
 });
