@@ -874,8 +874,10 @@
           <table class="w-full text-center border-collapse">
             <thead>
               <tr class="bg-teal-950 text-amber-300 font-bold text-[11px]">
-                <th class="p-2 border border-teal-800">Date</th>
+                <th class="p-2 border border-teal-800">Date / Time</th>
+                <th class="p-2 border border-teal-800">FR ID</th>
                 <th class="p-2 border border-teal-800">FR Result</th>
+                <th class="p-2 border border-teal-800">SR ID</th>
                 <th class="p-2 border border-teal-800">SR Result</th>
               </tr>
             </thead>
@@ -1757,7 +1759,7 @@
             <div class="flex justify-between items-center pt-1">
               <div>
                 <span class="font-decorative text-base text-slate-700">Start your game here</span>
-                <span class="block text-[9px] text-amber-700 font-bold">10 min cutoff apply</span>
+                
               </div>
               <div class="flex items-center gap-1.5">
                 <button onclick="openChartModal('${m.name}')" class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800">
@@ -1913,7 +1915,7 @@
         notice.classList.remove('hidden');
         confirmBtn.disabled = true;
         confirmBtn.className = "flex-1 py-2.5 rounded-xl bg-slate-300 text-slate-500 font-bold text-xs cursor-not-allowed";
-        confirmBtn.innerText = "Time Over (10 Min Cutoff)";
+        confirmBtn.innerText = "Time Over";
       } else {
         notice.classList.add('hidden');
         confirmBtn.disabled = false;
@@ -2128,6 +2130,19 @@
         { d: '26/10/2026', fr: '23', sr: '48' }
       ])];
 
+      if (mName === 'Teer Play') {
+        const grouped = new Map();
+        (state.teerPlayRounds || []).filter(r => r.status === 'settled').forEach(r => {
+          const key = r.starts_at;
+          const row = grouped.get(key) || { d:new Date(r.starts_at).toLocaleString(), fr:'**', sr:'**', frId:'--', srId:'--', sortTime:new Date(r.starts_at).getTime() };
+          const result = String(r.result_number ?? '**').padStart(2,'0');
+          if (r.result_type === 'FR') { row.fr = result; row.frId = String(r.id); }
+          if (r.result_type === 'SR') { row.sr = result; row.srId = String(r.id); }
+          grouped.set(key,row);
+        });
+        records = Array.from(grouped.values()).sort((a,b)=>b.sortTime-a.sortTime).slice(0,100);
+      }
+
       // Merge today's live declared result if available
       try {
         const savedResults = (window.supabaseResults || {});
@@ -2149,7 +2164,9 @@
         tr.className = "hover:bg-slate-50 border-b";
         tr.innerHTML = `
           <td class="p-2 border border-slate-200 text-slate-600 font-semibold">${r.d}</td>
+          <td class="p-2 border border-slate-200 text-slate-500 text-[10px]">${r.frId || '--'}</td>
           <td class="p-2 border border-slate-200 text-teal-900 font-black text-sm">${r.fr}</td>
+          <td class="p-2 border border-slate-200 text-slate-500 text-[10px]">${r.srId || '--'}</td>
           <td class="p-2 border border-slate-200 text-amber-700 font-black text-sm">${r.sr}</td>
         `;
         tbody.appendChild(tr);
@@ -2901,8 +2918,8 @@
         state.user = data.user; accountIsDemo = false; state.bids = [];
         await refreshAccountBalance();
         const bets = await accountApi('my_bets', { limit: 100 });
-        state.bids = (bets.items || []).map(b => ({ refId:b.client_ref || b.id, market:b.market, round:b.round, mode:b.bet_mode, number:b.bet_number, amount:Number(b.amount), status:b.status, payout:Number(b.payout || 0), date:b.created_at, time:'' }));
-        updateUI(); closeAuthModal(); openAppInstallModal();
+        state.bids = (bets.items || []).map(b => ({ refId:b.client_ref || b.id, market:b.market, round:b.round, roundId:b.round_id, mode:b.bet_mode, number:b.bet_number, amount:Number(b.amount), status:(String(b.status).toLowerCase()==='active'?'Active':String(b.status).toUpperCase()), payout:Number(b.payout || 0), date:b.created_at, time:'' }));
+        updateUI(); closeAuthModal(); showAppToast('Login successful. Welcome back!'); openAppInstallModal();
       } catch (err) { alert(err.message || 'Login failed.'); }
     }
 
