@@ -1413,7 +1413,7 @@
       }).join('');
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
       await loadStorage();
       // Restore the active server session after a page refresh.
       await restoreSavedAccountSession();
@@ -2854,7 +2854,7 @@
 
     // ==========================================
     // SUPABASE ACCOUNT API INTEGRATION
-    // Real-user auth token is held in tab sessionStorage so refresh does not log the user out. Demo users remain isolated.
+    // Real-user auth token is persisted in IndexedDB; demo users remain isolated.
     function showAppToast(message) {
       let toast = document.getElementById('appToast');
       if (!toast) {
