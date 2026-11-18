@@ -3105,7 +3105,7 @@
         document.getElementById('depositUtrInput').value = '';
         currentDepositScreenshotBase64 = null;
         closeDepositModal();
-        addAppNotification({ type:'deposit', title:'Deposit Request Submitted', message:`₹${amount} deposit request successfully submit hui. Admin approval ke baad wallet credit hoga.` });
+        addAppNotification({ type:'deposit', title:'Deposit Request Submitted', message:`₹${amount} deposit request successfully submit hui. UTR: ${utr}. Admin approval ke baad wallet credit hoga.` });
         await syncUserRequestNotifications(true);
         showAppToast('Deposit request submitted. Admin approval ke baad wallet credit hoga.');
       } catch (err) { alert(err.message || 'Deposit request failed.'); }
