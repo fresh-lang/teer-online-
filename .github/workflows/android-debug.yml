@@ -30,6 +30,11 @@ jobs:
         run: |
           npm run prepare:web
           npx cap add android
+      - name: Generate Android launcher icon from Teer Online logo
+        run: |
+          mkdir -p resources
+          convert icon-512.png -resize 1024x1024 resources/icon.png
+          npx --yes @capacitor/assets generate --android
       - name: Build debug APK
         run: |
           npx cap sync android
