@@ -989,7 +989,8 @@
       ],
       bids: [],
       notifications: [],
-      teerPlayRounds: []
+      teerPlayRounds: [],
+      transactions: []
     };
 
     const historicalMarketData = {
@@ -1442,7 +1443,7 @@
         return `
           <div class="bg-black/50 border border-teal-900/60 rounded-xl p-2.5 flex justify-between items-center text-xs">
             <div>
-              <div class="font-bold text-teal-200">${b.mode} [${b.number}] <span class="text-[10px] text-slate-400 font-normal">(${b.round})</span></div>
+              <div class="font-bold text-teal-200">${b.mode} [${b.number}] <span class="text-[10px] text-slate-400 font-normal">(${b.round} • ID #${b.roundId || "--"})</span></div>
               <div class="text-[10px] text-slate-400">${b.time || ''}</div>
             </div>
             <div class="text-right flex flex-col items-end gap-1">
@@ -2609,13 +2610,29 @@
     let currentTxFilter = 'all';
 
     function getTransactions() {
-      return JSON.parse(memoryStore.getItem('teer_transactions') || '[]');
+      return Array.isArray(state.transactions) ? state.transactions : [];
     }
 
     /* Removed disabled legacy recordTransaction handler. */
 
-    function openTransactionModal() {
+    async function openTransactionModal() {
       document.getElementById('txModal').classList.remove('hidden');
+      if (state.user && !accountIsDemo) {
+        try {
+          const data = await accountApi('my_transactions', { limit: 100 });
+          state.transactions = (data.items || []).map(t => {
+            const rawType = String(t.type || '').toLowerCase();
+            const type = rawType === 'withdrawal' ? 'withdraw' : rawType;
+            const isCredit = ['deposit','win','bonus','welcome','commission'].includes(type);
+            const statusRaw = String(t.status || 'pending').toLowerCase();
+            const status = statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
+            const date = t.created_at ? new Date(t.created_at) : new Date();
+            return { id:t.id, type, title:t.description || (type === 'withdraw' ? 'Withdrawal' : type.charAt(0).toUpperCase()+type.slice(1)), amount:Number(t.amount || 0), isCredit, status, date:date.toLocaleDateString('en-GB'), time:date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) };
+          });
+        } catch (e) {
+          showAppToast('Transaction history could not be refreshed.');
+        }
+      }
       renderTransactions();
     }
 
@@ -2662,7 +2679,7 @@
         let badgeColor = 'bg-slate-100 text-slate-700';
         if (t.status === 'Completed' || t.status === 'Approved') badgeColor = 'bg-emerald-100 text-emerald-800';
         else if (t.status === 'Pending' || t.status === 'Processing') badgeColor = 'bg-amber-100 text-amber-800';
-        else if (t.status === 'Rejected' || t.status === 'Failed') badgeColor = 'bg-rose-100 text-rose-800';
+        else if (t.status === 'Rejected' || t.status === 'Failed' || t.status === 'Refunded') badgeColor = 'bg-rose-100 text-rose-800';
 
         return `
           <div class="py-2.5 flex items-center justify-between gap-2">
