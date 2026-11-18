@@ -145,6 +145,26 @@
         </div>
       </div>
 
+      <!-- Teer Play minute rounds: each FR/SR result has its own server ID -->
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-amber-500/30 space-y-3 shadow-md">
+        <div class="border-b border-teal-900/40 pb-2">
+          <h3 class="font-bold text-sm text-amber-300">Teer Play — Minute Round ID Override</h3>
+          <p class="text-[11px] text-slate-400">FR aur SR ka alag ID. Result selected round ke end par publish hoga.</p>
+        </div>
+        <label class="text-xs text-slate-300 font-bold block">Select Round ID:</label>
+        <select id="teerRoundIdSelect" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white">
+          <option value="">Loading round IDs...</option>
+        </select>
+        <div class="flex gap-2">
+          <input id="teerRoundResultInput" type="number" min="0" max="99" placeholder="Result 00-99" class="flex-1 bg-black/50 border border-teal-800 rounded-xl p-3 text-center font-black text-white text-xl">
+          <button onclick="saveTeerRoundOverride()" class="px-4 py-3 bg-amber-400 hover:bg-amber-300 text-teal-950 font-black rounded-xl text-xs">Set Result</button>
+        </div>
+        <div id="teerRoundHistory" class="max-h-56 overflow-y-auto space-y-1 text-[10px]">
+          <p class="text-slate-500">Round history loading...</p>
+        </div>
+        <button onclick="loadTeerRoundIds()" class="w-full py-2 bg-teal-900 hover:bg-teal-800 text-teal-100 rounded-xl text-xs font-bold">Refresh Round IDs</button>
+      </div>
+
       <!-- Broadcast Custom Notification -->
       <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-2.5">
         <h3 class="font-bold text-sm text-amber-300">Broadcast Notification to All Users</h3>
@@ -797,6 +817,7 @@
       window.__adminResults = data.results || {};
       window.__adminSettings = data.settings || {};
       renderUsersList(); renderDepositsList(); renderWithdrawalsList();
+      await loadTeerRoundIds();
       const st = window.__adminSettings;
       document.getElementById('cfgPhone').value = st.helpline || '';
       document.getElementById('cfgUpi').value = st.deposit_upi || '';
@@ -804,6 +825,52 @@
       loadMarketExistingResult();
       renderScheduleCards();
       renderAgentEarnings({});
+    }
+
+    async function loadTeerRoundIds() {
+      const select = document.getElementById('teerRoundIdSelect');
+      const history = document.getElementById('teerRoundHistory');
+      if (!select || !history) return;
+      try {
+        const data = await adminApi('admin_list_rounds', { limit: 120 });
+        const rounds = data.items || [];
+        window.__teerRoundCache = rounds;
+        select.innerHTML = '';
+        const selectable = rounds.filter(r => r.status !== 'settled');
+        if (!selectable.length) select.innerHTML = '<option value="">No upcoming round IDs</option>';
+        selectable.forEach(r => {
+          const option = document.createElement('option');
+          option.value = String(r.id);
+          option.textContent = `#${r.id} • ${r.result_type} • ${new Date(r.starts_at).toLocaleTimeString()} • ${r.status}`;
+          select.appendChild(option);
+        });
+        history.innerHTML = rounds.slice(0,30).map(r => `
+          <div class="flex justify-between gap-2 border-b border-teal-900/40 py-1.5">
+            <span class="text-amber-300 font-bold">#${r.id} • ${r.result_type}</span>
+            <span class="text-slate-300">${r.result_number == null ? '--' : String(r.result_number).padStart(2,'0')}</span>
+            <span class="text-slate-500">${r.result_source || r.status}</span>
+          </div>`).join('') || '<p class="text-slate-500">No round records.</p>';
+      } catch (e) {
+        select.innerHTML = '<option value="">Round IDs unavailable</option>';
+        history.textContent = 'Could not load round IDs: ' + (e.message || e);
+      }
+    }
+
+    async function saveTeerRoundOverride() {
+      const roundId = Number(document.getElementById('teerRoundIdSelect').value);
+      const resultNumber = Number(document.getElementById('teerRoundResultInput').value);
+      if (!Number.isSafeInteger(roundId) || roundId < 1 || !Number.isInteger(resultNumber) || resultNumber < 0 || resultNumber > 99) {
+        alert('Valid round ID aur 00-99 result enter karein.');
+        return;
+      }
+      try {
+        const response = await adminApi('admin_set_round_result', { round_id: roundId, result_number: resultNumber });
+        document.getElementById('teerRoundResultInput').value = '';
+        await loadTeerRoundIds();
+        alert(`Round #${roundId} ka result ${String(resultNumber).padStart(2,'0')} save ho gaya. Round end par publish hoga.`);
+      } catch (e) {
+        alert('Round result save failed: ' + (e.message || e));
+      }
     }
 
     function loadMarketExistingResult() {
