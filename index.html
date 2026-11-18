@@ -1380,10 +1380,11 @@
     function renderTeerPlayHistoryStrip() {
       const strip = document.getElementById('teerPlayResultsHistoryStrip');
       if (!strip) return;
+      // Latest published minute result must appear first in Previous Results.
       const rounds = (state.teerPlayRounds || [])
         .filter(r => r.status === 'settled' && r.result_number !== null && r.result_number !== undefined)
-        .sort((a,b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
-        .slice(-24);
+        .sort((a,b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime())
+        .slice(0, 24);
       if (!rounds.length) {
         strip.innerHTML = '<span class="text-slate-500 text-[10px] italic">Waiting for draw...</span>';
         return;
