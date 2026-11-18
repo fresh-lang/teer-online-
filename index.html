@@ -363,8 +363,8 @@
             <p class="text-xs font-bold text-slate-800">Referral Offer Details</p>
             <p class="text-[11px] text-slate-700">Eligible referral par ₹10 bonus.</p>
             <p class="text-[11px] text-slate-700">Eligible referral user ke total ₹1,000 bet par ₹100 bonus.</p>
-            <p class="text-[10px] text-slate-500 mt-1">Ye offer details sirf dikhane ke liye hain. Referral eligibility tracking aur automatic bonus wallet credit abhi active nahi hain.</p>
-            <p class="text-[10px] text-slate-500">Referral code registration ke waqt optional hai.</p>
+            <p class="text-[10px] text-slate-500 mt-1">Referrer reward: referred user ke approved ₹100+ deposit par ₹5; eligible total ₹1,000 bets par extra ₹5. Har reward ek baar.</p>
+            <p class="text-[10px] text-slate-500">Aapka referral code: <b id="profileReferralCode" class="font-mono text-teal-900">Login karein</b></p>
           </div>
           <div class="pt-1 flex gap-2">
             <button onclick="shareReferralWhatsApp()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
@@ -2448,20 +2448,20 @@
       return 'https://app.teeronline.fun/register';
     }
 
+    function getMyReferralCode() { return state.user && state.user.uid ? String(state.user.uid) : ''; }
     function shareReferralWhatsApp() {
-      const myRefCode = state.user ? (state.user.phone || state.user.uid || '8134678') : '8134678';
-      const baseUrl = getBaseShareUrl();
-      const shareUrl = `${baseUrl}?ref=${myRefCode}`;
-      const text = encodeURIComponent(`🎯 TEER ONLINE Official Registration!\n🎁 Naye account par ₹10 one-time registration welcome bonus milta hai!\n\n👉 Referral Code: ${myRefCode}\n👉 Direct Register Link: ${shareUrl}`);
+      const myRefCode = getMyReferralCode();
+      if (!myRefCode) { alert('Referral link share karne ke liye pehle login karein.'); openAuthModal(); return; }
+      const shareUrl = `${getBaseShareUrl()}?ref=${encodeURIComponent(myRefCode)}`;
+      const text = encodeURIComponent(`🎯 TEER ONLINE Registration!\\n🎁 New user: ₹10 one-time registration bonus.\\n\\nReferral code: ${myRefCode}\\nApproved deposit ₹100+ par referrer ko ₹5, aur eligible total bets ₹1,000 par extra ₹5.\\n\\nRegister here: ${shareUrl}`);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     }
-
-    function copyReferralLink() {
-      const myRefCode = state.user ? (state.user.phone || state.user.uid || '8134678') : '8134678';
-      const baseUrl = getBaseShareUrl();
-      const shareUrl = `${baseUrl}?ref=${myRefCode}`;
-      navigator.clipboard.writeText(shareUrl);
-      alert(`✅ Referral Link Copied!\n${shareUrl}\n\nLink par click karte hi direct registration page khulega aur referral code auto-fill ho jayega!`);
+    async function copyReferralLink() {
+      const myRefCode = getMyReferralCode();
+      if (!myRefCode) { alert('Referral link copy karne ke liye pehle login karein.'); openAuthModal(); return; }
+      const shareUrl = `${getBaseShareUrl()}?ref=${encodeURIComponent(myRefCode)}`;
+      try { await navigator.clipboard.writeText(shareUrl); showAppToast('Referral link copied!'); }
+      catch (_) { window.prompt('Copy your referral link:', shareUrl); }
     }
 
     /* Removed stale in-memory account persistence handler logoutUser. */
@@ -2727,47 +2727,64 @@
       }
       document.getElementById('myReferralsModal').classList.remove('hidden');
       renderMyReferralsModal();
+      syncMyReferralsFromSupabase();
     }
 
     function closeMyReferralsModal() {
       document.getElementById('myReferralsModal').classList.add('hidden');
     }
 
-    /* Removed disabled legacy syncMyReferralsFromSupabase handler. */
-
+    async function syncMyReferralsFromSupabase() {
+      if (!state.user || !accountSessionToken || accountIsDemo) return;
+      const cont = document.getElementById('myReferralsListContainer');
+      if (cont) cont.innerHTML = '<div class="p-6 text-center text-slate-500">Loading referral details...</div>';
+      try {
+        const data = await accountApi('my_referrals');
+        myReferralFriends = Array.isArray(data.friends) ? data.friends : [];
+        const count = document.getElementById('modalRefFriendsCount');
+        const earned = document.getElementById('modalRefTotalEarned');
+        if (count) count.textContent = (data.total_referrals || 0) + ' Members';
+        if (earned) earned.textContent = '₹' + Number(data.total_earned || 0).toFixed(2);
+        const code = document.getElementById('profileReferralCode');
+        if (code) code.textContent = data.referral_code || state.user.uid || '—';
+        renderMyReferralsModal();
+      } catch (err) {
+        if (cont) cont.innerHTML = '<div class="p-6 text-center text-rose-600">Referral details load nahi hue. Please refresh and try again.</div>';
+        console.warn('Referral sync failed:', err);
+      }
+    }
+    function referralEscape(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    }
     function renderMyReferralsModal() {
       const cont = document.getElementById('myReferralsListContainer');
       if (!cont) return;
       if (myReferralFriends.length === 0) {
-        cont.innerHTML = '<div class="p-8 text-center text-slate-400">Referral member tracking and payouts are not active yet.</div>';
+        cont.innerHTML = '<div class="p-8 text-center text-slate-500">Abhi koi referral join nahi hua. Apna link share karein.</div>';
         return;
       }
-
-      cont.innerHTML = myReferralFriends.map((f, idx) => {
+      cont.innerHTML = myReferralFriends.map(f => {
+        const name = referralEscape(f.name || 'Friend');
+        const phone = referralEscape(f.maskedPhone || '—');
+        const joined = f.created_at ? new Date(f.created_at).toLocaleDateString() : 'Recent';
+        const depositStatus = f.depositReward ? '<span class="text-emerald-700">Deposit +₹5 paid</span>' : '<span class="text-slate-500">Deposit reward pending</span>';
+        const betStatus = f.betReward ? '<span class="text-emerald-700">Bet +₹5 paid</span>' : '<span class="text-slate-500">Bet reward pending</span>';
         return `
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs">
-                ${f.name ? f.name.charAt(0).toUpperCase() : 'U'}
-              </div>
-              <div>
-                <p class="font-bold text-slate-800 text-xs">${f.name || 'Friend'}</p>
-                <p class="text-[10px] text-slate-500 font-mono">+91 ${f.maskedPhone || f.phone}</p>
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs">${name.charAt(0).toUpperCase()}</div>
+              <div class="min-w-0">
+                <p class="font-bold text-slate-800 text-xs truncate">${name}</p>
+                <p class="text-[10px] text-slate-500 font-mono">+91 ${phone} • UID ${referralEscape(f.uid)}</p>
+                <p class="text-[9px] text-slate-500">Joined: ${joined}</p>
               </div>
             </div>
-            <div class="text-right">
-              <span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">Active Member</span>
-              <p class="text-[9px] text-slate-400 mt-0.5">Joined: ${f.date || 'Recent'}</p>
-            </div>
+            <div class="text-right text-[9px] shrink-0 space-y-1">${depositStatus}<br>${betStatus}</div>
           </div>
         `;
       }).join('');
     }
 
-
-    // ==========================================
-    // BACK BUTTON & EXIT POPUP NAVIGATION FIX
-    // ==========================================
     let currentActiveTab = 'home';
     let isExitModalOpen = false;
 
@@ -3164,7 +3181,7 @@
             <h3 class="font-bold text-sm text-teal-950 flex items-center gap-1.5">
               <i class="fa-solid fa-users-viewfinder text-amber-600"></i> My Referral Team
             </h3>
-            <p class="text-[10px] text-slate-500">Referral earnings and commission are not active yet</p>
+            <p class="text-[10px] text-slate-500">Live referrals and wallet rewards</p>
           </div>
           <button onclick="closeMyReferralsModal()" class="text-slate-400 hover:text-slate-700 p-1">
             <i class="fa-solid fa-xmark text-lg"></i>
@@ -3173,11 +3190,11 @@
 
         <div class="bg-gradient-to-r from-teal-900 to-[#021d20] text-white p-3 rounded-2xl flex justify-between items-center">
           <div>
-            <p class="text-[10px] text-teal-300">Referral Tracking (Not Active)</p>
+            <p class="text-[10px] text-teal-300">Total Referrals</p>
             <p id="modalRefFriendsCount" class="text-xl font-black text-amber-300">0 Members</p>
           </div>
           <div class="text-right">
-            <p class="text-[10px] text-teal-300">Referral Commission (Not Active)</p>
+            <p class="text-[10px] text-teal-300">Total Earned</p>
             <p id="modalRefTotalEarned" class="text-xl font-black text-emerald-400">₹0.00</p>
           </div>
         </div>
