@@ -2951,7 +2951,18 @@
       accountSessionToken = null;
       accountIsDemo = false;
       try {
-        const saved = await readStoredAccountSession();
+        let saved = await readStoredAccountSession();
+        // One-time migration from the previous tab-only session storage.
+        if (!saved) {
+          try {
+            const legacy = JSON.parse(sessionStorage.getItem(ACCOUNT_SESSION_KEY) || 'null');
+            if (legacy && typeof legacy.token === 'string' && legacy.token && legacy.user && legacy.user.id) {
+              saved = legacy;
+              await writeStoredAccountSession(legacy);
+            }
+            sessionStorage.removeItem(ACCOUNT_SESSION_KEY);
+          } catch (_) {}
+        }
         if (saved && typeof saved.token === 'string' && saved.token && saved.user && saved.user.id) {
           accountSessionToken = saved.token;
           state.user = saved.user;
