@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import bcrypt from "npm:bcryptjs@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -41,23 +42,33 @@ async function passwordHash(password: string): Promise<string> {
   return `pbkdf2-sha256$310000$${toB64Url(salt)}$${toB64Url(new Uint8Array(bits))}`;
 }
 
-async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const parts = stored.split("$");
-  if (parts.length !== 4 || parts[0] !== "pbkdf2-sha256") return false;
-  const iterations = Number(parts[1]);
-  if (!Number.isInteger(iterations) || iterations < 100000 || iterations > 1000000) return false;
-  try {
-    const salt = fromB64Url(parts[2]);
-    const expected = fromB64Url(parts[3]);
-    const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
-    const actual = new Uint8Array(await crypto.subtle.deriveBits(
-      { name: "PBKDF2", salt, iterations, hash: "SHA-256" }, key, 256,
-    ));
-    if (actual.length !== expected.length) return false;
-    let diff = 0;
-    for (let i = 0; i < actual.length; i++) diff |= actual[i] ^ expected[i];
-    return diff === 0;
-  } catch { return false; }
+async function verifyPassword(password: string, stored: string): Promise<{ valid: boolean; legacyBcrypt: boolean }> {
+  if (stored.startsWith("pbkdf2-sha256$")) {
+    const parts = stored.split("$");
+    if (parts.length !== 4 || parts[0] !== "pbkdf2-sha256") return { valid: false, legacyBcrypt: false };
+    const iterations = Number(parts[1]);
+    if (!Number.isInteger(iterations) || iterations < 100000 || iterations > 1000000) return { valid: false, legacyBcrypt: false };
+    try {
+      const salt = fromB64Url(parts[2]);
+      const expected = fromB64Url(parts[3]);
+      const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
+      const actual = new Uint8Array(await crypto.subtle.deriveBits(
+        { name: "PBKDF2", salt, iterations, hash: "SHA-256" }, key, 256,
+      ));
+      if (actual.length !== expected.length) return { valid: false, legacyBcrypt: false };
+      let diff = 0;
+      for (let i = 0; i < actual.length; i++) diff |= actual[i] ^ expected[i];
+      return { valid: diff === 0, legacyBcrypt: false };
+    } catch {
+      return { valid: false, legacyBcrypt: false };
+    }
+  }
+  // Older registrations used bcrypt. Accept them once and upgrade the hash after successful login.
+  if (/^\$2[aby]\$/.test(stored)) {
+    try { return { valid: await bcrypt.compare(password, stored), legacyBcrypt: true }; }
+    catch { return { valid: false, legacyBcrypt: true }; }
+  }
+  return { valid: false, legacyBcrypt: false };
 }
 
 async function sha256Hex(value: string): Promise<string> {
@@ -167,13 +178,23 @@ Deno.serve(async (req) => {
     if (action === "login" || action === "admin_login") {
       const phone = cleanPhone(body.phone);
       const password = body.password;
-      if (phone.length !== 10 || !validPassword(password)) {
+      // Existing app accounts may have 4+ character legacy passwords; new registration still requires 8+.
+      if (phone.length !== 10 || typeof password !== "string" || password.length < 4 || password.length > 128) {
         return json({ error: "Invalid phone or password" }, 400, origin);
       }
       const found = await rpc<unknown>("api_auth_lookup", { p_phone: phone });
       const user = asOne(found as Record<string, unknown> | Record<string, unknown>[] | null);
-      if (!user || typeof user.password_hash !== "string" || !(await verifyPassword(password, user.password_hash))) {
-        return json({ error: "Invalid phone or password" }, 401, origin);
+      if (!user || typeof user.password_hash !== "string") return json({ error: "Invalid phone or password" }, 401, origin);
+      const passwordCheck = await verifyPassword(password, user.password_hash);
+      if (!passwordCheck.valid) return json({ error: "Invalid phone or password" }, 401, origin);
+      if (passwordCheck.legacyBcrypt) {
+        const userIdForUpgrade = user.id ?? user.user_id;
+        if (userIdForUpgrade) {
+          const upgradedHash = await passwordHash(password);
+          const { error: upgradeError } = await supabase.from("app_users")
+            .update({ password_hash: upgradedHash }).eq("id", userIdForUpgrade);
+          if (upgradeError) console.error("Legacy password hash upgrade failed:", upgradeError.message);
+        }
       }
       let isAdmin = false;
       if (action === "admin_login") {
@@ -311,8 +332,8 @@ Deno.serve(async (req) => {
         const balances = Object.fromEntries((walletsQ.data ?? []).map((w: any) => [w.user_id, Number(w.balance ?? 0)]));
         const users = (usersQ.data ?? []).map((u: any) => ({ ...u, balance: balances[u.id] ?? 0 }));
         const byId = Object.fromEntries(users.map((u: any) => [u.id, u]));
-        const deposits = (depositsQ.data ?? []).map((d: any) => ({ ...d, ...(byId[d.user_id] ?? {}), name: byId[d.user_id]?.name ?? "User", phone: byId[d.user_id]?.phone ?? "", screenshot: d.screenshot_url ?? "" }));
-        const withdrawals = (withdrawalsQ.data ?? []).map((w: any) => ({ ...w, ...(byId[w.user_id] ?? {}), name: byId[w.user_id]?.name ?? "User", phone: byId[w.user_id]?.phone ?? "", payoutType: w.payout_details?.method === "bank" ? "bank" : "upi", bankDetails: w.payout_details?.method === "bank" ? { holderName: w.payout_details.holder_name, accountNumber: w.payout_details.account_number, ifsc: w.payout_details.ifsc, bankName: w.payout_details.bank_name } : null, upi: w.payout_details?.upi ?? "" }));
+        const deposits = (depositsQ.data ?? []).map((d: any) => ({ ...(byId[d.user_id] ?? {}), ...d, name: byId[d.user_id]?.name ?? "User", phone: byId[d.user_id]?.phone ?? "", screenshot: d.screenshot_url ?? "" }));
+        const withdrawals = (withdrawalsQ.data ?? []).map((w: any) => ({ ...(byId[w.user_id] ?? {}), ...w, name: byId[w.user_id]?.name ?? "User", phone: byId[w.user_id]?.phone ?? "", payoutType: w.payout_details?.method === "bank" ? "bank" : "upi", bankDetails: w.payout_details?.method === "bank" ? { holderName: w.payout_details.holder_name, accountNumber: w.payout_details.account_number, ifsc: w.payout_details.ifsc, bankName: w.payout_details.bank_name } : null, upi: w.payout_details?.upi ?? "" }));
         const resultMap: Record<string, unknown> = {};
         for (const row of resultsQ.data ?? []) resultMap[row.market] = { fr: row.fr ?? "**", sr: row.sr ?? "**", date: row.result_date ?? "" };
         return json({ success: true, users, deposits, withdrawals, bets: betsQ.data ?? [], results: resultMap, settings: settingsQ.data ?? {} }, 200, origin);
@@ -332,7 +353,7 @@ Deno.serve(async (req) => {
           for (const [round, resultNumber] of [["FR", fr], ["SR", sr]] as const) {
             if (!/^\d{1,2}$/.test(resultNumber)) continue;
             const { data: pendingBets, error: betsError } = await supabase.from("bets").select("id")
-              .eq("market", market).eq("round", round).eq("status", "pending").limit(1000);
+              .eq("market", market).eq("round", round).eq("status", "active").limit(1000);
             if (betsError) throw betsError;
             for (const bet of pendingBets ?? []) {
               settlements.push(await rpc("api_settle_bet", { p_bet_id: bet.id, p_result_number: resultNumber }));

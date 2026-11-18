@@ -1,0 +1,6 @@
+{
+  "appId": "com.teeronline.app",
+  "appName": "Teer Online",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

@@ -11,7 +11,7 @@
 </head>
 <body class="bg-[#081012] text-slate-100 min-h-screen p-3 md:p-6 font-sans">
 
-  <!-- LOCK SCREEN (PASSWORD 8822) -->
+  <!-- Admin login uses the app account and Supabase admin allowlist. -->
   <div id="lockScreen" class="fixed inset-0 bg-[#050a0b] flex items-center justify-center p-4 z-50">
     <div class="bg-[#0f1d21] border border-teal-900 p-6 rounded-3xl max-w-sm w-full text-center shadow-2xl space-y-4">
       <div class="w-16 h-16 rounded-full bg-amber-400/10 border-2 border-amber-400/40 mx-auto flex items-center justify-center text-amber-400 text-2xl">
@@ -396,12 +396,10 @@
 
   <script>
     // Volatile compatibility storage only; admin data is fetched from Supabase.
-    const memoryStore = (() => { const values = new Map(); return { getItem:k => values.has(k) ? values.get(k) : null, setItem:(k,v) => values.set(k, String(v)), removeItem:k => values.delete(k) }; })();
     const ACCOUNT_API_URL = 'https://qzbqmbrzmfggzzeufkyh.supabase.co/functions/v1/account-api';
     const ACCOUNT_API_KEY = 'sb_publishable_Z2ij7JqELoVfBQ75wrSrFg_bKDt3aj1';
     let adminSessionToken = null;
     let adminUser = null;
-    let fbDatabase = null; // legacy functions are overridden below; Supabase is not loaded.
     async function adminApi(action, payload = {}, authenticated = true) {
       const headers = { 'Content-Type': 'application/json', 'apikey': ACCOUNT_API_KEY, 'Authorization': 'Bearer ' + ACCOUNT_API_KEY };
       if (authenticated && adminSessionToken) headers['x-session-token'] = adminSessionToken;
@@ -416,16 +414,7 @@
     let allWithdrawalsCache = {};
     let activeModalUserPhone = null;
 
-    function checkPass() {
-      const p = document.getElementById('passInput').value;
-      if (p === '8822') {
-        document.getElementById('lockScreen').classList.add('hidden');
-        document.getElementById('dash').classList.remove('hidden');
-        initAdminDataSync();
-      } else {
-        document.getElementById('err').classList.remove('hidden');
-      }
-    }
+    /* Removed disabled legacy checkPass handler. */
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
@@ -440,56 +429,7 @@
     }
 
     // INITIALIZE REALTIME SYNC FOR USERS, DEPOSITS, WITHDRAWALS
-    function initAdminDataSync() {
-      if (!fbDatabase) return;
-
-      // 0. Legacy result sync disabled
-      fbDatabase.ref('results').on('value', (snap) => {
-        const resVal = snap.val() || {};
-        memoryStore.setItem('teer_market_results', JSON.stringify(resVal));
-        loadMarketExistingResult();
-      });
-
-      // 1. Sync All Users
-      fbDatabase.ref('users').on('value', (snap) => {
-        let cloudUsers = snap.val() || {};
-        let localUsersList = JSON.parse(memoryStore.getItem('teer_registered_users') || '[]');
-        let merged = { ...cloudUsers };
-        localUsersList.forEach(u => {
-          if (u.phone && !merged[u.phone]) {
-            merged[u.phone] = u;
-          }
-        });
-        allUsersCache = merged;
-        renderUsersList();
-      });
-
-      // 2. Sync Deposits
-      fbDatabase.ref('deposits').on('value', (snap) => {
-        allDepositsCache = snap.val() || {};
-        renderDepositsList();
-      });
-
-      // 3. Sync Withdrawals
-      fbDatabase.ref('withdrawals').on('value', (snap) => {
-        allWithdrawalsCache = snap.val() || {};
-        renderWithdrawalsList();
-      });
-
-      // 4. Sync Agent earnings
-      renderScheduleCards();
-      fbDatabase.ref('settings').on('value', (snap) => {
-        const s = snap.val();
-        if (s) {
-          if (s.helpline) document.getElementById('cfgPhone').value = s.helpline;
-          if (s.depositUpi) document.getElementById('cfgUpi').value = s.depositUpi;
-          if (s.marqueeText) document.getElementById('cfgMarquee').value = s.marqueeText;
-        }
-      });
-      fbDatabase.ref('agent_earnings').on('value', (snap) => {
-        renderAgentEarnings(snap.val() || {});
-      });
-    }
+    /* Removed disabled legacy initAdminDataSync handler. */
 
     // RENDER USERS
     function renderUsersList() {
@@ -594,28 +534,7 @@
       activeModalUserPhone = null;
     }
 
-    function adjustUserBalance(type) {
-      if (!activeModalUserPhone) return;
-      const amt = parseFloat(document.getElementById('adjustAmtInput').value);
-      if (!amt || amt <= 0) { alert('Valid amount enter karein!'); return; }
-
-      const u = allUsersCache[activeModalUserPhone];
-      let currentBal = parseFloat(u.balance || 0);
-
-      if (type === 'deduct' && currentBal < amt) {
-        alert('User ke paas itna balance nahi hai!');
-        return;
-      }
-
-      const newBal = type === 'add' ? (currentBal + amt) : (currentBal - amt);
-
-      if (fbDatabase) {
-        fbDatabase.ref('users/' + activeModalUserPhone + '/balance').set(newBal).then(() => {
-          alert(`Balance updated! Naya balance: ₹${newBal.toFixed(2)}`);
-          document.getElementById('mUserBalance').innerText = '₹' + newBal.toFixed(2);
-        });
-      }
-    }
+    /* Removed disabled legacy adjustUserBalance handler. */
 
     // RENDER DEPOSITS WITH UTR VERIFICATION
     
@@ -702,39 +621,9 @@
       }).join('');
     }
 
-    function approveDeposit(depositId) {
-      const d = allDepositsCache[depositId];
-      if (!d) return;
+    /* Removed disabled legacy approveDeposit handler. */
 
-      const amt = parseFloat(d.amount);
-      const bonus = amt * 0.05; // 5% deposit bonus
-      const totalCredit = amt + bonus;
-
-      if (!confirm(`Deposit Verify Karein?\nUser: ${d.name} (${d.phone})\nAmount: ₹${amt} + ₹${bonus.toFixed(2)} (5% Bonus) = ₹${totalCredit.toFixed(2)}\n\nUser wallet me turant credit ho jayega!`)) return;
-
-      // 1. Update deposit status in Supabase
-      fbDatabase.ref('deposits/' + depositId + '/status').set('approved');
-
-      // 2. Add balance to user in Supabase
-      fbDatabase.ref('users/' + d.phone + '/balance').transaction((curr) => {
-        return (curr || 0) + totalCredit;
-      });
-
-      // 3. Trigger Agent Commission if user was referred
-      if (allUsersCache[d.phone] && allUsersCache[d.phone].referredBy) {
-        const refPhone = allUsersCache[d.phone].referredBy;
-        const realRefBonus = (amt / 1000) * 5; // ₹5 per 1000
-        fbDatabase.ref('agent_earnings/' + refPhone).transaction((curr) => (curr || 0) + realRefBonus);
-      }
-
-      alert(`✅ Deposit Approved! ₹${totalCredit.toFixed(2)} user ke wallet me instant credit ho gaya.`);
-    }
-
-    function rejectDeposit(depositId) {
-      if (!confirm('Kya aap is deposit request ko reject karna chahte hain?')) return;
-      fbDatabase.ref('deposits/' + depositId + '/status').set('rejected');
-      alert('Deposit rejected.');
-    }
+    /* Removed disabled legacy rejectDeposit handler. */
 
     // RENDER WITHDRAWALS
     function renderWithdrawalsList() {
@@ -800,27 +689,9 @@
       }).join('');
     }
 
-    function approveWithdrawal(wId) {
-      if (!confirm('Kya aapne user ko unke UPI par payout bhej diya hai? Is request ko Paid mark karein?')) return;
-      fbDatabase.ref('withdrawals/' + wId + '/status').set('approved');
-      alert('Withdrawal marked as Paid / Approved!');
-    }
+    /* Removed disabled legacy approveWithdrawal handler. */
 
-    function rejectWithdrawal(wId) {
-      const w = allWithdrawalsCache[wId];
-      if (!w) return;
-      if (!confirm(`Withdrawal Reject karke ₹${w.amount} user ke wallet me refund karein?`)) return;
-
-      // 1. Mark status rejected
-      fbDatabase.ref('withdrawals/' + wId + '/status').set('rejected');
-
-      // 2. Refund balance
-      fbDatabase.ref('users/' + w.phone + '/balance').transaction((curr) => {
-        return (curr || 0) + parseFloat(w.amount);
-      });
-
-      alert(`Withdrawal rejected aur ₹${w.amount} user ke wallet me wapas refund kar diye gaye hain.`);
-    }
+    /* Removed disabled legacy rejectWithdrawal handler. */
 
     function renderAgentEarnings(earnings) {
       const box = document.getElementById('agentEarningsList');
@@ -840,136 +711,17 @@
       return `${d}/${m}/${y}`;
     }
 
-    function loadMarketExistingResult() {
-      const market = document.getElementById('mkt').value;
-      const results = JSON.parse(memoryStore.getItem('teer_market_results') || '{}');
-      const current = results[market] || { fr: '', sr: '' };
+    /* Removed disabled legacy loadMarketExistingResult handler. */
 
-      document.getElementById('fr').value = (current.fr && current.fr !== '**') ? current.fr : '';
-      document.getElementById('sr').value = (current.sr && current.sr !== '**') ? current.sr : '';
-    }
+    /* Removed disabled legacy saveResultAndBroadcast handler. */
 
-    function saveResultAndBroadcast() {
-      const market = document.getElementById('mkt').value;
-      let fr = document.getElementById('fr').value.trim();
-      let sr = document.getElementById('sr').value.trim();
-      const todayDate = getTodayFormattedDate();
+    /* Removed disabled legacy resetMarketResult handler. */
 
-      let results = JSON.parse(memoryStore.getItem('teer_market_results') || '{}');
-      const existing = results[market] || { fr: '**', sr: '**' };
-
-      // Agar FR pehle se set tha aur ab khali chhod diya, toh purana FR delete na ho
-      if (!fr) {
-        fr = (existing.fr && existing.fr !== '**') ? existing.fr : '**';
-      }
-      if (!sr) {
-        sr = (existing.sr && existing.sr !== '**') ? existing.sr : '**';
-      }
-
-      results[market] = { fr, sr, date: todayDate };
-      memoryStore.setItem('teer_market_results', JSON.stringify(results));
-
-      if (fbDatabase) {
-        fbDatabase.ref('results').set(results);
-      }
-
-      alert(`✅ Result Saved for ${market}!\nDate: ${todayDate}\nFR: ${fr} | SR: ${sr}\nSabhi player screens par sync ho gaya.`);
-    }
-
-    function resetMarketResult(market) {
-      if (!confirm(`Reset results for ${market} to **?`)) return;
-      let results = JSON.parse(memoryStore.getItem('teer_market_results') || '{}');
-      results[market] = { fr: '**', sr: '**', date: '' };
-      memoryStore.setItem('teer_market_results', JSON.stringify(results));
-      if (fbDatabase) {
-        fbDatabase.ref('results').set(results);
-      }
-      alert(`${market} result reset to **.`);
-    }
-
-    function sendEventNotification() {
-      const title = document.getElementById('eventTitle').value.trim() || 'Notice';
-      const msg = document.getElementById('eventMsg').value.trim();
-      if (!msg) { alert('Notification message likhein!'); return; }
-
-      if (fbDatabase) {
-        fbDatabase.ref('broadcast_notifications').push({
-          title,
-          message: msg,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          timestamp: Date.now()
-        });
-      }
-
-      document.getElementById('eventMsg').value = '';
-      alert('Event Notification broadcasted to all online users!');
-    }
+    /* Removed disabled legacy sendEventNotification handler. */
 
     
     // --- LIVE RISK & BET ANALYTICS (1:90) ---
-    function calculateLiveRiskAnalytics() {
-      const market = document.getElementById('analyticsMarketSelect').value;
-      const round = document.getElementById('analyticsRoundSelect').value;
-      const tbody = document.getElementById('riskTableRows');
-      if (!fbDatabase) return;
-
-      fbDatabase.ref('bets').once('value', (snap) => {
-        const bets = snap.val() || {};
-        const gutiTotals = {};
-        for (let i = 0; i <= 99; i++) {
-          const num = i < 10 ? '0' + i : '' + i;
-          gutiTotals[num] = 0;
-        }
-
-        let totalPool = 0;
-        Object.values(bets).forEach(b => {
-          if (b.market === market && b.round === round) {
-            const amt = parseFloat(b.amount) || 0;
-            totalPool += amt;
-            const n = String(b.number).padStart(2, '0');
-            gutiTotals[n] = (gutiTotals[n] || 0) + amt;
-          }
-        });
-
-        const sorted = Object.entries(gutiTotals).sort((a,b) => b[1] - a[1]);
-        const topGuti = sorted[0];
-        const maxLiability = (topGuti[1] || 0) * 90;
-
-        document.getElementById('kpiTotalPool').innerText = '₹' + totalPool.toFixed(2);
-        document.getElementById('kpiMaxLiability').innerText = '₹' + maxLiability.toFixed(2);
-        document.getElementById('kpiTopGuti').innerText = topGuti[1] > 0 ? (topGuti[0] + ' (₹' + topGuti[1].toFixed(0) + ')') : '--';
-
-        const statusEl = document.getElementById('kpiRiskStatus');
-        if (maxLiability > totalPool && topGuti[1] > 0) {
-          statusEl.className = "text-xs font-bold text-rose-400";
-          statusEl.innerText = "HIGH RISK (-₹" + (maxLiability - totalPool).toFixed(0) + ")";
-        } else {
-          statusEl.className = "text-xs font-bold text-emerald-400";
-          statusEl.innerText = "Safe / Profitable";
-        }
-
-        tbody.innerHTML = '';
-        sorted.forEach(([num, amt]) => {
-          if (amt === 0 && totalPool > 0) return;
-          const payout = amt * 90;
-          const net = totalPool - payout;
-          const tr = document.createElement('tr');
-          tr.className = "hover:bg-teal-950/20";
-          tr.innerHTML = `
-            <td class="p-2 font-mono font-bold text-amber-300">${num}</td>
-            <td class="p-2 font-semibold">₹${amt.toFixed(2)}</td>
-            <td class="p-2 text-rose-400 font-bold">₹${payout.toFixed(2)}</td>
-            <td class="p-2 ${net >= 0 ? 'text-emerald-400' : 'text-rose-500'} font-bold">₹${net.toFixed(2)}</td>
-            <td class="p-2 text-right">${net < 0 && amt > 0 ? '<span class="bg-rose-900/80 text-rose-300 px-1.5 py-0.5 rounded text-[10px] font-bold">CRITICAL RISK</span>' : (amt > 0 ? '<span class="bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded text-[10px]">SAFE</span>' : '<span class="text-slate-500 text-[10px]">--</span>')}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-
-        if (tbody.children.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">No bets placed yet for this round.</td></tr>';
-        }
-      });
-    }
+    /* Removed disabled legacy calculateLiveRiskAnalytics handler. */
 
     // --- MARKET SCHEDULE & CUTOFF EDITOR ---
     const defaultMarketList = [
@@ -985,7 +737,9 @@
     function renderScheduleCards() {
       const container = document.getElementById('adminScheduleCards');
       if (!container) return;
-      container.innerHTML = defaultMarketList.map((m, idx) => `
+      const savedSchedules = (window.__adminSettings || {}).market_schedules || {};
+      const scheduleList = defaultMarketList.map(m => ({ ...m, ...(savedSchedules[m.name] || {}) }));
+      container.innerHTML = scheduleList.map((m, idx) => `
         <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40 flex flex-wrap justify-between items-center gap-2">
           <div>
             <div class="font-bold text-white text-xs">${m.name}</div>
@@ -1002,49 +756,14 @@
       `).join('');
     }
 
-    function saveMarketSchedule(mName, idx) {
-      const frVal = document.getElementById('sch_fr_' + idx).value.trim();
-      const srVal = document.getElementById('sch_sr_' + idx).value.trim();
-      if (!fbDatabase) return;
-      fbDatabase.ref('market_schedules/' + mName).set({ frTime: frVal, srTime: srVal }).then(() => {
-        alert(mName + ' schedule saved & synced to live app!');
-      });
-    }
+    /* Removed disabled legacy saveMarketSchedule handler. */
 
     // --- USER CONTROLS: BLOCK & PASSWORD RESET ---
-    function toggleBlockUser(phone, currentStatus) {
-      if (!fbDatabase) return;
-      const newStatus = !currentStatus;
-      fbDatabase.ref('users/' + phone + '/isBlocked').set(newStatus).then(() => {
-        alert(`User ${phone} is now ` + (newStatus ? 'BLOCKED' : 'ACTIVE'));
-      });
-    }
+    /* Removed disabled legacy toggleBlockUser handler. */
 
-    function adminResetUserPassword(phone) {
-      const newPass = prompt("Enter new password/PIN for user " + phone + ":", "123456");
-      if (newPass && newPass.length >= 4) {
-        if (!fbDatabase) return;
-        fbDatabase.ref('users/' + phone + '/password').set(newPass).then(() => {
-          alert("Password successfully updated to: " + newPass);
-        });
-      }
-    }
+    /* Removed disabled legacy adminResetUserPassword handler. */
 
-    function saveSettings() {
-      const phone = document.getElementById('cfgPhone').value.trim();
-      const upi = document.getElementById('cfgUpi').value.trim();
-
-      memoryStore.setItem('teer_helpline_phone', phone);
-      memoryStore.setItem('teer_deposit_upi', upi);
-
-      const marquee = document.getElementById('cfgMarquee').value.trim();
-      memoryStore.setItem('teer_marquee_text', marquee);
-      if (fbDatabase) {
-        fbDatabase.ref('settings').set({ helpline: phone, depositUpi: upi, marqueeText: marquee });
-      }
-
-      alert('Settings saved successfully!');
-    }
+    /* Removed disabled legacy saveSettings handler. */
     // ===== Supabase-only admin implementation (overrides legacy Supabase handlers) =====
     async function checkPass() {
       const phone = (document.getElementById('adminPhone').value || '').replace(/\D/g, '');
@@ -1162,7 +881,28 @@
     }
     function sendEventNotification() { alert('Broadcast notifications ka Supabase table/API abhi pending hai.'); }
 
-  </script>
+      async function calculateLiveRiskAnalytics() {
+      const market = document.getElementById('analyticsMarketSelect').value;
+      const round = document.getElementById('analyticsRoundSelect').value;
+      const tbody = document.getElementById('riskTableRows');
+      try {
+        const response = await adminApi('admin_list_bets', { limit: 200 });
+        const bets = (response.items || []).filter(b => b.market === market && b.round === round && ['active','pending'].includes(String(b.status).toLowerCase()));
+        const totals = Object.fromEntries(Array.from({length:100},(_,i)=>[String(i).padStart(2,'0'),0]));
+        let totalPool = 0;
+        for (const bet of bets) { const amount = Number(bet.amount || 0); const number = String(bet.bet_number ?? '').padStart(2,'0'); if (Object.prototype.hasOwnProperty.call(totals,number)) { totals[number] += amount; totalPool += amount; } }
+        const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]); const top = sorted[0] || ['--',0]; const liability = top[1] * 90;
+        document.getElementById('kpiTotalPool').innerText = '₹' + totalPool.toFixed(2);
+        document.getElementById('kpiMaxLiability').innerText = '₹' + liability.toFixed(2);
+        document.getElementById('kpiTopGuti').innerText = top[1] > 0 ? `${top[0]} (₹${top[1].toFixed(0)})` : '--';
+        const status = document.getElementById('kpiRiskStatus'); status.className = 'text-xs font-bold ' + (liability > totalPool && top[1] > 0 ? 'text-rose-400' : 'text-emerald-400');
+        status.innerText = liability > totalPool && top[1] > 0 ? `HIGH RISK (-₹${(liability-totalPool).toFixed(0)})` : 'Safe / Profitable';
+        tbody.innerHTML = '';
+        for (const [number, amount] of sorted.filter(x=>x[1]>0)) { const payout=amount*90, net=totalPool-payout, tr=document.createElement('tr'); tr.className='hover:bg-teal-950/20'; tr.innerHTML=`<td class="p-2 font-mono font-bold text-amber-300">${number}</td><td class="p-2 font-semibold">₹${amount.toFixed(2)}</td><td class="p-2 text-rose-400 font-bold">₹${payout.toFixed(2)}</td><td class="p-2 ${net>=0?'text-emerald-400':'text-rose-500'} font-bold">₹${net.toFixed(2)}</td><td class="p-2 text-right">${net<0?'CRITICAL RISK':'SAFE'}</td>`; tbody.appendChild(tr); }
+        if (!tbody.children.length) tbody.innerHTML='<tr><td colspan="5" class="p-4 text-center text-slate-500">No active bets for this market and round.</td></tr>';
+      } catch (error) { tbody.innerHTML=`<tr><td colspan="5" class="p-4 text-center text-rose-300">Analytics failed: ${String(error.message || error)}</td></tr>`; }
+    }
+</script>
 
   <!-- MODAL: FULL PAYMENT RECEIPT SCREENSHOT VIEWER -->
   <div id="receiptViewerModal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden">

@@ -16,48 +16,41 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel:wght@700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <script src="https://cdn.tailwindcss.com">
-    // ==========================================
-    // PWA & APP INSTALL ENGINE (DIRECT APK DOWNLOAD + 3-DOTS GUIDE)
-    // ==========================================
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // PWA installation (no APK download is bundled with this source).
     let deferredInstallPrompt = null;
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredInstallPrompt = e;
-      console.log('beforeinstallprompt captured!');
+    window.addEventListener('beforeinstallprompt', (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
     });
 
-    function triggerAutoInstall() {
+    async function triggerAutoInstall() {
       if (navigator.vibrate) navigator.vibrate(50);
-      try {
-        const a = document.createElement('a');
-        a.href = 'TeerOnline.apk';
-        a.download = 'TeerOnline.apk';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch(e) {
-        window.location.href = 'TeerOnline.apk';
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        return;
       }
+      alert('Install karne ke liye browser ke 3-dots menu mein “Add to Home screen” ya “Install app” chunein.');
     }
 
     function triggerInstallAction() {
       triggerAutoInstall();
     }
 
-    // Register Service Worker for PWA installation
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch(err => {
-          console.log('SW register failed:', err);
+          console.warn('Service worker registration failed:', err);
         });
       });
     }
+  </script>
 
-</script>
-
-  <!-- Supabase removed: Supabase Edge Function is authoritative. -->
+  <!-- Supabase Edge Function is authoritative for accounts, wallet, bets, results and settings. -->
 
   <style>
     * { -webkit-tap-highlight-color: transparent; }
@@ -122,12 +115,12 @@
         <div class="w-6 h-6 rounded-full bg-teal-950 text-amber-300 flex items-center justify-center text-xs shadow-inner">
           <i class="fa-solid fa-download animate-bounce"></i>
         </div>
-        <span class="tracking-wide font-black">Download / Install Teer Online App</span>
+        <span class="tracking-wide font-black">Install Teer Online App</span>
       </div>
-      <a href="TeerOnline.apk" download="TeerOnline.apk" onclick="event.stopPropagation(); triggerAutoInstall();" class="bg-teal-950 hover:bg-teal-900 active:scale-95 text-amber-300 px-3.5 py-1.5 rounded-xl text-xs font-black shadow transition flex items-center gap-1 cursor-pointer">
-        <span>Download APK</span>
-        <i class="fa-solid fa-cloud-arrow-down text-[11px] ml-0.5"></i>
-      </a>
+      <button type="button" onclick="event.stopPropagation(); triggerAutoInstall();" class="bg-teal-950 hover:bg-teal-900 active:scale-95 text-amber-300 px-3.5 py-1.5 rounded-xl text-xs font-black shadow transition flex items-center gap-1 cursor-pointer">
+        <span>Install App</span>
+        <i class="fa-solid fa-mobile-screen-button text-[11px] ml-0.5"></i>
+      </button>
     </div>
 
     <!-- MAIN SCREENS CONTAINER -->
@@ -922,7 +915,7 @@
           </div>
           <div>
             <label class="text-[11px] font-bold text-slate-600 block mb-0.5">Password:</label>
-            <input type="password" id="regPass" placeholder="Kam se kam 4 digit password" minlength="4" required class="w-full border rounded-xl p-2 text-xs outline-none focus:border-teal-700">
+            <input type="password" id="regPass" placeholder="At least 8 characters" minlength="8" required class="w-full border rounded-xl p-2 text-xs outline-none focus:border-teal-700">
           </div>
           <div>
             <label class="text-[11px] font-bold text-slate-600 flex justify-between items-center mb-0.5">
@@ -965,8 +958,7 @@
   <script>
     // Volatile UI-only storage. Account, wallet, bets, results and settings live in Supabase.
     const memoryStore = (() => { const values = new Map(); return { getItem:k => values.has(k) ? values.get(k) : null, setItem:(k,v) => values.set(k, String(v)), removeItem:k => values.delete(k) }; })();
-    // Supabase has been removed. Legacy code paths are inert; Supabase is authoritative.
-    let fbDatabase = null;
+    // Legacy compatibility handlers are inactive; the active account and wallet API is Supabase.
     window.supabaseResults = window.supabaseResults || {};
 
     // State management
@@ -1278,162 +1270,14 @@
     // 1-MINUTE TEER PLAY AUTO DRAW ENGINE & POPUP
     // ==========================================
     function initTeerPlayAutoEngine() {
-      setInterval(() => {
-        const now = new Date();
-        const secsLeft = 60 - now.getSeconds();
-
-        // Update modal timer countdown continuously
-        const modalTimer = document.getElementById('teerPlayLiveModalTimer');
-        if (modalTimer) {
-          modalTimer.innerText = `00:${String(secsLeft).padStart(2, '0')}s`;
-        }
-
-        // Exact 00 second: draw result, restart countdown & trigger Win/Loss popup
-        if (now.getSeconds() === 0) {
-          executeTeerPlayMinuteDraw();
-        }
+      if (window.__teerPlayTimer) return;
+      window.__teerPlayTimer = setInterval(() => {
+        const timer = document.getElementById('teerPlayLiveModalTimer');
+        if (timer) timer.innerText = `00:${String(60 - new Date().getSeconds()).padStart(2, '0')}s`;
       }, 1000);
     }
 
-    function executeTeerPlayMinuteDraw() {
-      const now = new Date();
-      const timeLabel = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const activeTeerPlayBids = state.bids.filter(b => b.market === 'Teer Play' && b.status === 'Active');
-      let chosenFR = null;
-      let chosenSR = null;
-
-      let userTargetGuti = null;
-      if (state.user) {
-        state.user.betCount = (state.user.betCount || 0);
-        const userActiveBids = activeTeerPlayBids.filter(b => b.phone === state.user.phone);
-        
-        if (userActiveBids.length > 0 && state.user.betCount < 10) {
-          const currentCount = state.user.betCount + 1;
-          const shouldWin = (currentCount % 2 === 1); // Alternating won/loss
-          
-          if (shouldWin) {
-            const tenRsBid = userActiveBids.find(b => parseFloat(b.amount) <= 15);
-            if (tenRsBid) {
-              userTargetGuti = String(tenRsBid.number).padStart(2, '0');
-            }
-          }
-        }
-      }
-
-      if (userTargetGuti) {
-        chosenFR = userTargetGuti;
-        chosenSR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
-      } else {
-        // Gutis between 00 and 99 for Teer Play
-        if (activeTeerPlayBids.length < 100) {
-          chosenFR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
-          chosenSR = String(Math.floor(Math.random() * 100)).padStart(2, '0');
-        } else {
-          const gutiSums = {};
-          for (let i = 0; i <= 99; i++) gutiSums[i < 10 ? '0' + i : '' + i] = 0;
-          activeTeerPlayBids.forEach(b => {
-            const g = String(b.number).padStart(2, '0');
-            if (gutiSums[g] !== undefined) {
-              gutiSums[g] += (parseFloat(b.amount) || 0);
-            }
-          });
-          const sorted = Object.entries(gutiSums).sort((a,b) => a[1] - b[1]);
-          chosenFR = sorted[0][0];
-          chosenSR = sorted[1] ? sorted[1][0] : sorted[0][0];
-        }
-      }
-
-      // Check user bids in this round before resolving
-      let userWonAmt = 0;
-      let userLostAmt = 0;
-      let userHadBets = false;
-
-      activeTeerPlayBids.forEach(b => {
-        userHadBets = true;
-        const targetRes = (b.round === 'FR') ? chosenFR : chosenSR;
-        const targetTwo = String(targetRes).padStart(2, '0');
-        const hDig = targetTwo.charAt(0);
-        const eDig = targetTwo.charAt(1);
-
-        if (b.mode === 'DIRECT' && b.number === targetTwo) {
-          userWonAmt += b.amount * 90;
-        } else if (b.mode === 'HOUSE' && b.number === hDig) {
-          userWonAmt += b.amount * 9;
-        } else if (b.mode === 'ENDING' && b.number === eDig) {
-          userWonAmt += b.amount * 9;
-        } else {
-          userLostAmt += parseFloat(b.amount);
-        }
-      });
-
-      // 1. Save to Previous Results Strip
-      let historyList = JSON.parse(memoryStore.getItem('teer_play_recent_results') || '[]');
-      historyList.unshift({ time: timeLabel, fr: chosenFR, sr: chosenSR });
-      if (historyList.length > 15) historyList.pop();
-      memoryStore.setItem('teer_play_recent_results', JSON.stringify(historyList));
-      renderTeerPlayHistoryStrip();
-
-      // 2. Save current result
-      const savedResults = (window.supabaseResults || {});
-      savedResults['Teer Play'] = { fr: chosenFR, sr: chosenSR, time: timeLabel };
-      window.supabaseResults = savedResults;
-
-      // 3. Evaluate bets ONLY on this draw completion
-      activeTeerPlayBids.forEach(bid => {
-        const targetRes = (bid.round === 'FR') ? chosenFR : chosenSR;
-        const targetTwo = String(targetRes).padStart(2, '0');
-        const hDig = targetTwo.charAt(0);
-        const eDig = targetTwo.charAt(1);
-
-        let isWin = false;
-        let winAmt = 0;
-        if (bid.mode === 'DIRECT' && bid.number === targetTwo) {
-          isWin = true;
-          winAmt = bid.amount * 90;
-        } else if (bid.mode === 'HOUSE' && bid.number === hDig) {
-          isWin = true;
-          winAmt = bid.amount * 9;
-        } else if (bid.mode === 'ENDING' && bid.number === eDig) {
-          isWin = true;
-          winAmt = bid.amount * 9;
-        }
-
-        if (isWin) {
-          bid.status = 'WON';
-          bid.payout = winAmt;
-          state.balance += winAmt;
-        } else {
-          bid.status = 'LOST';
-          bid.payout = 0;
-        }
-      });
-
-      if (activeTeerPlayBids.length > 0) {
-        if (fbDatabase && state.user && state.user.phone) {
-          fbDatabase?.ref('users/' + state.user.phone + '/balance').set(state.balance);
-        }
-        updateUI();
-      }
-
-      if (fbDatabase) {
-        fbDatabase?.ref('results/Teer Play').set({ fr: chosenFR, sr: chosenSR });
-      }
-
-      if (state.user) {
-        const playedThisRound = activeTeerPlayBids.some(b => b.phone === state.user.phone);
-        if (playedThisRound) {
-          state.user.betCount = (state.user.betCount || 0) + 1;
-        }
-      }
-
-      renderMarkets();
-      checkAndCreditWinnings();
-
-      // Trigger Win / Loss Popup if user bet in this round
-      if (userHadBets) {
-        showTeerPlayOutcomePopup(chosenFR, chosenSR, userWonAmt, userLostAmt);
-      }
-    }
+    /* Removed disabled legacy executeTeerPlayMinuteDraw handler. */
 
     function showTeerPlayOutcomePopup(fr, sr, totalWon, totalLost) {
       const modal = document.getElementById('teerPlayResultPopup');
@@ -1571,7 +1415,7 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       loadStorage();
-      initDemoAgentsSystem();
+      // Demo accounts are isolated in memory; no legacy remote sync.
       checkSundayHoliday();
       renderMarkets();
       renderGutiGrid();
@@ -1595,91 +1439,13 @@
     });
 
     // 2. SUPABASE PUBLIC DATA REFRESH
-    function initSupabasePublicSync() {
-      if (!fbDatabase) return;
-      
-      // 1. Listen to Live Results
-      fbDatabase?.ref('results').on('value', (snapshot) => {
-        const liveData = snapshot.val();
-        if (liveData) {
-          window.supabaseResults = liveData;
-          renderMarkets();
-          checkAndCreditWinnings();
-        }
-      });
-
-      // 2. Listen to Admin Broadcast Notifications
-      fbDatabase?.ref('broadcast_notifications').on('child_added', (snapshot) => {
-        const notif = snapshot.val();
-        if (notif && notif.message) {
-          addAppNotification({
-            type: 'event',
-            title: notif.title || 'Master Admin Notice',
-            message: notif.message,
-            time: notif.time || 'Just now'
-          });
-        }
-      });
-
-      initDynamicSettingsSync();
-      checkUserBlockedStatus();
-    }
+    /* Removed disabled legacy initSupabasePublicSync handler. */
 
     // SYNC SETTINGS & DYNAMIC QR FROM SUPABASE
-    function initDynamicSettingsSync() {
-      if (!fbDatabase) return;
-      fbDatabase?.ref('settings').on('value', (snap) => {
-        const s = snap.val();
-        if (s) {
-          if (s.depositUpi) {
-            const upiSpan = document.getElementById('depositUpiText');
-            if (upiSpan) upiSpan.innerText = s.depositUpi;
-            const qrImg = document.getElementById('depositQrImg');
-            if (qrImg) {
-              qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=' + encodeURIComponent(s.depositUpi) + '%26pn=TeerOnline';
-            }
-          }
-          if (s.marqueeText) {
-            const marq = document.querySelector('marquee');
-            if (marq) marq.innerText = s.marqueeText;
-          }
-        }
-      });
-
-      // SYNC LIVE MARKET SCHEDULES & CUTOFF TIMINGS
-      fbDatabase?.ref('market_schedules').on('value', (snap) => {
-        const sch = snap.val();
-        if (sch) {
-          state.markets.forEach(m => {
-            if (sch[m.name]) {
-              if (sch[m.name].frTime) m.frTime = sch[m.name].frTime;
-              if (sch[m.name].srTime) m.srTime = sch[m.name].srTime;
-            }
-          });
-          renderMarkets();
-        }
-      });
-    }
+    /* Removed disabled legacy initDynamicSettingsSync handler. */
 
     // CHECK IF LOGGED-IN USER IS BLOCKED BY ADMIN
-    function checkUserBlockedStatus() {
-      if (!fbDatabase || !state.user || !state.user.phone) return;
-      fbDatabase?.ref('users/' + state.user.phone + '/isBlocked').on('value', (snap) => {
-        if (snap.val() === true) {
-          alert('Your account has been suspended by Admin. Please contact Support.');
-          document.body.innerHTML = `
-            <div class="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6 text-center">
-              <i class="fa-solid fa-ban text-rose-500 text-6xl mb-4"></i>
-              <h2 class="text-xl font-bold text-rose-400">Account Suspended</h2>
-              <p class="text-xs text-slate-400 mt-2">Your account has been suspended by Admin. Please contact WhatsApp helpline.</p>
-              <a href="https://wa.me/918134834380" class="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2">
-                <i class="fa-brands fa-whatsapp"></i> Contact Admin
-              </a>
-            </div>
-          `;
-        }
-      });
-    }
+    /* Removed disabled legacy checkUserBlockedStatus handler. */
 
     function getTodayFormattedDate() {
       const now = new Date();
@@ -1703,18 +1469,7 @@
     }
 
     
-    function initUserLiveBalanceListener() {
-      if (!fbDatabase || !state.user) return;
-      fbDatabase?.ref('users/' + state.user.phone + '/balance').on('value', (snap) => {
-        if (snap.exists()) {
-          const cloudBal = parseFloat(snap.val());
-          if (cloudBal !== state.balance) {
-            state.balance = cloudBal;
-                updateUI();
-          }
-        }
-      });
-    }
+    /* Removed disabled legacy initUserLiveBalanceListener handler. */
 
     
     // ==========================================
@@ -1733,19 +1488,7 @@
       { name: 'ajent 10', phone: '7638020732', pass: '8080', uid: 'UID_1032', balance: 50000, isDemo: true }
     ];
 
-    function initDemoAgentsSystem() {
-      let usersDb = JSON.parse(memoryStore.getItem('teer_registered_users') || '[]');
-      demoAgentsData.forEach(agent => {
-        const found = usersDb.find(u => u.phone === agent.phone);
-        if (!found) {
-          usersDb.push(agent);
-          if (fbDatabase) {
-            fbDatabase?.ref('users/' + agent.phone).set(agent);
-          }
-        }
-      });
-      memoryStore.setItem('teer_registered_users', JSON.stringify(usersDb));
-    }
+    /* Removed disabled legacy initDemoAgentsSystem handler. */
 
         // Auto clean old cached market results on startup if date doesn't match today
     function sanitizeCachedResults() {
@@ -1767,32 +1510,7 @@
       } catch(e) {}
     }
 
-    function loadStorage() {
-      sanitizeCachedResults();
-      const savedUser = memoryStore.getItem('teer_current_user');
-      if (savedUser) {
-        state.user = JSON.parse(savedUser);
-        const savedBal = memoryStore.getItem('teer_balance');
-        if (savedBal !== null) state.balance = parseFloat(savedBal);
-        else state.balance = 10.00;
-      } else {
-        state.user = null;
-        state.balance = 0.00;
-      }
-
-      const savedBids = memoryStore.getItem('teer_bids');
-      if (savedBids) state.bids = JSON.parse(savedBids);
-
-      const savedNotifs = memoryStore.getItem('teer_notifications');
-      if (savedNotifs) state.notifications = JSON.parse(savedNotifs);
-      else {
-        state.notifications = [
-          { id: 1, type: 'event', title: '🎁 Welcome Bonus Credited', message: 'Welcome to Teer Online! ₹10 Signup bonus has been credited to your wallet.', time: 'Today', unread: true },
-          { id: 2, type: 'event', title: '👑 Refer & Agent Commission Active', message: 'Invite friends and earn instant commission on every deposit & turnover!', time: 'Today', unread: true }
-        ];
-        saveNotifications();
-      }
-    }
+    /* Removed stale in-memory account persistence handler loadStorage. */
 
     function saveNotifications() {
       memoryStore.setItem('teer_notifications', JSON.stringify(state.notifications));
@@ -1814,65 +1532,7 @@
     }
 
     // Auto Winning Calculation & Instant Wallet Credit
-    function checkAndCreditWinnings() {
-      const savedResults = (window.supabaseResults || {});
-      let updated = false;
-
-      state.bids.forEach(bid => {
-        // Exclude Teer Play bids: they are only evaluated when timer ends at 00s in executeTeerPlayMinuteDraw!
-        if (bid.market === 'Teer Play') return;
-        if (bid.status === 'Active' && savedResults[bid.market]) {
-          const resObj = savedResults[bid.market];
-          const announcedNum = (bid.round === 'FR') ? resObj.fr : resObj.sr;
-
-          if (announcedNum && announcedNum !== '**') {
-            let isWin = false;
-            let winAmount = 0;
-
-            const announcedTwoDigit = String(announcedNum).padStart(2, '0');
-            const houseDigit = announcedTwoDigit.charAt(0);
-            const endingDigit = announcedTwoDigit.charAt(1);
-
-              if (bid.mode === 'DIRECT' && bid.number === announcedTwoDigit) {
-                isWin = true;
-                winAmount = bid.amount * 90; // 1:90 (10 pe 900)
-              } else if (bid.mode === 'HOUSE' && bid.number === houseDigit) {
-                isWin = true;
-                winAmount = bid.amount * 9; // 1:9 (10 pe 90)
-              } else if (bid.mode === 'ENDING' && bid.number === endingDigit) {
-                isWin = true;
-                winAmount = bid.amount * 9; // 1:9 (10 pe 90)
-              }
-
-            if (isWin) {
-              bid.status = 'WON';
-              bid.payout = winAmount;
-              state.balance += winAmount;
-              updated = true;
-
-              addAppNotification({
-                type: 'win',
-                title: '🎉 Congratulations! You Won!',
-                message: `Aapki ${bid.market} (${bid.round}) ${bid.mode} [${bid.number}] par ₹${winAmount.toFixed(2)} ka winning bonus wallet me auto-credit ho gaya hai!`
-              });
-              playChimeSound();
-            } else {
-              bid.status = 'LOST';
-              bid.payout = 0;
-              updated = true;
-            }
-          }
-        }
-      });
-
-      if (updated) {
-        // Push winning balance to Supabase to avoid race condition/overwrite:
-        if (fbDatabase && state.user && state.user.phone) {
-          fbDatabase?.ref('users/' + state.user.phone + '/balance').set(state.balance);
-        }
-        updateUI();
-      }
-    }
+    /* Removed disabled legacy checkAndCreditWinnings handler. */
 
     function addAppNotification(item) {
       item.id = Date.now();
@@ -2532,137 +2192,14 @@
       openNotificationModal();
     }
 
-    function confirmPlaceBet() {
-      if (!state.user) {
-        alert('Please Login or Register first!');
-        closePlayModal();
-        openAuthModal();
-        return;
-      }
-      if (!state.currentMarketObj) return;
-
-      const targetTimeStr = (state.currentRound === 'FR') ? state.currentMarketObj.frTime : state.currentMarketObj.srTime;
-      if (!isRoundBettingOpen(targetTimeStr, state.currentMarketObj ? state.currentMarketObj.name : '')) {
-        alert(`Time Over! Betting is closed 10 minutes prior to draw time.`);
-        validateModalRoundStatus();
-        return;
-      }
-
-      const amt = parseFloat(document.getElementById('betAmountInput').value) || 0;
-      if (state.selectedNumbers.length === 0) {
-        alert('Please select a number before placing your bet!');
-        return;
-      }
-      const cost = amt * state.selectedNumbers.length;
-      if (state.balance < cost) {
-        alert('Insufficient balance! Please recharge wallet.');
-        closePlayModal();
-        openDepositModal();
-        return;
-      }
-      state.balance -= cost;
-      // Sync deducted balance to Supabase immediately so listener does not revert balance
-      if (fbDatabase && state.user && state.user.phone) {
-        fbDatabase?.ref('users/' + state.user.phone + '/balance').set(state.balance);
-      }
-
-      applyAgentBetTurnoverCommission(cost);
-
-      const targetRounds = (state.currentRound === 'BS') ? ['FR', 'SR'] : [state.currentRound];
-      const numbersLabel = state.selectedNumbers.join(', ');
-      const roundLabel = (state.currentRound === 'BS') ? 'FR + SR (BS)' : state.currentRound;
-      const potVal = document.getElementById('potentialWin').innerText.replace('₹', '');
-      const generatedRefId = 'TR' + Math.floor(100000 + Math.random() * 900000);
-
-      targetRounds.forEach(r => {
-        state.selectedNumbers.forEach(n => {
-          state.bids.unshift({
-            refId: generatedRefId,
-            market: state.currentMarketObj.name,
-            round: r,
-            mode: state.betMode.toUpperCase(),
-            number: n,
-            amount: amt,
-            status: 'Active',
-            payout: 0,
-            date: getTodayFormattedDate(),
-            time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-            isBS: (state.currentRound === 'BS')
-          });
-        });
-      });
-
-      updateUI();
-      // Keep play modal open so user stays on betting screen after closing slip
-      state.selectedNumbers.forEach(n => {
-        injectUserRealtimeBet(state.user.uid || ('UID_' + (state.user.phone ? state.user.phone.slice(-4) : '1001')), state.betMode.toUpperCase(), n, amt);
-      });
-      
-      // Reset selected numbers for next bet
-      state.selectedNumbers = [];
-      updateSelectedTray();
-      calculatePayout();
-      
-      showBetReceiptClip(state.currentMarketObj.name, roundLabel, numbersLabel, amt, potVal, generatedRefId);
-    }
+    /* Removed disabled legacy confirmPlaceBet handler. */
 
 
     // LEGACY AGENT EARNINGS SYNC DISABLED
-    function syncAgentEarningsFromSupabase() {
-      if (!state.user) return;
-      const myCode = state.user.phone;
-
-      const updateAllEarningsUI = (val) => {
-        const formatted = '₹' + parseFloat(val || 0).toFixed(2);
-        const box = document.getElementById('myAgentEarnedText');
-        if (box) box.innerText = formatted;
-        const modalEarned = document.getElementById('modalRefTotalEarned');
-        if (modalEarned) modalEarned.innerText = formatted;
-      };
-
-      // Local storage fallback
-      const localLedger = JSON.parse(memoryStore.getItem('teer_agent_earnings') || '{}');
-      if (localLedger[myCode] !== undefined) {
-        updateAllEarningsUI(localLedger[myCode]);
-      }
-
-      if (fbDatabase) {
-        fbDatabase?.ref('agent_earnings/' + myCode).on('value', (snap) => {
-          const total = snap.val() !== null ? snap.val() : (localLedger[myCode] || 0);
-          updateAllEarningsUI(total);
-        });
-      }
-    }
+    /* Removed disabled legacy syncAgentEarningsFromSupabase handler. */
 
     // LEGACY COMMISSION PUSH DISABLED
-    function applyAgentBetTurnoverCommission(betAmount) {
-      if (state.user && state.user.referredBy) {
-        let agentComm = 0;
-        
-        // ₹1000 bet par ₹10, aur ₹100 bet par ₹5 logic
-        if (betAmount >= 1000) {
-          agentComm = Math.floor(betAmount / 1000) * 10;
-        } else if (betAmount >= 100) {
-          agentComm = Math.floor(betAmount / 100) * 5;
-        }
-
-        if (agentComm <= 0) return;
-
-        const ref = state.user.referredBy;
-        
-        // 1. Local update
-        let agentLedger = JSON.parse(memoryStore.getItem('teer_agent_earnings') || '{}');
-        agentLedger[ref] = (agentLedger[ref] || 0) + agentComm;
-        memoryStore.setItem('teer_agent_earnings', JSON.stringify(agentLedger));
-
-        // 2. Supabase Cloud Realtime Push to Referrer
-        if (fbDatabase) {
-          fbDatabase?.ref('agent_earnings/' + ref).transaction((current) => {
-            return (current || 0) + agentComm;
-          });
-        }
-      }
-    }
+    /* Removed disabled legacy applyAgentBetTurnoverCommission handler. */
 
 
     function renderBidsList() {
@@ -2753,271 +2290,9 @@
       reader.readAsDataURL(file);
     }
 
-    function submitDepositForm() {
-      if (!state.user) {
-        alert('Please login or register to deposit money!');
-        closeDepositModal();
-        openAuthModal();
-        return;
-      }
-      const utr = document.getElementById('depositUtrInput').value.trim();
-      const amt = parseFloat(document.getElementById('depositAmountInput').value) || 0;
-      if (amt < 100) { alert('Minimum deposit amount is ₹100.'); return; }
-      if (utr.length < 10) { alert('Please enter a valid 12-digit UPI / UTR Transaction Reference number!'); return; }
+    /* Removed disabled legacy submitDepositForm handler. */
 
-      const depId = 'dep_' + Date.now();
-      const now = new Date();
-      const depRecord = {
-        id: depId,
-        phone: state.user.phone,
-        name: state.user.name,
-        amount: amt,
-        bonus: amt * 0.05,
-        utr: utr,
-        screenshot: currentDepositScreenshotBase64 || null,
-        status: 'pending',
-        date: now.toLocaleDateString(),
-        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        timestamp: Date.now()
-      };
-
-      // Check if Demo User (Instant credit directly)
-      const isDemoAgent = state.user && (state.user.isDemo || demoAgentsData.some(a => a.phone === state.user.phone));
-      if (isDemoAgent) {
-        state.balance += amt;
-        depRecord.status = 'approved';
-        if (fbDatabase) {
-          fbDatabase?.ref('users/' + state.user.phone + '/balance').set(state.balance);
-          fbDatabase?.ref('deposits/' + depId).set(depRecord);
-        }
-        recordTransaction({
-          id: depId,
-          type: 'deposit',
-          title: `Deposit Instant Credit (UTR: ${utr})`,
-          amount: amt,
-          isCredit: true,
-          status: 'Approved'
-        });
-        updateUI();
-        closeDepositModal();
-        alert(`Instant Deposit Success! ₹${amt} credited immediately to your demo wallet.`);
-        return;
-      }
-
-      if (fbDatabase) {
-        fbDatabase?.ref('deposits/' + depId).set(depRecord);
-      }
-
-      recordTransaction({
-        id: depId,
-        type: 'deposit',
-        title: `Deposit Request (UTR: ${utr})`,
-        amount: amt,
-        isCredit: true,
-        status: 'Pending'
-      });
-
-      addAppNotification({
-        type: 'deposit',
-        title: 'Deposit Request Submitted',
-        message: `₹${amt} deposit request (UTR: ${utr}) submitted. Admin will verify screenshot & UTR within 1 to 10 minutes.`
-      });
-
-      // Reset form
-      document.getElementById('depositUtrInput').value = '';
-      currentDepositScreenshotBase64 = null;
-      const previewImg = document.getElementById('screenshotImgPreview');
-      if (previewImg) previewImg.classList.add('hidden');
-      const fileNameLabel = document.getElementById('screenshotFileName');
-      if (fileNameLabel) fileNameLabel.innerText = 'Tap to choose payment receipt screenshot';
-
-      closeDepositModal();
-
-      // Trigger WhatsApp message to Admin Helpline (+918134834380)
-      try {
-        const depDate = now.toLocaleDateString();
-        const depTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const depMsg = encodeURIComponent(
-          `⚡ *TEER ONLINE - DEPOSIT REQUEST*\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `👤 *User Name:* ${state.user.name}\n` +
-          `📱 *Mobile Number:* ${state.user.phone}\n` +
-          `🆔 *User ID:* ${state.user.uid || 'N/A'}\n` +
-          `💰 *Amount:* ₹${amt} (+5% Bonus)\n` +
-          `🔖 *12-Digit UTR:* ${utr}\n` +
-          `📅 *Date & Time:* ${depDate} ${depTime}\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `Admin sir, deposit request aur screenshot bhej diya hai. Please verify karke wallet credit karein.`
-        );
-        window.open(`https://wa.me/918134834380?text=${depMsg}`, '_blank');
-      } catch(err) {}
-
-      alert(`Deposit Request Submitted!\nAmount: ₹${amt}\nUTR: ${utr}\n\nAdmin will verify your payment screenshot and UTR code. Balance (+5% Bonus) will be credited to your wallet within 1 to 10 minutes!`);
-    }
-
-    function submitWithdrawForm() {
-      if (!state.user) {
-        alert('Please login or register to withdraw funds!');
-        closeWithdrawModal();
-        openAuthModal();
-        return;
-      }
-
-      const amt = parseFloat(document.getElementById('withdrawAmountInput').value) || 0;
-      if (amt < 1000) {
-        alert('Minimum withdrawal amount is ₹1,000!');
-        return;
-      }
-      if (amt > 2000) {
-        alert('Please upgrade to pro minimum 50000 recharged today');
-        return;
-      }
-      if (state.balance < amt) {
-        alert('Insufficient wallet balance!');
-        return;
-      }
-
-      // Daily Limit & Frequency Check (Max 5 requests & Max ₹50,000 daily)
-      const userPhone = state.user.phone;
-      const todayStr = getTodayFormattedDate();
-      const dailyKey = 'teer_daily_withdrawals_' + userPhone + '_' + todayStr;
-      let dailyData = JSON.parse(memoryStore.getItem(dailyKey) || '{"count": 0, "total": 0}');
-
-      if (dailyData.count >= 5) {
-        alert('Daily Withdrawal Limit Reached! Aap din me maximum 5 baar hi withdraw request laga sakte hain.');
-        return;
-      }
-      if ((dailyData.total + amt) > 50000) {
-        alert('Daily limit ₹50,000 exceed ho jayegi! Aapka aaj ka remaining limit: ₹' + (50000 - dailyData.total));
-        return;
-      }
-
-      // Validate & Save Payout Details
-      let payoutType = currentWithdrawMethod;
-      let upiVal = '';
-      let bankObj = null;
-
-      let savedAccounts = JSON.parse(memoryStore.getItem('teer_saved_payout_details_' + userPhone) || '{}');
-
-      if (payoutType === 'upi') {
-        upiVal = document.getElementById('withdrawUpiInput').value.trim();
-        if (!upiVal || !upiVal.includes('@')) {
-          alert('Please enter a valid UPI ID (e.g. mobile@paytm or name@upi).');
-          return;
-        }
-        savedAccounts.upi = upiVal;
-      } else {
-        const holder = document.getElementById('bankHolderInput').value.trim();
-        const acc = document.getElementById('bankAccountInput').value.trim();
-        const ifsc = document.getElementById('bankIfscInput').value.trim().toUpperCase();
-        const bName = document.getElementById('bankNameInput').value.trim();
-
-        if (!holder || !acc || !ifsc) {
-          alert('Please enter Account Holder Name, Account Number and IFSC Code!');
-          return;
-        }
-        bankObj = { holderName: holder, accountNumber: acc, ifsc: ifsc, bankName: bName };
-        savedAccounts.bank = bankObj;
-        upiVal = `Bank: ${acc} (${ifsc})`;
-      }
-
-      // Save payout details (legacy persistence disabled)
-      memoryStore.setItem('teer_saved_payout_details_' + userPhone, JSON.stringify(savedAccounts));
-      if (fbDatabase) {
-        fbDatabase?.ref('users/' + userPhone + '/savedPayoutDetails').set(savedAccounts);
-      }
-
-      // Deduct balance
-      state.balance -= amt;
-      if (fbDatabase) {
-        fbDatabase?.ref('users/' + state.user.phone + '/balance').set(state.balance);
-      }
-
-      // Update Daily Count
-      dailyData.count += 1;
-      dailyData.total += amt;
-      memoryStore.setItem(dailyKey, JSON.stringify(dailyData));
-
-      const wthId = 'wth_' + Date.now();
-      const now = new Date();
-      const wthRecord = {
-        id: wthId,
-        phone: state.user.phone,
-        name: state.user.name,
-        amount: amt,
-        payoutType: payoutType,
-        upi: (payoutType === 'upi') ? upiVal : 'Bank Transfer',
-        bankDetails: bankObj || null,
-        status: 'pending',
-        date: now.toLocaleDateString(),
-        time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        timestamp: Date.now()
-      };
-
-      const isDemoAgent = state.user && (state.user.isDemo || demoAgentsData.some(a => a.phone === state.user.phone));
-      if (isDemoAgent) {
-        wthRecord.status = 'approved';
-        if (fbDatabase) {
-          fbDatabase?.ref('withdrawals/' + wthId).set(wthRecord);
-        }
-        recordTransaction({
-          id: wthId,
-          type: 'withdraw',
-          title: `Instant Withdrawal (UPI: ${upi})`,
-          amount: amt,
-          isCredit: false,
-          status: 'Approved'
-        });
-        updateUI();
-        closeWithdrawModal();
-        alert(`Withdrawal Success! ₹${amt} transferred instantly to ${upi}. (Approved)`);
-        return;
-      }
-
-      if (fbDatabase) {
-        fbDatabase?.ref('withdrawals/' + wthId).set(wthRecord);
-      }
-
-      recordTransaction({
-        id: wthId,
-        type: 'withdraw',
-        title: `Withdrawal Request (UPI: ${upi})`,
-        amount: amt,
-        isCredit: false,
-        status: 'Processing'
-      });
-
-      addAppNotification({
-        type: 'withdraw',
-        title: 'Withdrawal Submitted',
-        message: `₹${amt} withdrawal request (UPI: ${upi}) is being processed. Payout will be sent directly to your UPI ID within 1 to 10 minutes.`
-      });
-
-      updateUI();
-      closeWithdrawModal();
-
-      // Trigger WhatsApp message to Admin Helpline (+918134834380)
-      try {
-        const wthDate = now.toLocaleDateString();
-        const wthTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const wthMsg = encodeURIComponent(
-          `⚡ *TEER ONLINE - WITHDRAWAL REQUEST*\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `👤 *User Name:* ${state.user.name}\n` +
-          `📱 *Mobile Number:* ${state.user.phone}\n` +
-          `🆔 *User ID:* ${state.user.uid || 'N/A'}\n` +
-          `💰 *Amount:* ₹${amt}\n` +
-          `💳 *Payout Info:* ${payoutType === 'upi' ? upiVal : JSON.stringify(bankObj)}\n` +
-          `📅 *Date & Time:* ${wthDate} ${wthTime}\n` +
-          `🔖 *Request ID:* ${wthId}\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `Admin sir, withdrawal request lagayi hai. Please verify karke approve karein.`
-        );
-        window.open(`https://wa.me/918134834380?text=${wthMsg}`, '_blank');
-      } catch(err) {}
-
-      alert(`Withdrawal Request Submitted!\nAmount: ₹${amt}\nUPI ID: ${upi}\n\nYour payout will be credited directly to your UPI ID within 1 to 10 minutes!`);
-    }
+    /* Removed disabled legacy submitWithdrawForm handler. */
 
     function switchAuthTab(type) {
       const regF = document.getElementById('registerForm');
@@ -3050,172 +2325,9 @@
       return devId;
     }
 
-    function handleRegisterSubmit(e) {
-      e.preventDefault();
-      
-      // Request browser notification permission on registration
-      if ('Notification' in window && Notification.permission !== 'granted') {
-        Notification.requestPermission().then(permission => {
-          console.log('Notification permission:', permission);
-        });
-      }
+    /* Removed disabled legacy handleRegisterSubmit handler. */
 
-      const name = document.getElementById('regName').value.trim();
-      const phone = document.getElementById('regPhone').value.trim();
-      const pass = document.getElementById('regPass').value;
-      const referralCode = document.getElementById('regReferral').value.trim();
-
-      if (phone.length !== 10) {
-        alert('Please enter a valid 10-digit mobile number!');
-        return;
-      }
-
-      // 1. DEVICE LIMIT: 1 DEVICE PAR MAXIMUM 2 ID ALLOW HAI
-      const deviceId = getDeviceIdentifier();
-      let deviceRegisteredPhones = JSON.parse(memoryStore.getItem('teer_dev_phones') || '[]');
-      if (deviceRegisteredPhones.length >= 2 && !deviceRegisteredPhones.includes(phone)) {
-        alert('⛔ Security Alert: Ek mobile device par maximum 2 ID hi bana sakte hain!');
-        return;
-      }
-
-      const usersDb = JSON.parse(memoryStore.getItem('teer_registered_users') || '[]');
-      const exists = usersDb.some(u => u.phone === phone);
-      if (exists) {
-        alert('This mobile number is already registered! Please Login.');
-        switchAuthTab('login');
-        document.getElementById('loginPhone').value = phone;
-        return;
-      }
-
-      // 2. ANTI-FAKE REFERRAL PROTECTION (Same Device & Self-Referral Block)
-      let isFakeReferral = false;
-      if (referralCode) {
-        if (referralCode === phone) {
-          isFakeReferral = true;
-        }
-        if (deviceRegisteredPhones.includes(referralCode)) {
-          isFakeReferral = true;
-          console.warn('Fake referral blocked: Same device referral attempt!');
-        }
-      }
-
-      const todayStr = new Date().toLocaleDateString();
-      let nextId = parseInt(memoryStore.getItem('teer_last_user_seq_id') || '1000') + 1;
-      memoryStore.setItem('teer_last_user_seq_id', nextId.toString());
-      const userUid = 'UID_' + nextId;
-
-      const newUser = {
-        uid: userUid,
-        name,
-        phone,
-        pass,
-        balance: 10.00,
-        referredBy: (referralCode && !isFakeReferral) ? referralCode : null,
-        deviceId: deviceId,
-        createdAt: todayStr,
-        totalDeposit: 0,
-        totalBet: 0,
-        betCount: 0
-      };
-
-      if (fbDatabase) {
-        fbDatabase?.ref('meta/last_user_uid').transaction(current => (current || 1000) + 1);
-      }
-
-      usersDb.push(newUser);
-      memoryStore.setItem('teer_registered_users', JSON.stringify(usersDb));
-
-      // Register phone under this device list
-      if (!deviceRegisteredPhones.includes(phone)) {
-        deviceRegisteredPhones.push(phone);
-        memoryStore.setItem('teer_dev_phones', JSON.stringify(deviceRegisteredPhones));
-      }
-
-      state.user = newUser;
-      state.balance = 10.00;
-      memoryStore.setItem('teer_current_user', JSON.stringify(newUser));
-
-      // Push to Supabase
-      if (fbDatabase) {
-        fbDatabase?.ref('users/' + phone).set(newUser);
-        fbDatabase?.ref('devices/' + deviceId + '/' + phone).set(Date.now());
-
-        // SIRF GENUINE (ALAG DEVICE) REFER PAR COMMISSION MILEGA (FAKE PAR 0)
-        if (referralCode && !isFakeReferral) {
-          const refRecord = {
-            name: name,
-            phone: phone,
-            maskedPhone: phone.slice(0, 3) + '****' + phone.slice(-3),
-            uid: userUid,
-            date: todayStr,
-            timestamp: Date.now()
-          };
-          fbDatabase?.ref('referrals/' + referralCode).push(refRecord);
-
-          // HAR GENUINE REFER PAR 5 RS REFER EARNING ME (WALLET ME DIRECT 0)
-          fbDatabase?.ref('agent_earnings/' + referralCode).transaction(cur => (cur || 0) + 5);
-
-          let agentLedger = JSON.parse(memoryStore.getItem('teer_agent_earnings') || '{}');
-          agentLedger[referralCode] = (agentLedger[referralCode] || 0) + 5;
-          memoryStore.setItem('teer_agent_earnings', JSON.stringify(agentLedger));
-        }
-      }
-      initUserLiveBalanceListener();
-
-      addAppNotification({
-        type: 'event',
-        title: '🎁 ₹10 Welcome Bonus Credited',
-        message: `Welcome ${name}! Aapka registration safal hua aur ₹10 Welcome bonus aapke wallet me add ho chuka hai.`
-      });
-
-      updateUI();
-      closeAuthModal();
-    }
-
-    function handleLoginSubmit(e) {
-      e.preventDefault();
-      const phone = document.getElementById('loginPhone').value.trim();
-      const pass = document.getElementById('loginPass').value;
-      const usersDb = JSON.parse(memoryStore.getItem('teer_registered_users') || '[]');
-      const found = usersDb.find(u => u.phone === phone && u.pass === pass);
-
-      if (found) {
-        if (!found.uid) {
-          let nextId = parseInt(memoryStore.getItem('teer_last_user_seq_id') || '1000') + 1;
-          memoryStore.setItem('teer_last_user_seq_id', nextId.toString());
-          found.uid = 'UID_' + nextId;
-        }
-        state.user = found;
-        memoryStore.setItem('teer_current_user', JSON.stringify(found));
-        // Sync user to Supabase
-        if (fbDatabase) {
-          fbDatabase?.ref('users/' + found.phone).once('value', (snap) => {
-            if (snap.exists()) {
-              const uData = snap.val();
-              if (uData.balance !== undefined) {
-                state.balance = parseFloat(uData.balance);
-                      }
-            } else {
-              fbDatabase?.ref('users/' + found.phone).set({
-                name: found.name,
-                phone: found.phone,
-                balance: state.balance,
-                referredBy: found.referredBy || null,
-                createdAt: new Date().toLocaleDateString()
-              });
-            }
-            updateUI();
-          });
-        }
-        initUserLiveBalanceListener();
-        updateUI();
-        closeAuthModal();
-        closeAuthModal();
-        openAppInstallModal();
-      } else {
-        alert('Incorrect mobile number or password! Please verify or click Forgot Password.');
-      }
-    }
+    /* Removed disabled legacy handleLoginSubmit handler. */
 
     function triggerForgotPasswordWhatsApp() {
       const enteredPhone = document.getElementById('loginPhone').value.trim();
@@ -3283,16 +2395,7 @@
       alert(`✅ Referral Link Copied!\n${shareUrl}\n\nLink par click karte hi direct registration page khulega aur referral code auto-fill ho jayega!`);
     }
 
-    function logoutUser() {
-      if (confirm('Are you sure you want to log out?')) {
-        state.user = null;
-        state.balance = 0.00;
-        memoryStore.removeItem('teer_current_user');
-        memoryStore.setItem('teer_balance', '0.00');
-        updateUI();
-        openAuthModal();
-      }
-    }
+    /* Removed stale in-memory account persistence handler logoutUser. */
 
     function refreshBalance() { alert('Balance updated: ₹' + state.balance.toFixed(2)); }
   
@@ -3342,34 +2445,7 @@
     // ==========================================
     // AGENT COMMISSION CLAIM & SYNC
     // ==========================================
-    function claimAgentCommission() {
-      if (!state.user) {
-        alert('Please login to claim commission!');
-        openAuthModal();
-        return;
-      }
-      const myCode = state.user.phone;
-      if (fbDatabase) {
-        fbDatabase?.ref('agent_earnings/' + myCode).once('value', (snap) => {
-          const amt = parseFloat(snap.val()) || 0;
-          if (amt <= 0) {
-            alert('No referral commission available to claim right now.');
-            return;
-          }
-          state.balance += amt;
-            fbDatabase?.ref('agent_earnings/' + myCode).set(0);
-          recordTransaction({
-            type: 'commission',
-            title: 'Agent Referral Commission Claim',
-            amount: amt,
-            isCredit: true,
-            status: 'Completed'
-          });
-          updateUI();
-          alert(`Success! ₹${amt.toFixed(2)} referral commission credited to your wallet.`);
-        });
-      }
-    }
+    /* Removed disabled legacy claimAgentCommission handler. */
 
     // ==========================================
     // BETS FILTER SYSTEM (ALL, ACTIVE, WON, LOSS)
@@ -3479,25 +2555,7 @@
       return JSON.parse(memoryStore.getItem('teer_transactions') || '[]');
     }
 
-    function recordTransaction(tx) {
-      const list = getTransactions();
-      const newTx = {
-        id: tx.id || ('tx_' + Date.now()),
-        type: tx.type,
-        title: tx.title,
-        amount: parseFloat(tx.amount),
-        isCredit: tx.isCredit,
-        status: tx.status || 'Completed',
-        date: tx.date || new Date().toLocaleDateString(),
-        time: tx.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        timestamp: Date.now()
-      };
-      list.unshift(newTx);
-      memoryStore.setItem('teer_transactions', JSON.stringify(list));
-      if (fbDatabase && state.user) {
-        fbDatabase?.ref('user_transactions/' + state.user.phone + '/' + newTx.id).set(newTx);
-      }
-    }
+    /* Removed disabled legacy recordTransaction handler. */
 
     function openTransactionModal() {
       document.getElementById('txModal').classList.remove('hidden');
@@ -3590,21 +2648,7 @@
       document.getElementById('myReferralsModal').classList.add('hidden');
     }
 
-    function syncMyReferralsFromSupabase() {
-      if (!fbDatabase || !state.user) return;
-      const myPhone = state.user.phone;
-      fbDatabase?.ref('referrals/' + myPhone).on('value', (snap) => {
-        const val = snap.val() || {};
-        myReferralFriends = Object.values(val);
-        const count = myReferralFriends.length;
-        
-        const countText = document.getElementById('cardJoinedCountText');
-        if (countText) countText.innerText = `${count} Friends Joined`;
-        
-        const modalCount = document.getElementById('modalRefFriendsCount');
-        if (modalCount) modalCount.innerText = `${count} Members`;
-      });
-    }
+    /* Removed disabled legacy syncMyReferralsFromSupabase handler. */
 
     function renderMyReferralsModal() {
       const cont = document.getElementById('myReferralsListContainer');
@@ -3777,7 +2821,10 @@
         if (typeof accountSessionToken !== 'string') throw new Error('Registration successful, lekin session token response nahi mila.');
         state.user = data.user;
         accountIsDemo = false;
-        await refreshAccountBalance();
+        // Registration is already committed on the server. A balance-read hiccup
+        // must not misreport the newly created account as a failed registration.
+        try { await refreshAccountBalance(); }
+        catch (balanceError) { console.warn('Initial balance refresh failed:', balanceError); state.balance = 0; }
         updateUI(); closeAuthModal();
         alert('Registration successful! Supabase account ready.');
       } catch (err) { alert(err.message || 'Registration failed.'); }
@@ -3901,6 +2948,16 @@
       window.__supabasePublicRefresh = setInterval(() => initSupabasePublicSync(), 20000);
     }
 
+    // Safe placeholders for features without an audited server-side Supabase API.
+    function initDemoAgentsSystem() {}
+    function applyAgentBetTurnoverCommission() {}
+    function claimAgentCommission() { alert('Referral commission transfer is not enabled until its secure Supabase ledger API is deployed.'); }
+    function syncMyReferralsFromSupabase() {}
+    function recordTransaction(tx) {
+      const list = getTransactions();
+      list.unshift({ id: tx.id || ('tx_' + Date.now()), type: tx.type, title: tx.title, amount: Number(tx.amount || 0), isCredit: !!tx.isCredit, status: tx.status || 'Completed', date: tx.date || new Date().toLocaleDateString(), time: tx.time || new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}), timestamp: Date.now() });
+      memoryStore.setItem('teer_transactions', JSON.stringify(list));
+    }
 </script>
 
     <!-- MODAL: REALTIME TRANSACTION HISTORY -->
