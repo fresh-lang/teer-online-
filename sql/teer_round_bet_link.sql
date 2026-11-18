@@ -148,3 +148,43 @@ begin
   return v_closed;
 end;
 $function$;
+
+
+-- Mirror the one-time ₹10 registration credit into the user-visible transaction feed.
+create or replace function public.api_register_user(
+  p_name text,
+  p_phone text,
+  p_password_hash text,
+  p_referred_by text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_user_id uuid;
+  v_uid bigint;
+begin
+  if p_name is null or length(trim(p_name)) < 2 then raise exception 'Invalid name'; end if;
+  if p_phone is null or p_phone !~ '^[0-9]{10,15}$' then raise exception 'Invalid phone number'; end if;
+  if p_password_hash is null or length(p_password_hash) < 40 then raise exception 'Invalid password hash'; end if;
+
+  v_uid := nextval('public.app_uid_seq'::regclass);
+  insert into public.app_users(uid,name,phone,password_hash,referred_by)
+  values(v_uid,trim(p_name),p_phone,p_password_hash,p_referred_by)
+  returning id into v_user_id;
+
+  insert into public.wallet_accounts(user_id,balance) values(v_user_id,10);
+  insert into public.wallet_ledger(user_id,ref_type,ref_id,amount,direction,balance_after,description)
+  values(v_user_id,'welcome',v_user_id::text,10,'credit',10,'One-time registration bonus');
+
+  insert into public.wallet_transactions(user_id,ref_id,type,amount,status,description)
+  values(v_user_id,v_user_id,'bonus',10,'completed','One-time registration bonus');
+
+  return jsonb_build_object('success',true,'user_id',v_user_id,'uid',v_uid,'registration_bonus',10);
+end;
+$function$;
+
+revoke all on function public.api_register_user(text,text,text,text) from public, anon, authenticated;
+grant execute on function public.api_register_user(text,text,text,text) to service_role;
