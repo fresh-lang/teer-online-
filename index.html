@@ -2968,7 +2968,7 @@
         await refreshAccountBalance();
         const bets = await accountApi('my_bets', { limit: 100 });
         state.bids = (bets.items || []).map(b => ({ refId:b.client_ref || b.id, market:b.market, round:b.round, roundId:b.round_id, mode:b.bet_mode, number:b.bet_number, amount:Number(b.amount), status:(String(b.status).toLowerCase()==='active'?'Active':String(b.status).toUpperCase()), payout:Number(b.payout || 0), date:b.created_at, time:'' }));
-        updateUI(); closeAuthModal(); showAppToast('Login successful. Welcome back!'); openAppInstallModal();
+        updateUI(); closeAuthModal(); showAppToast('Login successful. Welcome back!');
       } catch (err) { alert(err.message || 'Login failed.'); }
     }
 
