@@ -105,7 +105,7 @@
     <div class="bg-[#02181a] border-b border-teal-900/40 py-1.5 px-2 flex items-center gap-2 overflow-hidden text-[11px] text-amber-300 font-semibold shadow-inner">
       <i class="fa-solid fa-bullhorn text-amber-400 animate-pulse text-xs shrink-0"></i>
       <marquee behavior="scroll" direction="left" scrollamount="4">
-        WINNING INSTANT WALLET &bull; 6 DAYS OPEN (SUNDAY OFF) &bull; 10 MIN CUTOFF &bull; HELPLINE +918134834380
+        WINNING INSTANT WALLET &bull; 6 DAYS OPEN (SUNDAY OFF) &bull; HELPLINE +918134834380
       </marquee>
     </div>
 
@@ -585,7 +585,7 @@
         <div class="bg-[#032427] text-white p-3.5 rounded-t-3xl flex items-center justify-between">
           <div>
             <h3 id="playMarketTitle" class="font-bold text-base text-amber-300">Shillong Teer</h3>
-            <p id="marketCutoffNotice" class="text-[10px] text-amber-300 font-semibold">⚠️ Cutoff: 10 mins before draw time</p>
+            <p id="marketCutoffNotice" class="text-[10px] text-amber-300 font-semibold"></p>
           </div>
           <div class="flex items-center gap-2">
             <button id="btnTeerPlayHistory" onclick="openTeerPlayHistoryModal()" class="hidden px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-black rounded-lg text-[10px] shadow flex items-center gap-1 transition">
@@ -986,7 +986,8 @@
         { name: 'Teer Play', frTime: '1 Min', srTime: '1 Min', defaultFr: '**', defaultSr: '**', isFast: true }
       ],
       bids: [],
-      notifications: []
+      notifications: [],
+      teerPlayRounds: []
     };
 
     const historicalMarketData = {
@@ -1273,7 +1274,23 @@
       if (window.__teerPlayTimer) return;
       window.__teerPlayTimer = setInterval(() => {
         const timer = document.getElementById('teerPlayLiveModalTimer');
-        if (timer) timer.innerText = `00:${String(60 - new Date().getSeconds()).padStart(2, '0')}s`;
+        const roundType = state.currentRound === 'SR' ? 'SR' : 'FR';
+        const rounds = state.teerPlayRounds || [];
+        const active = rounds.find(r => r.result_type === roundType && r.status === 'open' &&
+          new Date(r.ends_at).getTime() > Date.now());
+        if (timer && active) {
+          const seconds = Math.max(0, Math.ceil((new Date(active.ends_at).getTime() - Date.now()) / 1000));
+          timer.innerText = `${String(Math.floor(seconds / 60)).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}s`;
+        } else if (timer) {
+          timer.innerText = '00:00s';
+        }
+        renderTeerPlayRoundIds();
+        renderTeerPlayHistoryStrip();
+        if (document.getElementById('playGameModal')?.classList.contains('hidden') === false &&
+            (!window.__teerPlayLastRefresh || Date.now() - window.__teerPlayLastRefresh > 5000)) {
+          window.__teerPlayLastRefresh = Date.now();
+          initSupabasePublicSync();
+        }
       }, 1000);
     }
 
@@ -1353,22 +1370,44 @@
 
     
     // Render Previous Results Strip
+    function getCurrentTeerPlayRoundId(roundType) {
+      const now = Date.now();
+      const row = (state.teerPlayRounds || []).find(r =>
+        r.result_type === roundType &&
+        r.status === 'open' &&
+        new Date(r.starts_at).getTime() <= now &&
+        new Date(r.ends_at).getTime() > now
+      );
+      return row ? Number(row.id) : null;
+    }
+
+    function renderTeerPlayRoundIds() {
+      const meta = document.getElementById('teerPlayRoundMeta');
+      if (!meta) return;
+      const fr = getCurrentTeerPlayRoundId('FR');
+      const sr = getCurrentTeerPlayRoundId('SR');
+      meta.textContent = `FR ID: ${fr || '--'}  |  SR ID: ${sr || '--'}`;
+    }
+
     function renderTeerPlayHistoryStrip() {
       const strip = document.getElementById('teerPlayResultsHistoryStrip');
       if (!strip) return;
-      const historyList = JSON.parse(memoryStore.getItem('teer_play_recent_results') || '[]');
-
-      if (historyList.length === 0) {
+      const rounds = (state.teerPlayRounds || [])
+        .filter(r => r.status === 'settled' && r.result_number !== null && r.result_number !== undefined)
+        .sort((a,b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
+        .slice(-24);
+      if (!rounds.length) {
         strip.innerHTML = '<span class="text-slate-500 text-[10px] italic">Waiting for draw...</span>';
         return;
       }
-
-      strip.innerHTML = historyList.map(item => `
-        <div class="bg-teal-950/80 border border-amber-400/40 rounded-lg px-2 py-0.5 text-center flex-shrink-0 shadow">
-          <span class="text-[8px] text-slate-400 block">${item.time}</span>
-          <span class="text-amber-300 font-black">FR ${item.fr}</span> | <span class="text-emerald-400 font-black">SR ${item.sr}</span>
-        </div>
-      `).join('');
+      strip.innerHTML = rounds.map(r => {
+        const value = String(r.result_number).padStart(2,'0');
+        const time = new Date(r.starts_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        return `<div class="bg-teal-950/80 border border-amber-400/40 rounded-lg px-2 py-0.5 text-center flex-shrink-0 shadow">
+          <span class="text-[8px] text-slate-400 block">${time} • #${r.id}</span>
+          <span class="${r.result_type === 'FR' ? 'text-amber-300' : 'text-emerald-400'} font-black">${r.result_type} ${value}</span>
+        </div>`;
+      }).join('');
     }
 
     function renderTeerPlayHistoryList() {
@@ -1945,7 +1984,8 @@
       if (mName === 'Teer Play') {
         const remainingSecs = 60 - new Date().getSeconds();
         noticeEl.className = "text-[11px] text-amber-300 font-mono font-bold flex items-center gap-1.5";
-        noticeEl.innerHTML = `⏱️ Draw In: <span id="teerPlayLiveModalTimer" class="bg-amber-400 text-teal-950 px-2 py-0.5 rounded-full font-black animate-pulse">00:${String(remainingSecs).padStart(2, '0')}s</span>`;
+        noticeEl.innerHTML = `⏱️ Draw In: <span id="teerPlayLiveModalTimer" class="bg-amber-400 text-teal-950 px-2 py-0.5 rounded-full font-black animate-pulse">00:${String(remainingSecs).padStart(2, '0')}s</span> <span id="teerPlayRoundMeta" class="text-[9px] text-teal-200 ml-1">FR ID: -- | SR ID: --</span>`;
+        initSupabasePublicSync();
         if (histBtn) histBtn.classList.remove('hidden');
         if (stripContainer) {
           stripContainer.classList.remove('hidden');
@@ -1953,7 +1993,7 @@
         }
       } else {
         noticeEl.className = "text-[10px] text-amber-300 font-semibold";
-        noticeEl.innerText = "⚠️ Cutoff: 10 mins before draw time";
+        noticeEl.innerText = "";
         if (histBtn) histBtn.classList.add('hidden');
         if (stripContainer) stripContainer.classList.add('hidden');
       }
@@ -2748,6 +2788,17 @@
     // ==========================================
     // SUPABASE ACCOUNT API INTEGRATION
     // Real-user session stays in memory only. Demo users remain isolated.
+    function showAppToast(message) {
+      let toast = document.getElementById('appToast');
+      if (!toast) {
+        toast = document.createElement('div'); toast.id = 'appToast';
+        toast.className = 'fixed top-16 left-1/2 -translate-x-1/2 z-[100] bg-teal-950 text-white px-4 py-3 rounded-xl shadow-2xl text-xs font-bold max-w-[90vw] text-center transition-opacity';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = message; toast.classList.remove('hidden'); toast.style.opacity = '1';
+      clearTimeout(window.__appToastTimer);
+      window.__appToastTimer = setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.classList.add('hidden'), 250); }, 2600);
+    }
     // ==========================================
     const ACCOUNT_API_URL = 'https://qzbqmbrzmfggzzeufkyh.supabase.co/functions/v1/account-api';
     const ACCOUNT_API_KEY = 'sb_publishable_Z2ij7JqELoVfBQ75wrSrFg_bKDt3aj1';
@@ -2784,6 +2835,9 @@
       try {
         const data = await accountApi('public_app_data', {}, false);
         window.supabaseResults = data.results || {};
+        state.teerPlayRounds = Array.isArray(data.rounds) ? data.rounds : [];
+        renderTeerPlayRoundIds();
+        renderTeerPlayHistoryStrip();
         const settings = data.settings || {};
         if (settings.deposit_upi) {
           const upiSpan = document.getElementById('depositUpiText'); if (upiSpan) upiSpan.innerText = settings.deposit_upi;
@@ -2826,7 +2880,7 @@
         try { await refreshAccountBalance(); }
         catch (balanceError) { console.warn('Initial balance refresh failed:', balanceError); state.balance = 0; }
         updateUI(); closeAuthModal();
-        alert('Registration successful! Supabase account ready.');
+        showAppToast('Registration successful! ₹10 welcome bonus added to your wallet.');
       } catch (err) { alert(err.message || 'Registration failed.'); }
     }
 
@@ -2838,7 +2892,7 @@
       if (demo) {
         accountSessionToken = null; accountIsDemo = true;
         state.user = { ...demo }; state.balance = Number(demo.balance || 0); state.bids = [];
-        updateUI(); closeAuthModal(); openAppInstallModal(); return;
+        updateUI(); closeAuthModal(); showAppToast('Login successful. Welcome back!'); openAppInstallModal(); return;
       }
       try {
         const data = await accountApi('login', { phone, password }, false);
@@ -2876,7 +2930,7 @@
         document.getElementById('depositUtrInput').value = '';
         currentDepositScreenshotBase64 = null;
         closeDepositModal();
-        addAppNotification({ type:'deposit', title:'Deposit Request Submitted', message:`₹${amount} deposit request (UTR: ${utr}) Supabase par submit hui. Admin approval ke baad wallet credit hoga.` });
+        addAppNotification({ type:'deposit', title:'Deposit Request Submitted', message:`₹${amount} deposit request Supabase par submit hui. Admin approval ke baad wallet credit hoga.` });
         alert('Deposit request Supabase par submit ho gayi. Admin approval ka wait karein.');
       } catch (err) { alert(err.message || 'Deposit request failed.'); }
     }
@@ -2925,7 +2979,9 @@
         // API validates and deducts each selection on the server; report any partial result clearly.
         let completed = 0;
         for (const item of selections) {
-          await accountApi('place_bet', { client_ref:ref + '-' + completed, market:state.currentMarketObj.name, round:item.round, bet_mode:String(state.betMode).toUpperCase(), bet_number:item.number, amount });
+          const roundId = state.currentMarketObj.name === 'Teer Play' ? getCurrentTeerPlayRoundId(item.round) : null;
+          if (state.currentMarketObj.name === 'Teer Play' && !roundId) throw new Error('Is round ka active ID nahi mila. Refresh karke dobara try karein.');
+          await accountApi('place_bet', { client_ref:ref + '-' + completed, market:state.currentMarketObj.name, round:item.round, round_id:roundId, bet_mode:String(state.betMode).toUpperCase(), bet_number:item.number, amount });
           completed++;
         }
         await refreshAccountBalance();
@@ -2933,7 +2989,7 @@
         const nums = state.selectedNumbers.join(', ');
         state.selectedNumbers = []; updateSelectedTray(); calculatePayout();
         const bets = await accountApi('my_bets', {limit:100});
-        state.bids = (bets.items || []).map(b => ({refId:b.client_ref || b.id,market:b.market,round:b.round,mode:b.bet_mode,number:b.bet_number,amount:Number(b.amount),status:b.status,payout:Number(b.payout||0),date:b.created_at,time:''}));
+        state.bids = (bets.items || []).map(b => ({refId:b.client_ref || b.id,market:b.market,round:b.round,roundId:b.round_id,mode:b.bet_mode,number:b.bet_number,amount:Number(b.amount),status:(String(b.status).toLowerCase()==='active'?'Active':String(b.status).toUpperCase()),payout:Number(b.payout||0),date:b.created_at,time:''}));
         updateUI(); showBetReceiptClip(state.currentMarketObj.name, roundLabel, nums, amount, document.getElementById('potentialWin').innerText.replace('₹',''), ref);
       } catch (err) {
         await refreshAccountBalance().catch(()=>{});
