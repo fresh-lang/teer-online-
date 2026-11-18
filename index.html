@@ -18,27 +18,10 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    // PWA installation (no APK download is bundled with this source).
-    let deferredInstallPrompt = null;
-
-    window.addEventListener('beforeinstallprompt', (event) => {
-      event.preventDefault();
-      deferredInstallPrompt = event;
-    });
-
-    async function triggerAutoInstall() {
-      if (navigator.vibrate) navigator.vibrate(50);
-      if (deferredInstallPrompt) {
-        deferredInstallPrompt.prompt();
-        await deferredInstallPrompt.userChoice;
-        deferredInstallPrompt = null;
-        return;
-      }
-      alert('Install karne ke liye browser ke 3-dots menu mein “Add to Home screen” ya “Install app” chunein.');
-    }
-
+    // Download the latest Android APK published by the main-branch build.
     function triggerInstallAction() {
-      triggerAutoInstall();
+      if (navigator.vibrate) navigator.vibrate(50);
+      window.location.href = 'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk';
     }
 
     if ('serviceWorker' in navigator) {
@@ -109,19 +92,19 @@
       </marquee>
     </div>
 
-    <!-- PWA Install Prompt Banner -->
-    <div id="pwaBanner" onclick="triggerAutoInstall()" class="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-teal-950 px-3.5 py-2.5 flex items-center justify-between text-xs font-bold shadow-md cursor-pointer select-none z-20 relative">
+    <!-- Direct Android APK download banner -->
+    <a id="pwaBanner" href="https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk" download="teer-online.apk" class="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-teal-950 px-3.5 py-2.5 flex items-center justify-between text-xs font-bold shadow-md cursor-pointer select-none z-20 relative no-underline">
       <div class="flex items-center gap-2">
         <div class="w-6 h-6 rounded-full bg-teal-950 text-amber-300 flex items-center justify-center text-xs shadow-inner">
           <i class="fa-solid fa-download animate-bounce"></i>
         </div>
-        <span class="tracking-wide font-black">Install Teer Online App</span>
+        <span class="tracking-wide font-black">Download Teer Online APK</span>
       </div>
-      <button type="button" onclick="event.stopPropagation(); triggerAutoInstall();" class="bg-teal-950 hover:bg-teal-900 active:scale-95 text-amber-300 px-3.5 py-1.5 rounded-xl text-xs font-black shadow transition flex items-center gap-1 cursor-pointer">
-        <span>Install App</span>
+      <span class="bg-teal-950 hover:bg-teal-900 active:scale-95 text-amber-300 px-3.5 py-1.5 rounded-xl text-xs font-black shadow transition flex items-center gap-1">
+        <span>Download APK</span>
         <i class="fa-solid fa-mobile-screen-button text-[11px] ml-0.5"></i>
-      </button>
-    </div>
+      </span>
+    </a>
 
     <!-- MAIN SCREENS CONTAINER -->
     <main class="flex-1 overflow-y-auto no-scrollbar">
