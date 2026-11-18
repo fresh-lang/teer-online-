@@ -227,6 +227,19 @@
             </div>
           </div>
 
+
+          <!-- Realtime Fake UID Bets Feed on Teer Play -->
+          <div class="bg-[#02181a] border border-teal-900/60 rounded-xl p-2.5 shadow-inner">
+            <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1.5 border-b border-teal-900/40 pb-1">
+              <span class="text-amber-400 font-bold flex items-center gap-1">
+                <i class="fa-solid fa-bolt text-amber-400"></i> Live Bets on Online Teer Play
+              </span>
+              <span class="text-emerald-400 animate-pulse font-mono text-[9px]">● LIVE TICKER</span>
+            </div>
+            <div id="fakeLiveBetsFeed" class="space-y-1 max-h-24 overflow-hidden font-mono text-[10px]">
+              <!-- Live fake bets inserted here -->
+            </div>
+          </div>
         </div>
 
         <!-- Main Markets Section -->
@@ -652,6 +665,18 @@
             <label class="font-bold text-slate-700 block mb-1">Bet Amount per selection (₹):</label>
             <input type="number" id="betAmountInput" value="20" min="10" step="10" oninput="calculatePayout()" class="w-full border rounded-xl px-3 py-2 font-bold text-base outline-none">
           </div>
+
+          <!-- Live Teer Play Ticker in Modal -->
+          <div class="bg-[#02181a] border border-teal-900/60 rounded-xl p-2 shadow-inner">
+            <div class="flex items-center justify-between text-[9px] text-slate-400 mb-1 border-b border-teal-900/40 pb-1">
+              <span class="text-amber-400 font-bold flex items-center gap-1">
+                <i class="fa-solid fa-bolt text-amber-400"></i> Realtime Bets
+              </span>
+              <span class="text-emerald-400 animate-pulse font-mono text-[9px]">● LIVE</span>
+            </div>
+            <div id="modalFakeBetsFeed" class="space-y-1 max-h-16 overflow-hidden font-mono text-[9px]"></div>
+          </div>
+
 
           <div class="bg-teal-50 border border-teal-200 rounded-xl p-2.5 flex justify-between items-center text-xs">
             <div>
@@ -1175,6 +1200,79 @@
     }
 
     // ==========================================
+    // FAKE REALTIME BETS TICKER FOR TEER PLAY
+    // ==========================================
+    
+    // Realtime User Bet Injection with Unique Highlight Styling
+    function injectUserRealtimeBet(userUid, mode, number, amount) {
+      const feed1 = document.getElementById('fakeLiveBetsFeed');
+      const feed2 = document.getElementById('modalFakeBetsFeed');
+
+      const highlightHtml = `
+        <div class="flex justify-between items-center bg-gradient-to-r from-amber-500/30 to-teal-900/60 border border-amber-400 rounded-lg px-2 py-1 my-1 text-white text-[10px] shadow-lg animate-pulse">
+          <div class="flex items-center gap-1.5">
+            <span class="bg-amber-400 text-teal-950 font-black px-1.5 py-0.2 rounded text-[8px]">YOUR BET</span>
+            <span class="text-amber-300 font-extrabold font-mono">${userUid}</span>
+          </div>
+          <span class="text-teal-100 font-bold">${mode} [${number}]</span>
+          <span class="text-emerald-300 font-black font-mono">₹${amount}</span>
+        </div>
+      `;
+
+      [feed1, feed2].forEach(feed => {
+        if (feed) {
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = highlightHtml;
+          feed.prepend(wrapper.firstElementChild);
+          if (feed.children.length > 6) feed.removeChild(feed.lastChild);
+        }
+      });
+    }
+
+    function initFakeBetsTicker() {
+      const feed = document.getElementById('fakeLiveBetsFeed');
+      const mFeed = document.getElementById('modalFakeBetsFeed');
+
+      const randomGutis = ['20', '30', '50', '14', '78', '09', '42', '88', '15', '63', '99'];
+      const amounts = [10, 10, 10, 20, 30, 50];
+
+      function addFakeBet() {
+        if (!feed) return;
+        const fakeUid = 'UID_' + Math.floor(1000 + Math.random() * 9000);
+        const guti = randomGutis[Math.floor(Math.random() * randomGutis.length)];
+        const amt = amounts[Math.floor(Math.random() * amounts.length)];
+        
+        const modeRoll = Math.random();
+        let modeLabel = '';
+        if (modeRoll < 0.6) {
+          modeLabel = 'Guti [' + guti + ']';
+        } else if (modeRoll < 0.8) {
+          modeLabel = 'House [' + guti.charAt(0) + ']';
+        } else {
+          modeLabel = 'Ending [' + guti.charAt(1) + ']';
+        }
+
+        const row = document.createElement('div');
+        row.className = "flex justify-between items-center text-teal-200 py-0.5 border-b border-teal-950/40 text-[9px]";
+        row.innerHTML = `
+          <span class="text-amber-400 font-bold">${fakeUid}</span>
+          <span class="text-slate-300">${modeLabel}</span>
+          <span class="text-emerald-400 font-bold">₹${amt}</span>
+        `;
+        feed.prepend(row);
+        if (feed.children.length > 5) feed.removeChild(feed.lastChild);
+        if (mFeed) {
+          const rowClone = row.cloneNode(true);
+          mFeed.prepend(rowClone);
+          if (mFeed.children.length > 3) mFeed.removeChild(mFeed.lastChild);
+        }
+      }
+
+      for (let i = 0; i < 4; i++) addFakeBet();
+      setInterval(addFakeBet, 2500);
+    }
+
+    // ==========================================
     // 1-MINUTE TEER PLAY AUTO DRAW ENGINE & POPUP
     // ==========================================
     function initTeerPlayAutoEngine() {
@@ -1374,6 +1472,7 @@
       initUserLiveBalanceListener();
       checkUrlReferral();
       syncAgentEarningsFromSupabase();
+      initFakeBetsTicker();
       initTeerPlayAutoEngine();
 
       setInterval(() => {
