@@ -8,8 +8,7 @@ create index if not exists idx_bets_round_id_active
   on public.bets(round_id, status)
   where round_id is not null;
 
-create unique index if not exists idx_bets_user_client_ref_unique
-  on public.bets(user_id, client_ref);
+-- Existing bets_user_id_client_ref_key already enforces idempotent client refs.
 
 create or replace function public.api_place_bet(
   p_user_id uuid,
