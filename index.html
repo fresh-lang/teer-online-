@@ -2958,7 +2958,7 @@
         accountSessionToken = null; accountIsDemo = true;
         state.user = { ...demo }; state.balance = Number(demo.balance || 0); state.bids = [];
         await syncUserRequestNotifications(true);
-        updateUI(); closeAuthModal(); showAppToast('Login successful. Welcome back!'); openAppInstallModal(); return;
+        updateUI(); closeAuthModal(); showAppToast('Login successful. Welcome back!'); return;
       }
       try {
         const data = await accountApi('login', { phone, password }, false);
