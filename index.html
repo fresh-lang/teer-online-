@@ -1585,6 +1585,37 @@
       syncNotifications();
     }
 
+    async function syncUserRequestNotifications(silent = false) {
+      if (!state.user || accountIsDemo || !accountSessionToken) return;
+      try {
+        const [deposits, withdrawals] = await Promise.all([
+          accountApi('my_deposit_requests', { limit: 30 }),
+          accountApi('my_withdrawal_requests', { limit: 30 })
+        ]);
+        const check = (items, kind) => (items || []).forEach(item => {
+          const status = String(item.status || 'pending').toLowerCase();
+          const key = `request_status_${kind}_${item.id}`;
+          const previous = memoryStore.getItem(key);
+          if (previous !== null && previous !== status && !silent) {
+            const amount = Number(item.amount || 0);
+            if (kind === 'deposit') {
+              const approved = status === 'approved';
+              addAppNotification({ type:'deposit', title:approved?'Deposit Approved':'Deposit Rejected', message:approved?`₹${amount} deposit approved and wallet credited.`:`₹${amount} deposit request was rejected.` });
+            } else {
+              const paid = status === 'approved';
+              const rejected = status === 'rejected';
+              addAppNotification({ type:'withdraw', title:paid?'Withdrawal Paid':(rejected?'Withdrawal Rejected':'Withdrawal Updated'), message:paid?`₹${amount} withdrawal marked paid.`:(rejected?`₹${amount} withdrawal rejected; wallet refund processed.`:`₹${amount} withdrawal status: ${status}.`) });
+            }
+          }
+          memoryStore.setItem(key, status);
+        });
+        check(deposits.items, 'deposit');
+        check(withdrawals.items, 'withdrawal');
+      } catch (e) {
+        console.warn('User request notification sync failed:', e.message);
+      }
+    }
+
     function playChimeSound() {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2084,7 +2115,7 @@
       
       const countEl = document.getElementById('withdrawDailyCountText');
       if (countEl) {
-        countEl.innerText = `Daily Requests: ${dailyData.count}/5 (Max ₹50,000)`;
+        countEl.innerText = 'Daily limit is controlled by your account VIP level.';
       }
 
       document.getElementById('withdrawModal').classList.remove('hidden');
@@ -2623,7 +2654,7 @@
           state.transactions = (data.items || []).map(t => {
             const rawType = String(t.type || '').toLowerCase();
             const type = rawType === 'withdrawal' ? 'withdraw' : rawType;
-            const isCredit = ['deposit','win','bonus','welcome','commission'].includes(type);
+            const isCredit = statusRaw === 'refunded' || ['deposit','win','bonus','welcome','commission'].includes(type);
             const statusRaw = String(t.status || 'pending').toLowerCase();
             const status = statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
             const date = t.created_at ? new Date(t.created_at) : new Date();
@@ -2926,6 +2957,7 @@
       if (demo) {
         accountSessionToken = null; accountIsDemo = true;
         state.user = { ...demo }; state.balance = Number(demo.balance || 0); state.bids = [];
+        await syncUserRequestNotifications(true);
         updateUI(); closeAuthModal(); showAppToast('Login successful. Welcome back!'); openAppInstallModal(); return;
       }
       try {
@@ -2965,7 +2997,8 @@
         currentDepositScreenshotBase64 = null;
         closeDepositModal();
         addAppNotification({ type:'deposit', title:'Deposit Request Submitted', message:`₹${amount} deposit request Supabase par submit hui. Admin approval ke baad wallet credit hoga.` });
-        alert('Deposit request Supabase par submit ho gayi. Admin approval ka wait karein.');
+        await syncUserRequestNotifications(true);
+        showAppToast('Deposit request submitted. Admin approval ke baad wallet credit hoga.');
       } catch (err) { alert(err.message || 'Deposit request failed.'); }
     }
 
@@ -2991,7 +3024,8 @@
         await accountApi('create_withdrawal', { amount, payout_details:payoutDetails });
         await refreshAccountBalance(); closeWithdrawModal();
         addAppNotification({ type:'withdraw', title:'Withdrawal Request Submitted', message:`₹${amount} withdrawal request admin review ke liye submit hui.` });
-        alert('Withdrawal request submit ho gayi. Wallet balance server par update hua hai.');
+        await syncUserRequestNotifications(true);
+        showAppToast('Withdrawal request submitted. Wallet balance server par update hua hai.');
       } catch (err) { alert(err.message || 'Withdrawal request failed.'); }
     }
 
@@ -3035,7 +3069,7 @@
 
     // Refresh public results/settings periodically from Supabase, not Supabase or browser storage.
     if (!window.__supabasePublicRefresh) {
-      window.__supabasePublicRefresh = setInterval(() => initSupabasePublicSync(), 20000);
+      window.__supabasePublicRefresh = setInterval(() => { initSupabasePublicSync(); syncUserRequestNotifications(false); }, 20000);
     }
 
     // Safe placeholders for features without an audited server-side Supabase API.
