@@ -50,6 +50,14 @@ jobs:
           mkdir -p resources
           node -e "require('sharp')('icon-512.png').resize(1024,1024).png().toFile('resources/icon.png').then(()=>console.log('Launcher icon prepared'))"
           npx --yes @capacitor/assets generate --android
+      - name: Set Android app version for in-place updates
+        run: |
+          VERSION_CODE="$GITHUB_RUN_NUMBER"
+          VERSION_NAME="1.0.$GITHUB_RUN_NUMBER"
+          sed -i "s/versionCode [0-9]*/versionCode $VERSION_CODE/" android/app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"$VERSION_NAME\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
+
       - name: Build debug APK
         run: |
           npx cap sync android
