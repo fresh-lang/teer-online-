@@ -8,6 +8,21 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:178122817204:android:2370264f415654070e21e1",
+        "android_client_info": {
+          "package_name": "com.freshlang.teeronline"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        { "current_key": "AIzaSyBwNaQHDnajjjv6UFjw02YM0OLNR7uYepA" }
+      ],
+      "services": {
+        "appinvite_service": { "other_platform_oauth_client": [] }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:178122817204:android:1fe4d6465fdaf0040e21e1",
         "android_client_info": {
           "package_name": "com.teeronline.app"
@@ -15,14 +30,10 @@
       },
       "oauth_client": [],
       "api_key": [
-        {
-          "current_key": "AIzaSyBwNaQHDnajjjv6UFjw02YM0OLNR7uYepA"
-        }
+        { "current_key": "AIzaSyBwNaQHDnajjjv6UFjw02YM0OLNR7uYepA" }
       ],
       "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
+        "appinvite_service": { "other_platform_oauth_client": [] }
       }
     }
   ],
