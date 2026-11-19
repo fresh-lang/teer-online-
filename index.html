@@ -946,6 +946,7 @@
       ],
       bids: [],
       notifications: [],
+      requestStatuses: {},
       teerPlayRounds: [],
       transactions: []
     };
@@ -1514,22 +1515,20 @@
 
     /* Removed stale in-memory account persistence handler loadStorage. */
 
-    function saveNotifications() {
-      memoryStore.setItem('teer_notifications', JSON.stringify(state.notifications));
+    async function saveNotifications() {
+      try { await writeUiStore('teer_notifications', state.notifications); }
+      catch (e) { console.warn('Notification history could not be saved:', e); }
     }
 
     function syncNotifications() {
-      const saved = memoryStore.getItem('teer_notifications');
-      if (saved) {
-        state.notifications = JSON.parse(saved);
-        const unreadCount = state.notifications.filter(n => n.unread).length;
-        const badge = document.getElementById('notifBadge');
-        if (unreadCount > 0) {
-          badge.innerText = unreadCount;
-          badge.classList.remove('hidden');
-        } else {
-          badge.classList.add('hidden');
-        }
+      const unreadCount = state.notifications.filter(n => n.unread).length;
+      const badge = document.getElementById('notifBadge');
+      if (!badge) return;
+      if (unreadCount > 0) {
+        badge.innerText = String(unreadCount);
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
       }
     }
 
@@ -1541,7 +1540,7 @@
       item.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       item.unread = true;
       state.notifications.unshift(item);
-      saveNotifications();
+      void saveNotifications();
       syncNotifications();
     }
 
@@ -1555,7 +1554,7 @@
         const check = (items, kind) => (items || []).forEach(item => {
           const status = String(item.status || 'pending').toLowerCase();
           const key = `request_status_${kind}_${item.id}`;
-          const previous = memoryStore.getItem(key);
+          const previous = state.requestStatuses[key] ?? null;
           if (previous !== null && previous !== status && !silent) {
             const amount = Number(item.amount || 0);
             if (kind === 'deposit') {
@@ -1567,7 +1566,7 @@
               addAppNotification({ type:'withdraw', title:paid?'Withdrawal Paid':(rejected?'Withdrawal Rejected':'Withdrawal Updated'), message:paid?`₹${amount} withdrawal marked paid.`:(rejected?`₹${amount} withdrawal rejected; wallet refund processed.`:`₹${amount} withdrawal status: ${status}.`) });
             }
           }
-          memoryStore.setItem(key, status);
+          state.requestStatuses[key] = status;
         });
         check(deposits.items, 'deposit');
         check(withdrawals.items, 'withdrawal');
@@ -2250,7 +2249,7 @@
       }
 
       state.notifications.forEach(n => n.unread = false);
-      saveNotifications();
+      void saveNotifications();
       syncNotifications();
       document.getElementById('notificationModal').classList.remove('hidden');
     }
@@ -2261,7 +2260,7 @@
 
     function clearAllNotifications() {
       state.notifications = [];
-      saveNotifications();
+      void saveNotifications();
       syncNotifications();
       openNotificationModal();
     }
@@ -2893,10 +2892,11 @@
     function openAccountSessionDb() {
       return new Promise((resolve, reject) => {
         if (!('indexedDB' in window)) return reject(new Error('Persistent session storage unavailable.'));
-        const request = indexedDB.open(ACCOUNT_SESSION_DB, 1);
+        const request = indexedDB.open(ACCOUNT_SESSION_DB, 2);
         request.onupgradeneeded = () => {
           const db = request.result;
           if (!db.objectStoreNames.contains('sessions')) db.createObjectStore('sessions');
+          if (!db.objectStoreNames.contains('ui')) db.createObjectStore('ui');
         };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error || new Error('Session database could not open.'));
@@ -2921,6 +2921,26 @@
         tx.onabort = () => { db.close(); reject(tx.error || new Error('Session save aborted.')); };
       });
     }
+    async function readUiStore(key) {
+      const db = await openAccountSessionDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('ui', 'readonly');
+        const req = tx.objectStore('ui').get(key);
+        req.onsuccess = () => { const value = req.result ?? null; db.close(); resolve(value); };
+        req.onerror = () => { db.close(); reject(req.error); };
+      });
+    }
+    async function writeUiStore(key, value) {
+      const db = await openAccountSessionDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('ui', 'readwrite');
+        tx.objectStore('ui').put(value, key);
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+        tx.onabort = () => { db.close(); reject(tx.error || new Error('UI data save aborted.')); };
+      });
+    }
+
     async function saveAccountSession() {
       if (accountIsDemo || !accountSessionToken || !state.user) return;
       await writeStoredAccountSession({
@@ -2969,9 +2989,16 @@
         }
       } catch (e) { console.warn('Saved session could not be read:', e); }
       try {
-        const notes = JSON.parse(memoryStore.getItem('teer_notifications') || '[]');
-        state.notifications = Array.isArray(notes) ? notes : [];
-      } catch (_) { state.notifications = []; }
+        const notes = await readUiStore('teer_notifications');
+        const statuses = await readUiStore('teer_request_statuses');
+        state.notifications = Array.isArray(notes) ? notes.slice(0, 100) : [];
+        state.requestStatuses = statuses && typeof statuses === 'object' ? statuses : {};
+      } catch (e) {
+        state.notifications = [];
+        state.requestStatuses = {};
+        console.warn('Persistent notification data could not be loaded:', e);
+      }
+      syncNotifications();
     }
 
     async function restoreSavedAccountSession() {
