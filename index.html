@@ -3076,6 +3076,7 @@
         if (typeof accountSessionToken !== 'string') throw new Error('Registration successful, lekin session token response nahi mila.');
         state.user = data.user;
         await saveAccountSession();
+        if (window.TeerOneSignalBridge) void window.TeerOneSignalBridge.identify(state.user.id);
         accountIsDemo = false;
         // Registration is already committed on the server. A balance-read hiccup
         // must not misreport the newly created account as a failed registration.
