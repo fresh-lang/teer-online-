@@ -946,6 +946,7 @@
         alert(mName + ' schedule Supabase mein save ho gaya.');
       } catch (e) { alert('Schedule save failed: ' + e.message); }
     }
+    // Broadcast All is handled by the Supabase account-api admin_send_push action.
     async function sendEventNotification() {
       const title = document.getElementById('eventTitle').value.trim();
       const message = document.getElementById('eventMsg').value.trim();
