@@ -914,6 +914,7 @@
 
   </div>
 
+  <script src="./onesignal-bridge.js"></script>
   <script>
     // Volatile UI-only storage. Account, wallet, bets, results and settings live in Supabase.
     const memoryStore = (() => { const values = new Map(); return { getItem:k => values.has(k) ? values.get(k) : null, setItem:(k,v) => values.set(k, String(v)), removeItem:k => values.delete(k) }; })();
@@ -3006,6 +3007,7 @@
       if (!accountSessionToken || !state.user || accountIsDemo) return;
       try {
         await refreshAccountBalance();
+        if (window.TeerOneSignalBridge) void window.TeerOneSignalBridge.identify(state.user.id);
         const bets = await accountApi('my_bets', { limit: 100 });
         state.bids = (bets.items || []).map(b => ({
           refId:b.client_ref || b.id, market:b.market, round:b.round, roundId:b.round_id,
@@ -3101,6 +3103,7 @@
         if (typeof accountSessionToken !== 'string') throw new Error('Login response mein session token nahi mila.');
         state.user = data.user; accountIsDemo = false; state.bids = [];
         saveAccountSession();
+        if (window.TeerOneSignalBridge) void window.TeerOneSignalBridge.identify(state.user.id);
         await refreshAccountBalance();
         const bets = await accountApi('my_bets', { limit: 100 });
         state.bids = (bets.items || []).map(b => ({ refId:b.client_ref || b.id, market:b.market, round:b.round, roundId:b.round_id, mode:b.bet_mode, number:b.bet_number, amount:Number(b.amount), status:(String(b.status).toLowerCase()==='active'?'Active':String(b.status).toUpperCase()), payout:Number(b.payout || 0), date:b.created_at, time:'' }));
@@ -3111,6 +3114,7 @@
     async function logoutUser() {
       if (!confirm('Are you sure you want to log out?')) return;
       try { if (accountSessionToken) await accountApi('logout'); } catch (_) {}
+      try { if (window.TeerOneSignalBridge) await window.TeerOneSignalBridge.logout(); } catch (_) {}
       await clearAccountSession();
       accountSessionToken = null; accountIsDemo = false; state.user = null; state.balance = 0; state.bids = [];
       updateUI(); openAuthModal();

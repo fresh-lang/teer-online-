@@ -4,14 +4,17 @@
   "private": true,
   "scripts": {
     "prepare:web": "node prepare-web.js",
-    "android:sync": "npm run prepare:web && cap sync android",
-    "android:debug": "npm run prepare:web && (test -d android || npx cap add android) && npx cap sync android && cd android && ./gradlew assembleDebug"
+    "android:sync": "npm run build:onesignal && mkdir -p android/app && cp google-services.json android/app/google-services.json && cap sync android",
+    "android:debug": "npm run build:onesignal && (test -d android || npx cap add android) && mkdir -p android/app && cp google-services.json android/app/google-services.json && npx cap sync android && cd android && ./gradlew assembleDebug",
+    "build:onesignal": "npm run prepare:web && esbuild onesignal-bridge.js --bundle --platform=browser --format=iife --target=es2020 --outfile=www/onesignal-bridge.js"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
-    "@capacitor/core": "^7.0.0"
+    "@capacitor/core": "^7.0.0",
+    "@onesignal/capacitor-plugin": "^1.2.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "^7.0.0"
+    "@capacitor/cli": "^7.0.0",
+    "esbuild": "^0.25.0"
   }
 }

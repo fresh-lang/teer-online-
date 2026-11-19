@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "178122817204",
+    "firebase_url": "https://teer-online-e0d9d-default-rtdb.firebaseio.com",
+    "project_id": "teer-online-e0d9d",
+    "storage_bucket": "teer-online-e0d9d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:178122817204:android:1fe4d6465fdaf0040e21e1",
+        "android_client_info": {
+          "package_name": "com.teeronline.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwNaQHDnajjjv6UFjw02YM0OLNR7uYepA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
