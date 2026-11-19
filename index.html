@@ -24,6 +24,47 @@
       window.location.href = 'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk';
     }
 
+    // Native Android app update checker. The installed build number is embedded by the APK workflow.
+    async function checkForAppUpdate() {
+      try {
+        const isNative = window.Capacitor &&
+          typeof window.Capacitor.isNativePlatform === 'function' &&
+          window.Capacitor.isNativePlatform();
+        if (!isNative) return;
+
+        const [installedResponse, releaseResponse] = await Promise.all([
+          fetch('./build-info.json?check=' + Date.now(), { cache: 'no-store' }),
+          fetch('https://api.github.com/repos/fresh-lang/teer-online-/releases/latest', {
+            cache: 'no-store',
+            headers: { 'Accept': 'application/vnd.github+json' }
+          })
+        ]);
+        if (!installedResponse.ok || !releaseResponse.ok) return;
+
+        const installedInfo = await installedResponse.json();
+        const latestRelease = await releaseResponse.json();
+        const installedBuild = Number(installedInfo.build || 0);
+        const match = String(latestRelease.tag_name || '').match(/^apk-(\\d+)$/);
+        const latestBuild = match ? Number(match[1]) : 0;
+
+        if (latestBuild > installedBuild) {
+          const accepted = window.confirm(
+            'Teer Online ka naya update available hai (Build ' + latestBuild +
+            '). Update karne se app ke bugs aur features improve honge. Kya abhi update karna hai?'
+          );
+          if (accepted) {
+            window.location.href = 'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk';
+          }
+        }
+      } catch (error) {
+        console.warn('App update check failed:', error);
+      }
+    }
+
+    window.addEventListener('load', () => {
+      setTimeout(checkForAppUpdate, 2500);
+    });
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch(err => {
