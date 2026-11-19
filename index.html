@@ -1570,6 +1570,7 @@
         });
         check(deposits.items, 'deposit');
         check(withdrawals.items, 'withdrawal');
+        await writeUiStore('teer_request_statuses', state.requestStatuses);
       } catch (e) {
         console.warn('User request notification sync failed:', e.message);
       }
