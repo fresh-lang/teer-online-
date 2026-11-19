@@ -2,5 +2,12 @@
   "appId": "com.freshlang.teeronline",
   "appName": "Teer Online",
   "webDir": "www",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": false,
+      "backgroundColor": "#032427",
+      "style": "DARK"
+    }
+  }
 }
