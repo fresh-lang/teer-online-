@@ -946,7 +946,20 @@
         alert(mName + ' schedule Supabase mein save ho gaya.');
       } catch (e) { alert('Schedule save failed: ' + e.message); }
     }
-    function sendEventNotification() { alert('Broadcast notifications ka Supabase table/API abhi pending hai.'); }
+    async function sendEventNotification() {
+      const title = document.getElementById('eventTitle').value.trim();
+      const message = document.getElementById('eventMsg').value.trim();
+      if (!title || !message) { alert('Notification title aur message dono likhein.'); return; }
+      if (!confirm('Ye notification sabhi subscribed Teer Online users ko bhejni hai?')) return;
+      try {
+        const result = await adminApi('admin_send_push', { title, message });
+        document.getElementById('eventTitle').value = '';
+        document.getElementById('eventMsg').value = '';
+        alert('Notification successfully send ho gayi. Recipients: ' + Number(result.recipients || 0));
+      } catch (e) {
+        alert('Notification send nahi hui: ' + (e.message || e));
+      }
+    }
 
       async function calculateLiveRiskAnalytics() {
       const market = document.getElementById('analyticsMarketSelect').value;
