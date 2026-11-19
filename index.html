@@ -46,7 +46,16 @@
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .app-screen { display: none; }
     .app-screen.active { display: block; }
+    /* Keep the Android status bar above the app header instead of overlapping it. */
+    html.native-app #appContainer { padding-top: max(env(safe-area-inset-top), 24px); }
+    html.native-app #appContainer > header { top: max(env(safe-area-inset-top), 24px); }
   </style>
+  <script>
+    // Apply the Android-only safe-area spacing; leave the website layout unchanged.
+    if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
+      document.documentElement.classList.add('native-app');
+    }
+  </script>
 </head>
 <body class="flex flex-col items-center justify-start bg-slate-950 min-h-screen overflow-x-hidden w-full">
   <div id="appContainer" class="w-full max-w-[480px] min-h-screen bg-[#f3f7f8] flex flex-col relative pb-20 shadow-2xl overflow-x-hidden">
