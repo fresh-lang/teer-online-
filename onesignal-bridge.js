@@ -62,14 +62,25 @@ window.TeerOneSignalBridge = {
     return await requestStartupPermission();
   },
   async identify(userId) {
-    if (!userId || !(await initialize())) return;
+    const externalId = String(userId == null ? '' : userId).trim();
+    if (!externalId || !(await initialize())) return false;
     try {
-      await OneSignal.login(String(userId));
-      // Login/register is a user gesture, so retry the permission request here
-      // if the initial startup attempt happened before Android was ready.
-      void requestStartupPermission();
+      // Link this native installation to the authenticated Teer Online account.
+      // Await login before opting in so the subscription is associated with the
+      // same OneSignal user instead of remaining an anonymous device.
+      await OneSignal.login(externalId);
+      try {
+        await OneSignal.User.pushSubscription.optIn();
+      } catch (optInError) {
+        console.warn('OneSignal push opt-in after login failed:', optInError);
+      }
+      // Retry permission/registration after the user identity has been linked.
+      await requestStartupPermission();
+      console.info('OneSignal account linked:', externalId);
+      return true;
     } catch (error) {
       console.warn('OneSignal user registration failed:', error);
+      return false;
     }
   },
   async logout() {
