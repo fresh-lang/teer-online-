@@ -2016,7 +2016,8 @@
 
       let potential = 0;
       let mult = (state.betMode === 'direct') ? 90 : 9;
-      potential = amt * mult * count;
+      // Both Sides creates one FR bet and one SR bet for every selected number.
+      potential = amt * mult * count * roundMultiplier;
       document.getElementById('potentialWin').innerText = count > 0 ? '₹' + potential.toFixed(2) : '₹0.00';
     }
 
@@ -3231,8 +3232,12 @@
       if (accountIsDemo) { alert('Demo betting abhi local demo mode mein available nahi hai.'); return; }
       if (!accountSessionToken) { alert('Session missing. Dobara login karein.'); return; }
       if (!state.currentMarketObj) return;
-      const timeStr = state.currentRound === 'FR' ? state.currentMarketObj.frTime : state.currentMarketObj.srTime;
-      if (!isRoundBettingOpen(timeStr, state.currentMarketObj.name)) { alert('Betting time over.'); return; }
+      const roundsToCheck = state.currentRound === 'BS' ? ['FR', 'SR'] : [state.currentRound];
+      const closedRound = roundsToCheck.find(round => !isRoundBettingOpen(
+        round === 'FR' ? state.currentMarketObj.frTime : state.currentMarketObj.srTime,
+        state.currentMarketObj.name
+      ));
+      if (closedRound) { alert(closedRound + ' betting time over. Both Sides bet ke liye FR aur SR dono open hone chahiye.'); return; }
       const amount = Number(document.getElementById('betAmountInput').value || 0);
       if (!(amount > 0) || !state.selectedNumbers.length) { alert('Amount aur number select karein.'); return; }
       const rounds = state.currentRound === 'BS' ? ['FR','SR'] : [state.currentRound];
