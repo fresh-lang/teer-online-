@@ -368,6 +368,12 @@
           <label class="text-xs text-slate-400 block mb-1">Deposit UPI Receiver ID:</label>
           <input type="text" id="cfgUpi" value="8134834380@mbk" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs font-mono text-white outline-none">
         </div>
+        <div class="space-y-2">
+          <label class="text-xs text-slate-400 block">Upload / Change Static Wallet QR Image:</label>
+          <input type="file" id="cfgQrImage" accept="image/png,image/jpeg,image/webp" class="w-full text-xs text-slate-300">
+          <img id="cfgQrPreview" alt="Uploaded wallet QR preview" class="hidden w-36 h-36 object-contain bg-white rounded-xl p-2">
+          <p class="text-[10px] text-amber-300">Uploaded QR static hai. Amount-specific QR UPI ID se automatically generate hoga.</p>
+        </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">Live Scrolling Marquee Notice / Headline:</label>
           <textarea id="cfgMarquee" rows="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">WINNING INSTANT WALLET • 6 DAYS OPEN (SUNDAY OFF) • 10 MIN CUTOFF • HELPLINE +918134834380</textarea>
@@ -822,6 +828,8 @@
       document.getElementById('cfgPhone').value = st.helpline || '';
       document.getElementById('cfgUpi').value = st.deposit_upi || '';
       document.getElementById('cfgMarquee').value = st.marquee_text || '';
+      const qrPreview = document.getElementById('cfgQrPreview');
+      if (st.deposit_qr_image && qrPreview) { qrPreview.src = st.deposit_qr_image; qrPreview.classList.remove('hidden'); }
       loadMarketExistingResult();
       renderScheduleCards();
       renderAgentEarnings({});
@@ -902,15 +910,38 @@
       } catch (e) { alert('Reset failed: ' + e.message); }
     }
 
+    let pendingDepositQrImage = '';
+    document.getElementById('cfgQrImage')?.addEventListener('change', function () {
+      const file = this.files && this.files[0];
+      if (!file) return;
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 350000) {
+        alert('QR image PNG/JPG/WEBP ho aur 350 KB se chhoti ho.');
+        this.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        pendingDepositQrImage = String(reader.result || '');
+        const preview = document.getElementById('cfgQrPreview');
+        preview.src = pendingDepositQrImage;
+        preview.classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    });
     async function saveSettings() {
       const payload = {
         helpline: document.getElementById('cfgPhone').value.trim(),
         deposit_upi: document.getElementById('cfgUpi').value.trim(),
+        deposit_qr_image: pendingDepositQrImage || (window.__adminSettings || {}).deposit_qr_image || '',
         marquee_text: document.getElementById('cfgMarquee').value.trim(),
         market_schedules: (window.__adminSettings || {}).market_schedules || {}
       };
-      try { await adminApi('admin_save_settings', payload); window.__adminSettings = { ...payload }; alert('Settings Supabase mein save ho gayi.'); }
-      catch (e) { alert('Settings save failed: ' + e.message); }
+      try {
+        await adminApi('admin_save_settings', payload);
+        window.__adminSettings = { ...payload };
+        pendingDepositQrImage = '';
+        alert('Settings Supabase mein save ho gayi.');
+      } catch (e) { alert('Settings save failed: ' + e.message); }
     }
 
     async function approveDeposit(id) {
@@ -941,8 +972,9 @@
       const srTime = document.getElementById('sch_sr_' + idx).value.trim();
       const schedules = { ...((window.__adminSettings || {}).market_schedules || {}), [mName]: { frTime, srTime } };
       try {
-        await adminApi('admin_save_settings', { helpline: document.getElementById('cfgPhone').value.trim(), deposit_upi: document.getElementById('cfgUpi').value.trim(), marquee_text: document.getElementById('cfgMarquee').value.trim(), market_schedules: schedules });
-        window.__adminSettings = { ...(window.__adminSettings || {}), market_schedules: schedules };
+        await adminApi('admin_save_settings', { helpline: document.getElementById('cfgPhone').value.trim(), deposit_upi: document.getElementById('cfgUpi').value.trim(), deposit_qr_image: pendingDepositQrImage || (window.__adminSettings || {}).deposit_qr_image || '', marquee_text: document.getElementById('cfgMarquee').value.trim(), market_schedules: schedules });
+        window.__adminSettings = { ...(window.__adminSettings || {}), market_schedules: schedules, deposit_qr_image: pendingDepositQrImage || (window.__adminSettings || {}).deposit_qr_image || '' };
+        pendingDepositQrImage = '';
         alert(mName + ' schedule Supabase mein save ho gaya.');
       } catch (e) { alert('Schedule save failed: ' + e.message); }
     }
