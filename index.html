@@ -44,7 +44,7 @@
         const installedInfo = await installedResponse.json();
         const latestRelease = await releaseResponse.json();
         const installedBuild = Number(installedInfo.build || 0);
-        const match = String(latestRelease.tag_name || '').match(/^apk-(\\d+)$/);
+        const match = String(latestRelease.tag_name || '').match(/^apk-(\d+)$/);
         const latestBuild = match ? Number(match[1]) : 0;
 
         if (latestBuild > installedBuild) {
