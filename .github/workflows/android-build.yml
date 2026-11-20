@@ -1,10 +1,6 @@
 name: Build Teer Online Android APK
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '**'
   workflow_dispatch:
 
 permissions:
