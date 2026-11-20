@@ -2867,8 +2867,8 @@
       }
     };
 
-    function handleAppBackNavigation() {
-      // Close the topmost app modal before navigating away.
+    function handleAppBackNavigation(event) {
+      // Close the topmost app modal first; keep the current page in history.
       const openModals = document.querySelectorAll('.fixed:not(.hidden)');
       let modalClosed = false;
       openModals.forEach(m => {
@@ -2883,20 +2883,25 @@
         return;
       }
 
-      // First Back from any inner screen returns to Home.
-      if (currentActiveTab !== 'home') {
-        currentActiveTab = 'home';
-        originalSwitchTab('home');
+      // Restore the actual previous tab from browser history instead of
+      // forcing every Back press to Home.
+      const previousTab = event && event.state && event.state.tab;
+      if (previousTab && document.getElementById('screen-' + previousTab)) {
+        currentActiveTab = previousTab;
+        originalSwitchTab(previousTab);
+        return;
+      }
+
+      // Only when Home is reached and there is no earlier app page, ask to exit.
+      if (currentActiveTab === 'home' && !isExitModalOpen) {
+        isExitModalOpen = true;
+        document.getElementById('exitAppModal').classList.remove('hidden');
         window.history.pushState({ tab: 'home' }, '', '');
         return;
       }
 
-      // Back again on Home asks whether to stay or exit.
-      if (!isExitModalOpen) {
-        isExitModalOpen = true;
-        document.getElementById('exitAppModal').classList.remove('hidden');
-        window.history.pushState({ tab: 'home' }, '', '');
-      }
+      // Keep the app on its current page if the history entry is unavailable.
+      window.history.pushState({ tab: currentActiveTab }, '', '');
     }
 
     // Browser history back and the native Android hardware Back button share one handler.
