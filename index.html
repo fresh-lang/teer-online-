@@ -77,7 +77,7 @@
   <!-- Supabase Edge Function is authoritative for accounts, wallet, bets, results and settings. -->
 
   <style>
-    * { -webkit-tap-highlight-color: transparent; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: 'Poppins', sans-serif; background-color: #021a1c; color: #1e293b; user-select: none; }
     .font-decorative { font-family: 'Caveat', cursive; }
     .font-cinzel { font-family: 'Cinzel', serif; }
@@ -91,9 +91,9 @@
     html, body { width: 100%; min-height: 100%; height: 100%; margin: 0; }
     body { min-height: 100vh; min-height: 100dvh; }
     #appContainer { width: 100%; min-height: 100vh; min-height: 100dvh; }
-    /* Capacitor StatusBar overlaysWebView=false already reserves the status-bar area.
-       Do not add a second safe-area offset: it pushes the app down and wastes screen space. */
-    html.native-app #appContainer { padding-top: 0; }
+    /* Native status bar overlays the WebView; reserve a safe top inset so the
+       logo, balance and action icons always begin below Android system icons. */
+    html.native-app #appContainer { padding-top: max(env(safe-area-inset-top), 28px); }
     html.native-app #appContainer > header { top: 0; }
   </style>
   <script>
@@ -970,6 +970,7 @@
   </div>
 
   <script src="./onesignal-bridge.js"></script>
+  <script src="./native-back-bridge.js"></script>
   <script>
     // Volatile UI-only storage. Account, wallet, bets, results and settings live in Supabase.
     const memoryStore = (() => { const values = new Map(); return { getItem:k => values.has(k) ? values.get(k) : null, setItem:(k,v) => values.set(k, String(v)), removeItem:k => values.delete(k) }; })();
@@ -2863,8 +2864,8 @@
       }
     };
 
-    window.addEventListener('popstate', (e) => {
-      // 1. Check if any modal is open, close it first
+    function handleAppBackNavigation() {
+      // Close the topmost app modal before navigating away.
       const openModals = document.querySelectorAll('.fixed:not(.hidden)');
       let modalClosed = false;
       openModals.forEach(m => {
@@ -2879,7 +2880,7 @@
         return;
       }
 
-      // 2. If not on home tab, go back to home tab first
+      // First Back from any inner screen returns to Home.
       if (currentActiveTab !== 'home') {
         currentActiveTab = 'home';
         originalSwitchTab('home');
@@ -2887,25 +2888,34 @@
         return;
       }
 
-      // 3. If already on home tab, show Stay App / Exit popup
+      // Back again on Home asks whether to stay or exit.
       if (!isExitModalOpen) {
         isExitModalOpen = true;
         document.getElementById('exitAppModal').classList.remove('hidden');
         window.history.pushState({ tab: 'home' }, '', '');
       }
-    });
+    }
+
+    // Browser history back and the native Android hardware Back button share one handler.
+    window.addEventListener('popstate', handleAppBackNavigation);
+    window.addEventListener('teerNativeBack', handleAppBackNavigation);
 
     function closeExitModal() {
       isExitModalOpen = false;
       document.getElementById('exitAppModal').classList.add('hidden');
     }
 
-    function confirmExitApp() {
-      try {
-        window.close();
-      } catch(e) {}
-      // Fallback redirect or history back
-      window.location.href = "about:blank";
+    async function confirmExitApp() {
+      if (window.TeerNativeBackBridge && typeof window.TeerNativeBackBridge.exitApp === 'function') {
+        try {
+          await window.TeerNativeBackBridge.exitApp();
+          return;
+        } catch (error) {
+          console.warn('Native app exit failed:', error);
+        }
+      }
+      // Browsers do not allow websites to close their own tab.
+      window.close();
     }
 
 
