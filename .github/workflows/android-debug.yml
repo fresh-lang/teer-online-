@@ -73,7 +73,7 @@ jobs:
           test -n "$ZIPALIGN"
           CERT_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs teer-online.apk)"
           printf '%s\n' "$CERT_OUTPUT"
-          EXPECTED_CERT_SHA256="2c7267232cc990be39d2f2b4caa99268bf069f4ffafd12140f839a16c40cb893"
+          EXPECTED_CERT_SHA256="1ffcc914d536a33f58f981ddd854acb1e1e55c63f536806c916a357430ef8de9"
           ACTUAL_CERT_SHA256="$(printf '%s\n' "$CERT_OUTPUT" | awk 'tolower($0) ~ /certificate sha-256 digest/ {v=$NF; gsub(/[^[:xdigit:]]/, "", v); print tolower(v); exit}')"
           echo "Expected signing certificate: $EXPECTED_CERT_SHA256"
           echo "Actual signing certificate:   $ACTUAL_CERT_SHA256"
