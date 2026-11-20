@@ -24,7 +24,7 @@
       <input type="tel" id="adminPhone" inputmode="numeric" maxlength="10" placeholder="Admin registered phone" class="w-full p-3 text-center text-sm font-mono bg-black/50 border border-teal-800 rounded-2xl text-white outline-none focus:border-amber-400">
       <input type="password" id="passInput" placeholder="Account password" class="w-full p-3 text-center text-xl font-mono bg-black/50 border border-teal-800 rounded-2xl text-white outline-none focus:border-amber-400">
       <button onclick="checkPass()" class="w-full py-3 bg-amber-400 hover:bg-amber-500 text-teal-950 font-black rounded-2xl text-sm transition shadow-lg">Unlock Panel</button>
-      <p id="err" class="text-xs text-rose-500 font-bold hidden">Galat Password! Kripya sahi password enter karein.</p>
+      <p id="err" class="text-xs text-rose-500 font-bold hidden">Incorrect password. Please enter the correct password.</p>
     </div>
   </div>
 
@@ -101,7 +101,7 @@
         <div class="border-b border-teal-900/40 pb-2 flex justify-between items-center">
           <div>
             <h3 class="font-bold text-sm text-amber-400">Declare Live Market Result</h3>
-            <p class="text-[11px] text-slate-400">Result declare hote hi sabhi users ke wallet me winning instant credit ho jayegi.</p>
+            <p class="text-[11px] text-slate-400">Winnings will be credited to all winning users' wallets as soon as the result is declared.</p>
           </div>
           <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">Instant Winning 1:90</span>
         </div>
@@ -149,7 +149,7 @@
       <div class="bg-[#0f1d21] p-4 rounded-2xl border border-amber-500/30 space-y-3 shadow-md">
         <div class="border-b border-teal-900/40 pb-2">
           <h3 class="font-bold text-sm text-amber-300">Teer Play — Minute Round ID Override</h3>
-          <p class="text-[11px] text-slate-400">FR aur SR ka alag ID. Result selected round ke end par publish hoga.</p>
+          <p class="text-[11px] text-slate-400">FR and SR use separate IDs. The result will be published when the selected round ends.</p>
         </div>
         <label class="text-xs text-slate-300 font-bold block">Select Round ID:</label>
         <select id="teerRoundIdSelect" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white">
@@ -182,7 +182,7 @@
             <h3 class="font-bold text-sm text-white flex items-center gap-2">
               <i class="fa-solid fa-users text-amber-400"></i> All Registered Users
             </h3>
-            <p class="text-[11px] text-slate-400">Har user ka profile khol kar wallet balance edit aur check kar sakte hain.</p>
+            <p class="text-[11px] text-slate-400">Open any user profile to view and manage their wallet balance.</p>
           </div>
           <input type="text" id="userSearchInput" oninput="filterUsersList()" placeholder="Search Name or Mobile..." class="bg-black/50 border border-teal-800 text-xs px-3 py-1.5 rounded-xl text-white outline-none">
         </div>
@@ -215,7 +215,7 @@
             <h3 class="font-bold text-sm text-amber-400 flex items-center gap-2">
               <i class="fa-solid fa-receipt"></i> Deposit Requests &amp; UTR Verification
             </h3>
-            <p class="text-[11px] text-slate-400">User dwara bheja gaya 12-digit UTR verify karke 1-click me wallet credit karein.</p>
+            <p class="text-[11px] text-slate-400">Verify the 12-digit UTR submitted by the user and credit the wallet in one click.</p>
           </div>
           <span class="text-[10px] bg-amber-400/20 text-amber-300 font-bold px-2 py-0.5 rounded-full">5% Deposit Bonus Included</span>
         </div>
@@ -250,7 +250,7 @@
             <h3 class="font-bold text-sm text-rose-400 flex items-center gap-2">
               <i class="fa-solid fa-money-bill-transfer"></i> Withdrawal Requests &amp; Payouts
             </h3>
-            <p class="text-[11px] text-slate-400">User ko UPI se pay karne ke baad "Mark as Paid" karein ya Reject karein.</p>
+            <p class="text-[11px] text-slate-400">After verifying the user's UPI payment, select "Mark as Paid" or Reject.</p>
           </div>
           <span class="text-[10px] bg-rose-500/20 text-rose-300 font-bold px-2 py-0.5 rounded-full">Min ₹200</span>
         </div>
@@ -283,7 +283,7 @@
         <div class="flex flex-wrap gap-3 items-center justify-between">
           <div>
             <h3 class="font-bold text-sm text-amber-300">Live Risk & Bet Liability Matrix (1:90 Payout)</h3>
-            <p class="text-[11px] text-slate-400">Total pool collection aur 00–99 top gutis ka max payout projection.</p>
+            <p class="text-[11px] text-slate-400">Total pool collection and maximum payout projection for numbers 00–99.</p>
           </div>
           <div class="flex gap-2">
             <select id="analyticsMarketSelect" onchange="calculateLiveRiskAnalytics()" class="bg-black/50 border border-teal-800 text-xs p-2 rounded-xl text-white outline-none">
@@ -342,7 +342,7 @@
     <div id="tabContent_schedule" class="tab-pane space-y-3 hidden">
       <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3">
         <h3 class="font-bold text-sm text-amber-300">Market Timings & Cutoff Sync</h3>
-        <p class="text-[11px] text-slate-400">Har market ke FR aur SR timings update karein. User app par dynamic countdown timer sync ho jata hai.</p>
+        <p class="text-[11px] text-slate-400">Update FR and SR timings for each market. The countdown timer syncs automatically in the user app.</p>
         <div id="adminScheduleCards" class="space-y-2"></div>
       </div>
     </div>
@@ -351,7 +351,7 @@
       <!-- Agent Ledger -->
       <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-2">
         <h3 class="font-bold text-sm text-amber-300">Agent &amp; Referral Secret Commission Ledger</h3>
-        <p class="text-[11px] text-slate-400">Display: ₹100/₹1000. Actual credited in Supabase: <b>₹5 per ₹1000 deposit</b> aur <b>₹50 per ₹1000 bet</b>.</p>
+        <p class="text-[11px] text-slate-400">Display: ₹100/₹1000. Actual amount credited in Supabase: <b>₹5 per ₹1000 deposit</b> and <b>₹50 per ₹1000 bet</b>.</p>
         <div id="agentEarningsList" class="bg-black/40 p-3 rounded-xl text-xs font-mono text-emerald-400 max-h-40 overflow-y-auto">
           No referral transactions recorded yet.
         </div>
@@ -372,7 +372,7 @@
           <label class="text-xs text-slate-400 block">Upload / Change Static Wallet QR Image:</label>
           <input type="file" id="cfgQrImage" accept="image/png,image/jpeg,image/webp" class="w-full text-xs text-slate-300">
           <img id="cfgQrPreview" alt="Uploaded wallet QR preview" class="hidden w-36 h-36 object-contain bg-white rounded-xl p-2">
-          <p class="text-[10px] text-amber-300">Uploaded QR static hai. Amount-specific QR UPI ID se automatically generate hoga.</p>
+          <p class="text-[10px] text-amber-300">The uploaded QR is static. An amount-specific QR will be generated automatically from the UPI ID.</p>
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">Live Scrolling Marquee Notice / Headline:</label>
@@ -473,7 +473,7 @@
       document.getElementById('statTotalWallet').innerText = '₹' + totalWalletSum.toFixed(0);
 
       if (phones.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">Abhi tak koi user register nahi hua hai.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">No users have registered yet.</td></tr>`;
         return;
       }
 
@@ -586,7 +586,7 @@
       document.getElementById('tabCountDeposits').innerText = pendingList.length;
 
       if (depIds.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">Abhi tak koi deposit request nahi aayi hai.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">No deposit requests have been received yet.</td></tr>`;
         return;
       }
 
@@ -661,7 +661,7 @@
       document.getElementById('tabCountWithdrawals').innerText = pendingList.length;
 
       if (wIds.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">Abhi tak koi withdrawal request nahi aayi hai.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">No withdrawal requests have been received yet.</td></tr>`;
         return;
       }
 
@@ -868,14 +868,14 @@
       const roundId = Number(document.getElementById('teerRoundIdSelect').value);
       const resultNumber = Number(document.getElementById('teerRoundResultInput').value);
       if (!Number.isSafeInteger(roundId) || roundId < 1 || !Number.isInteger(resultNumber) || resultNumber < 0 || resultNumber > 99) {
-        alert('Valid round ID aur 00-99 result enter karein.');
+        alert('Enter a valid round ID and a result from 00 to 99.');
         return;
       }
       try {
         const response = await adminApi('admin_set_round_result', { round_id: roundId, result_number: resultNumber });
         document.getElementById('teerRoundResultInput').value = '';
         await loadTeerRoundIds();
-        alert(`Round #${roundId} ka result ${String(resultNumber).padStart(2,'0')} save ho gaya. Round end par publish hoga.`);
+        alert(`Result ${String(resultNumber).padStart(2,'0')} for round #${roundId} has been saved. It will be published when the round ends.`);
       } catch (e) {
         alert('Round result save failed: ' + (e.message || e));
       }
@@ -896,7 +896,7 @@
         await adminApi('admin_save_result', { market, fr, sr, result_date: getTodayFormattedDate() });
         window.__adminResults = window.__adminResults || {};
         window.__adminResults[market] = { fr, sr, date: getTodayFormattedDate() };
-        alert('Result Supabase mein save ho gaya.');
+        alert('Result saved to Supabase.');
       } catch (e) { alert('Result save failed: ' + e.message); }
     }
 
@@ -906,7 +906,7 @@
         await adminApi('admin_reset_result', { market });
         window.__adminResults[market] = { fr: '**', sr: '**', date: '' };
         loadMarketExistingResult();
-        alert('Result reset ho gaya.');
+        alert('Result has been reset.');
       } catch (e) { alert('Reset failed: ' + e.message); }
     }
 
@@ -915,7 +915,7 @@
       const file = this.files && this.files[0];
       if (!file) return;
       if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 350000) {
-        alert('QR image PNG/JPG/WEBP ho aur 350 KB se chhoti ho.');
+        alert('The QR image must be PNG, JPG, or WEBP and smaller than 350 KB.');
         this.value = '';
         return;
       }
@@ -940,33 +940,33 @@
         await adminApi('admin_save_settings', payload);
         window.__adminSettings = { ...payload };
         pendingDepositQrImage = '';
-        alert('Settings Supabase mein save ho gayi.');
+        alert('Settings saved to Supabase.');
       } catch (e) { alert('Settings save failed: ' + e.message); }
     }
 
     async function approveDeposit(id) {
-      const d = allDepositsCache[id]; if (!d || !confirm(`₹${d.amount} deposit approve aur wallet credit karein?`)) return;
+      const d = allDepositsCache[id]; if (!d || !confirm(`Approve the ₹${d.amount} deposit and credit the wallet?`)) return;
       try { await adminApi('admin_review_deposit', { deposit_id: id, review_action: 'approve' }); await initAdminDataSync(); alert('Deposit approved.'); }
       catch (e) { alert('Approval failed: ' + e.message); }
     }
     async function rejectDeposit(id) {
-      if (!confirm('Deposit reject karein?')) return;
+      if (!confirm('Reject this deposit?')) return;
       try { await adminApi('admin_review_deposit', { deposit_id: id, review_action: 'reject' }); await initAdminDataSync(); alert('Deposit rejected.'); }
       catch (e) { alert('Reject failed: ' + e.message); }
     }
     async function approveWithdrawal(id) {
-      if (!confirm('Payout bhejne ke baad is withdrawal ko paid mark karein?')) return;
+      if (!confirm('Mark this withdrawal as paid after sending the payout?')) return;
       try { await adminApi('admin_review_withdrawal', { withdrawal_id: id, review_action: 'approve' }); await initAdminDataSync(); alert('Withdrawal marked paid.'); }
       catch (e) { alert('Update failed: ' + e.message); }
     }
     async function rejectWithdrawal(id) {
-      if (!confirm('Withdrawal reject karke wallet refund karein?')) return;
+      if (!confirm('Reject this withdrawal and refund the wallet?')) return;
       try { await adminApi('admin_review_withdrawal', { withdrawal_id: id, review_action: 'reject' }); await initAdminDataSync(); alert('Withdrawal rejected and refund handled by server.'); }
       catch (e) { alert('Reject failed: ' + e.message); }
     }
-    function toggleBlockUser() { alert('User block control abhi Supabase schema/API mein available nahi hai; Supabase se write band hai.'); }
-    function adminResetUserPassword() { alert('Password reset ko secure server-side RPC ke saath add karna baaki hai; browser se password write disabled hai.'); }
-    function adjustUserBalance() { alert('Direct balance editing disabled. Wallet ledger audited server-side adjustment RPC required hai.'); }
+    function toggleBlockUser() { alert('User blocking is not currently available in the Supabase schema/API. Direct database writes are disabled.'); }
+    function adminResetUserPassword() { alert('Password reset still needs a secure server-side RPC. Password changes from the browser are disabled.'); }
+    function adjustUserBalance() { alert('Direct balance editing is disabled. A server-side adjustment RPC with wallet-ledger auditing is required.'); }
     async function saveMarketSchedule(mName, idx) {
       const frTime = document.getElementById('sch_fr_' + idx).value.trim();
       const srTime = document.getElementById('sch_sr_' + idx).value.trim();
@@ -975,22 +975,22 @@
         await adminApi('admin_save_settings', { helpline: document.getElementById('cfgPhone').value.trim(), deposit_upi: document.getElementById('cfgUpi').value.trim(), deposit_qr_image: pendingDepositQrImage || (window.__adminSettings || {}).deposit_qr_image || '', marquee_text: document.getElementById('cfgMarquee').value.trim(), market_schedules: schedules });
         window.__adminSettings = { ...(window.__adminSettings || {}), market_schedules: schedules, deposit_qr_image: pendingDepositQrImage || (window.__adminSettings || {}).deposit_qr_image || '' };
         pendingDepositQrImage = '';
-        alert(mName + ' schedule Supabase mein save ho gaya.');
+        alert(mName + ' schedule saved to Supabase.');
       } catch (e) { alert('Schedule save failed: ' + e.message); }
     }
     // Broadcast All is handled by the Supabase account-api admin_send_push action.
     async function sendEventNotification() {
       const title = document.getElementById('eventTitle').value.trim();
       const message = document.getElementById('eventMsg').value.trim();
-      if (!title || !message) { alert('Notification title aur message dono likhein.'); return; }
-      if (!confirm('Ye notification sabhi subscribed Teer Online users ko bhejni hai?')) return;
+      if (!title || !message) { alert('Enter both a notification title and message.'); return; }
+      if (!confirm('Send this notification to all subscribed Teer Online users?')) return;
       try {
         const result = await adminApi('admin_send_push', { title, message });
         document.getElementById('eventTitle').value = '';
         document.getElementById('eventMsg').value = '';
-        alert('Notification successfully send ho gayi. Recipients: ' + Number(result.recipients || 0));
+        alert('Notification sent successfully. Recipients: ' + Number(result.recipients || 0));
       } catch (e) {
-        alert('Notification send nahi hui: ' + (e.message || e));
+        alert('Notification could not be sent: ' + (e.message || e));
       }
     }
 
