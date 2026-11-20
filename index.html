@@ -93,7 +93,10 @@
     #appContainer { width: 100%; min-height: 100vh; min-height: 100dvh; }
     /* Native status bar overlays the WebView; reserve a safe top inset so the
        logo, balance and action icons always begin below Android system icons. */
-    html.native-app #appContainer { padding-top: max(env(safe-area-inset-top), 28px); }
+    html.native-app #appContainer {
+      padding-top: max(env(safe-area-inset-top), 28px);
+      background-image: linear-gradient(to bottom, #032427 0, #032427 max(env(safe-area-inset-top), 28px), #f3f7f8 max(env(safe-area-inset-top), 28px));
+    }
     html.native-app #appContainer > header { top: 0; }
   </style>
   <script>
