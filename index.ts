@@ -364,7 +364,7 @@ Deno.serve(async (req) => {
     if (action === "public_app_data") {
       const [{ data: results, error: resultsError }, { data: settings, error: settingsError }, { data: rounds, error: roundsError }] = await Promise.all([
         supabase.from("teer_results").select("market,fr,sr,result_date,updated_at"),
-        supabase.from("app_settings").select("helpline,deposit_upi,marquee_text,market_schedules").eq("id", 1).maybeSingle(),
+        supabase.from("app_settings").select("helpline,deposit_upi,deposit_qr_image,marquee_text,market_schedules").eq("id", 1).maybeSingle(),
         supabase.from("teer_minute_rounds").select("id,result_type,starts_at,ends_at,result_number,result_source,status,published_at").order("starts_at", { ascending: false }).limit(100),
       ]);
       if (resultsError) throw resultsError;
@@ -388,7 +388,7 @@ Deno.serve(async (req) => {
           supabase.from("withdrawal_requests").select("id,user_id,amount,payout_details,status,created_at,reviewed_at").order("created_at", { ascending: false }).limit(300),
           supabase.from("bets").select("id,user_id,market,round,round_id,bet_mode,bet_number,amount,status,payout,created_at").order("created_at", { ascending: false }).limit(500),
           supabase.from("teer_results").select("market,fr,sr,result_date,updated_at"),
-          supabase.from("app_settings").select("helpline,deposit_upi,marquee_text,market_schedules").eq("id", 1).maybeSingle(),
+          supabase.from("app_settings").select("helpline,deposit_upi,deposit_qr_image,marquee_text,market_schedules").eq("id", 1).maybeSingle(),
         ]);
         for (const q of [usersQ, walletsQ, depositsQ, withdrawalsQ, betsQ, resultsQ, settingsQ]) if (q.error) throw q.error;
         const balances = Object.fromEntries((walletsQ.data ?? []).map((w: any) => [w.user_id, Number(w.balance ?? 0)]));
@@ -427,9 +427,13 @@ Deno.serve(async (req) => {
 
       const helpline = String(body.helpline ?? "").trim().slice(0, 40);
       const depositUpi = String(body.deposit_upi ?? "").trim().slice(0, 120);
+      const depositQrImage = String(body.deposit_qr_image ?? "").trim();
+      if (depositQrImage && (!/^data:image\/(png|jpeg|webp);base64,/.test(depositQrImage) || depositQrImage.length > 500000)) {
+        return json({ error: "QR image must be PNG/JPG/WEBP and smaller than 350 KB" }, 400, origin);
+      }
       const marqueeText = String(body.marquee_text ?? "").trim().slice(0, 1000);
       const marketSchedules = body.market_schedules && typeof body.market_schedules === "object" ? body.market_schedules : {};
-      const { error } = await supabase.from("app_settings").upsert({ id: 1, helpline, deposit_upi: depositUpi, marquee_text: marqueeText, market_schedules: marketSchedules, updated_at: new Date().toISOString(), updated_by: admin.id }, { onConflict: "id" });
+      const { error } = await supabase.from("app_settings").upsert({ id: 1, helpline, deposit_upi: depositUpi, deposit_qr_image: depositQrImage || null, marquee_text: marqueeText, market_schedules: marketSchedules, updated_at: new Date().toISOString(), updated_by: admin.id }, { onConflict: "id" });
       if (error) throw error;
       return json({ success: true }, 200, origin);
     }
@@ -504,7 +508,7 @@ Deno.serve(async (req) => {
       const amount = Number(body.amount);
       const utr = String(body.utr ?? "").trim();
       const screenshotUrl = body.screenshot_url ? String(body.screenshot_url) : null;
-      if (!Number.isFinite(amount) || amount < 100 || amount > 1000000 || !/^.{6,80}$/.test(utr)) {
+      if (!Number.isInteger(amount) || amount < 100 || amount > 5000 || !/^.{6,80}$/.test(utr)) {
         return json({ error: "Invalid deposit amount or UTR" }, 400, origin);
       }
       const result = await rpc("api_create_deposit_request", {
