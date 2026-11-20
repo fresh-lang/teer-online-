@@ -3210,11 +3210,31 @@
       syncNotifications();
     }
 
+    async function linkOneSignalAccount(user) {
+      const externalId = String(user?.id ?? user?.user_id ?? '').trim();
+      if (!externalId) {
+        console.warn('OneSignal linking skipped: authenticated user ID is missing.');
+        return false;
+      }
+      if (!window.TeerOneSignalBridge || typeof window.TeerOneSignalBridge.identify !== 'function') {
+        console.warn('OneSignal linking skipped: native bridge is unavailable.');
+        return false;
+      }
+      try {
+        const linked = await window.TeerOneSignalBridge.identify(externalId);
+        if (!linked) console.warn('OneSignal did not confirm account linking.');
+        return Boolean(linked);
+      } catch (error) {
+        console.warn('OneSignal account linking attempt failed:', error);
+        return false;
+      }
+    }
+
     async function restoreSavedAccountSession() {
       if (!accountSessionToken || !state.user || accountIsDemo) return;
       try {
         await refreshAccountBalance();
-        if (window.TeerOneSignalBridge) void window.TeerOneSignalBridge.identify(state.user.id);
+        await linkOneSignalAccount(state.user);
         const bets = await accountApi('my_bets', { limit: 100 });
         state.bids = (bets.items || []).map(b => ({
           refId:b.client_ref || b.id, market:b.market, round:b.round, roundId:b.round_id,
@@ -3290,7 +3310,7 @@
         if (typeof accountSessionToken !== 'string') throw new Error('Registration successful, lekin session token response nahi mila.');
         state.user = data.user;
         await saveAccountSession();
-        if (window.TeerOneSignalBridge) void window.TeerOneSignalBridge.identify(state.user.id);
+        await linkOneSignalAccount(state.user);
         accountIsDemo = false;
         // Registration is already committed on the server. A balance-read hiccup
         // must not misreport the newly created account as a failed registration.
@@ -3317,8 +3337,8 @@
         accountSessionToken = data.session?.token || data.session?.session_token || data.session;
         if (typeof accountSessionToken !== 'string') throw new Error('The login response did not include a session token.');
         state.user = data.user; accountIsDemo = false; state.bids = [];
-        saveAccountSession();
-        if (window.TeerOneSignalBridge) void window.TeerOneSignalBridge.identify(state.user.id);
+        await saveAccountSession();
+        await linkOneSignalAccount(state.user);
         await refreshAccountBalance();
         const bets = await accountApi('my_bets', { limit: 100 });
         state.bids = (bets.items || []).map(b => ({ refId:b.client_ref || b.id, market:b.market, round:b.round, roundId:b.round_id, mode:b.bet_mode, number:b.bet_number, amount:Number(b.amount), status:(String(b.status).toLowerCase()==='active'?'Active':String(b.status).toUpperCase()), payout:Number(b.payout || 0), date:b.created_at, time:'' }));
