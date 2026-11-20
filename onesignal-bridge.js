@@ -17,19 +17,20 @@ async function initialize() {
   return initialization;
 }
 
-// Initialize on native app startup and request Android 13+ notification
-// permission immediately, rather than waiting for the user to log in.
+// Ask after the native screen has had time to become active. If Android
+// cannot show the dialog yet, leave the request retryable after user login.
 async function requestStartupPermission() {
   if (!(await initialize())) return false;
   if (!permissionRequest) {
     permissionRequest = (async () => {
       try {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         const hasPermission = await OneSignal.Notifications.hasPermission();
         if (hasPermission) return true;
 
         const canPrompt = await OneSignal.Notifications.canRequestPermission();
         if (!canPrompt) {
-          console.info('OneSignal notification permission cannot be prompted again; user may enable it in Android settings.');
+          console.info('Notification permission cannot be prompted again; enable it in Android app settings.');
           return false;
         }
 
@@ -38,18 +39,29 @@ async function requestStartupPermission() {
         console.warn('OneSignal notification permission request failed:', error);
         return false;
       }
-    })();
+    })().then((granted) => {
+      // Do not cache a failed/early attempt. A later login tap can retry.
+      if (!granted) permissionRequest = null;
+      return granted;
+    }).catch((error) => {
+      permissionRequest = null;
+      console.warn('OneSignal permission flow failed:', error);
+      return false;
+    });
   }
   return permissionRequest;
 }
 
 window.TeerOneSignalBridge = {
+  async enableNotifications() {
+    return await requestStartupPermission();
+  },
   async identify(userId) {
     if (!userId || !(await initialize())) return;
     try {
       await OneSignal.login(String(userId));
-      // If startup happened before the bridge was ready, this safely retries
-      // the same one-time permission request; it will not repeatedly prompt.
+      // Login/register is a user gesture, so retry the permission request here
+      // if the initial startup attempt happened before Android was ready.
       void requestStartupPermission();
     } catch (error) {
       console.warn('OneSignal user registration failed:', error);
