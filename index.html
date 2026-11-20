@@ -87,6 +87,10 @@
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .app-screen { display: none; }
     .app-screen.active { display: block; }
+    /* Fill the complete available phone height; keep the Android status bar area black/untouched. */
+    html, body { width: 100%; min-height: 100%; margin: 0; }
+    body { min-height: 100vh; min-height: 100dvh; }
+    #appContainer { width: 100%; min-height: 100vh; min-height: 100dvh; }
     /* Keep the Android status bar above the app header instead of overlapping it. */
     html.native-app #appContainer { padding-top: max(env(safe-area-inset-top), 24px); }
     html.native-app #appContainer > header { top: max(env(safe-area-inset-top), 24px); }
