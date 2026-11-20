@@ -50,6 +50,8 @@ jobs:
           npm run build:onesignal
           echo "{\"build\":${GITHUB_RUN_NUMBER}}" > www/build-info.json
           npx cap add android
+          # Allow Android to ask the user to install APK updates downloaded by the app.
+          sed -i '/<application/i\    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />' android/app/src/main/AndroidManifest.xml
           cat >> android/app/build.gradle <<'GRADLE'
 
           // Use the verified persistent keystore for every debug APK build.
