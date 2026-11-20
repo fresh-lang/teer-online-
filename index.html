@@ -2906,7 +2906,8 @@
 
     // Browser history back and the native Android hardware Back button share one handler.
     window.addEventListener('popstate', handleAppBackNavigation);
-    window.addEventListener('teerNativeBack', handleAppBackNavigation);
+    // Native Android Back first consumes the browser history entry; popstate then restores the previous app page.
+    window.addEventListener('teerNativeBack', () => window.history.back());
 
     function closeExitModal() {
       isExitModalOpen = false;
