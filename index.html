@@ -724,42 +724,56 @@
           <button onclick="closeDepositModal()" class="text-slate-400 p-1 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
         </div>
 
-        <!-- QR Display Card -->
-        <div class="bg-gradient-to-b from-teal-50 to-emerald-50 border border-teal-200/80 rounded-2xl p-3 text-center shadow-sm">
-          <p class="text-[11px] font-black text-teal-950 uppercase tracking-wide">Scan QR Code to Pay via Any UPI App</p>
-          <p class="text-[10px] text-teal-700 mt-0.5">Google Pay &bull; PhonePe &bull; Paytm &bull; BHIM UPI</p>
-          
+        <div class="grid grid-cols-2 gap-2">
+          <button id="depositMethodUpiBtn" type="button" onclick="selectDepositMethod('upi_pay')" class="rounded-xl border-2 border-emerald-500 bg-emerald-50 p-2 text-xs font-black text-emerald-800">UPI Pay<br><span class="text-[10px] font-medium">Any UPI Apps</span></button>
+          <button id="depositMethodQrBtn" type="button" onclick="selectDepositMethod('qr_pay')" class="rounded-xl border border-slate-300 bg-white p-2 text-xs font-black text-slate-600">QR Pay<br><span class="text-[10px] font-medium">Scan uploaded QR</span></button>
+        </div>
+
+        <div id="depositUpiPayPanel" class="bg-gradient-to-b from-teal-50 to-emerald-50 border border-teal-200/80 rounded-2xl p-3 text-center shadow-sm">
+          <p class="text-[11px] font-black text-teal-950 uppercase tracking-wide">UPI Pay (Any UPI Apps)</p>
+          <p class="text-[10px] text-teal-700 mt-0.5">Choose amount, then scan with Google Pay, PhonePe, Paytm or BHIM</p>
+          <div id="depositUpiPresets" class="grid grid-cols-4 gap-2 my-3">
+            <button type="button" onclick="selectDepositPreset(100)" class="rounded-lg border border-teal-300 bg-white py-2 text-xs font-black text-teal-900">₹100</button>
+            <button type="button" onclick="selectDepositPreset(200)" class="rounded-lg border border-teal-300 bg-white py-2 text-xs font-black text-teal-900">₹200</button>
+            <button type="button" onclick="selectDepositPreset(300)" class="rounded-lg border border-teal-300 bg-white py-2 text-xs font-black text-teal-900">₹300</button>
+            <button type="button" onclick="selectDepositPreset(500)" class="rounded-lg border border-teal-300 bg-white py-2 text-xs font-black text-teal-900">₹500</button>
+            <button type="button" onclick="selectDepositPreset(1000)" class="rounded-lg border border-teal-300 bg-white py-2 text-xs font-black text-teal-900">₹1,000</button>
+            <button type="button" onclick="selectDepositPreset(2000)" class="rounded-lg border border-teal-300 bg-white py-2 text-xs font-black text-teal-900">₹2,000</button>
+            <button type="button" onclick="selectDepositPreset(5000)" class="rounded-lg border border-teal-300 bg-white py-2 text-xs font-black text-teal-900">₹5,000</button>
+            <button type="button" onclick="selectDepositPreset(10000)" class="rounded-lg border border-teal-300 bg-white py-2 text-xs font-black text-teal-900">₹10,000</button>
+          </div>
           <div class="w-44 h-44 mx-auto bg-white p-2.5 rounded-2xl border-2 border-teal-600/30 shadow-md my-2 flex items-center justify-center">
             <img id="depositQrImg" alt="Amount-specific UPI payment QR" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=upi%3A%2F%2Fpay%3Fpa%3D8134834380%40mbk%26pn%3DTeerOnline%26am%3D500%26cu%3DINR" class="w-full h-full rounded-lg">
           </div>
           <p id="depositQrAmountLabel" class="text-[11px] font-bold text-teal-800">Scan to pay ₹500</p>
-          <div id="depositStaticQrWrap" class="hidden mt-3">
-            <p class="text-[10px] font-bold text-slate-600 mb-1">Additional Wallet QR (fixed / no amount)</p>
-            <img id="depositStaticQrImg" alt="Additional wallet QR" class="w-36 h-36 mx-auto object-contain bg-white rounded-xl p-2 border border-teal-200">
-          </div>
-
-          <div class="inline-flex items-center gap-1.5 bg-white px-3 py-1 rounded-full border border-teal-300 shadow-sm">
+          <div class="inline-flex items-center gap-1.5 bg-white px-3 py-1 rounded-full border border-teal-300 shadow-sm mt-2">
             <span class="text-[10px] text-slate-500 font-bold">UPI ID:</span>
             <span id="depositUpiText" class="text-xs font-mono font-bold text-teal-950">8134834380@mbk</span>
             <button type="button" onclick="copyDepositUpi()" class="text-[10px] bg-teal-800 text-amber-300 font-bold px-2 py-0.5 rounded-full ml-1">Copy</button>
           </div>
+        </div>
 
-          <div class="mt-2 bg-emerald-100/70 border border-emerald-300 rounded-xl p-1.5 text-[10px] text-emerald-900 font-semibold flex items-center justify-center gap-1.5">
-            <i class="fa-solid fa-bolt text-amber-500 animate-pulse"></i>
-            <span>Instant Credit: Wallet updated within <b>1 to 10 minutes</b> after verification!</span>
+        <div id="depositQrPayPanel" class="hidden bg-gradient-to-b from-slate-50 to-blue-50 border border-blue-200 rounded-2xl p-3 text-center shadow-sm">
+          <p class="text-[11px] font-black text-slate-900 uppercase tracking-wide">QR Pay</p>
+          <p class="text-[10px] text-slate-600 mt-0.5">Scan this QR using your payment app</p>
+          <div id="depositStaticQrWrap" class="mt-3">
+            <img id="depositStaticQrImg" alt="Admin uploaded QR Pay image" class="hidden w-44 h-44 mx-auto object-contain bg-white rounded-xl p-2 border border-blue-200">
+            <p id="depositStaticQrMissing" class="text-xs text-amber-800 bg-amber-50 rounded-lg p-3">QR image Admin Panel se upload hona baaki hai.</p>
           </div>
+          <p class="text-[10px] text-slate-600 mt-2">Payment app mein selected amount khud enter karein.</p>
         </div>
 
         <!-- Deposit Form Fields -->
         <div class="space-y-2.5 text-xs">
-          <div>
+          <div id="depositCustomAmountWrap" class="hidden">
             <label class="text-xs font-bold text-slate-700 flex justify-between items-center mb-1">
-              <span>Deposit Amount (₹):</span>
+              <span>QR Pay Amount (₹):</span>
               <span class="text-emerald-600 font-bold text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">+5% Extra Bonus Added</span>
             </label>
-            <input type="number" id="depositAmountInput" value="500" min="100" max="5000" step="1" oninput="updateDepositQr()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-teal-950 outline-none focus:border-teal-700">
-            <p class="text-[10px] text-slate-500 mt-1">Minimum ₹100 • Maximum ₹5,000. QR amount changes automatically.</p>
+            <input type="number" id="depositAmountInput" value="500" min="100" max="5000" step="1" oninput="validateQrPayAmount()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-teal-950 outline-none focus:border-teal-700">
+            <p class="text-[10px] text-slate-500 mt-1">QR Pay minimum ₹100 • maximum ₹5,000.</p>
           </div>
+          <input type="hidden" id="depositUpiSelectedAmount" value="500">
 
           <div>
             <label class="text-xs font-bold text-slate-700 block mb-1">Enter 12-Digit UTR / Transaction Ref Number:</label>
@@ -2080,25 +2094,48 @@
 
     function closePlayModal() { document.getElementById('playGameModal').classList.add('hidden'); }
     let currentDepositUpi = '8134834380@mbk';
-    function updateDepositQr() {
-      const input = document.getElementById('depositAmountInput');
-      const amount = Number(input?.value || 0);
+    let currentDepositMethod = 'upi_pay';
+    function selectDepositMethod(method) {
+      currentDepositMethod = method === 'qr_pay' ? 'qr_pay' : 'upi_pay';
+      const upiPanel = document.getElementById('depositUpiPayPanel');
+      const qrPanel = document.getElementById('depositQrPayPanel');
+      const amountWrap = document.getElementById('depositCustomAmountWrap');
+      const upiBtn = document.getElementById('depositMethodUpiBtn');
+      const qrBtn = document.getElementById('depositMethodQrBtn');
+      upiPanel.classList.toggle('hidden', currentDepositMethod !== 'upi_pay');
+      qrPanel.classList.toggle('hidden', currentDepositMethod !== 'qr_pay');
+      amountWrap.classList.toggle('hidden', currentDepositMethod !== 'qr_pay');
+      upiBtn.className = currentDepositMethod === 'upi_pay' ? 'rounded-xl border-2 border-emerald-500 bg-emerald-50 p-2 text-xs font-black text-emerald-800' : 'rounded-xl border border-slate-300 bg-white p-2 text-xs font-black text-slate-600';
+      qrBtn.className = currentDepositMethod === 'qr_pay' ? 'rounded-xl border-2 border-blue-500 bg-blue-50 p-2 text-xs font-black text-blue-800' : 'rounded-xl border border-slate-300 bg-white p-2 text-xs font-black text-slate-600';
+    }
+    function selectDepositPreset(amount) {
+      if (![100,200,300,500,1000,2000,5000,10000].includes(amount)) return;
+      document.getElementById('depositUpiSelectedAmount').value = String(amount);
+      updateDepositQr(amount);
+    }
+    function updateDepositQr(amountOverride) {
+      const amount = Number(amountOverride ?? document.getElementById('depositUpiSelectedAmount')?.value ?? 500);
       const qr = document.getElementById('depositQrImg');
       const label = document.getElementById('depositQrAmountLabel');
       if (!qr || !label) return;
-      if (!Number.isInteger(amount) || amount < 100 || amount > 5000) {
-        label.textContent = 'Enter an amount from ₹100 to ₹5,000';
+      if (!Number.isInteger(amount) || amount < 100 || amount > 10000) {
+        label.textContent = 'Choose an amount from ₹100 to ₹10,000';
         return;
       }
       const uri = 'upi://pay?pa=' + currentDepositUpi + '&pn=TeerOnline&am=' + amount + '&cu=INR';
       qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(uri);
       label.textContent = 'Scan to pay ₹' + amount;
     }
+    function validateQrPayAmount() {
+      const input = document.getElementById('depositAmountInput');
+      const amount = Number(input.value || 0);
+      input.setCustomValidity(Number.isInteger(amount) && amount >= 100 && amount <= 5000 ? '' : 'Enter ₹100 to ₹5,000');
+    }
     function copyDepositUpi() {
       navigator.clipboard.writeText(currentDepositUpi);
       alert('UPI ID Copied: ' + currentDepositUpi);
     }
-    function openDepositModal() { document.getElementById('depositModal').classList.remove('hidden'); updateDepositQr(); }
+    function openDepositModal() { document.getElementById('depositModal').classList.remove('hidden'); selectDepositMethod('upi_pay'); updateDepositQr(); }
     function closeDepositModal() { document.getElementById('depositModal').classList.add('hidden'); }
     let currentWithdrawMethod = 'upi';
 
@@ -3144,10 +3181,12 @@
           currentDepositUpi = settings.deposit_upi;
           const upiSpan = document.getElementById('depositUpiText'); if (upiSpan) upiSpan.innerText = settings.deposit_upi;
         }
-        if (settings.deposit_qr_image) {
-          const wrap = document.getElementById('depositStaticQrWrap');
-          const img = document.getElementById('depositStaticQrImg');
-          if (wrap && img) { img.src = settings.deposit_qr_image; wrap.classList.remove('hidden'); }
+        const staticQr = document.getElementById('depositStaticQrImg');
+        const staticQrMissing = document.getElementById('depositStaticQrMissing');
+        if (settings.deposit_qr_image && staticQr) {
+          staticQr.src = settings.deposit_qr_image;
+          staticQr.classList.remove('hidden');
+          if (staticQrMissing) staticQrMissing.classList.add('hidden');
         }
         updateDepositQr();
         if (settings.marquee_text) { const marq = document.querySelector('marquee'); if (marq) marq.innerText = settings.marquee_text; }
@@ -3234,12 +3273,18 @@
 
     async function submitDepositForm() {
       if (!state.user) { alert('Please login first.'); openAuthModal(); return; }
-      const amount = Number(document.getElementById('depositAmountInput').value || 0);
+      const amount = currentDepositMethod === 'upi_pay'
+        ? Number(document.getElementById('depositUpiSelectedAmount').value || 0)
+        : Number(document.getElementById('depositAmountInput').value || 0);
       const utr = document.getElementById('depositUtrInput').value.trim();
       if (accountIsDemo) { alert('Demo wallet mein real deposit allowed nahi hai.'); return; }
-      if (!Number.isInteger(amount) || amount < 100 || amount > 5000 || utr.length < 6) { alert('Deposit amount ₹100–₹5,000 (whole rupees) aur valid UTR daalein.'); return; }
+      const maxAmount = currentDepositMethod === 'upi_pay' ? 10000 : 5000;
+      if (!Number.isInteger(amount) || amount < 100 || amount > maxAmount || utr.length < 6) {
+        alert(currentDepositMethod === 'upi_pay' ? 'UPI Pay ₹100–₹10,000 ke available amount select karein aur valid UTR daalein.' : 'QR Pay amount ₹100–₹5,000 aur valid UTR daalein.');
+        return;
+      }
       try {
-        await accountApi('deposit_request', { amount, utr, screenshot_url: null });
+        await accountApi('deposit_request', { amount, utr, payment_method: currentDepositMethod, screenshot_url: null });
         document.getElementById('depositUtrInput').value = '';
         currentDepositScreenshotBase64 = null;
         closeDepositModal();
