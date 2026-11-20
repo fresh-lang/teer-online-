@@ -3239,7 +3239,7 @@
       const password = document.getElementById('regPass').value;
       const referredBy = document.getElementById('regReferral').value.trim();
       if (!name || !/^\d{10}$/.test(phone)) { alert('Enter a valid name and 10-digit mobile number.'); return; }
-      if (password.length < 8) { alert('Password kam se kam 8 characters ka hona chahiye.'); return; }
+      if (password.length < 8) { alert('Password must be at least 8 characters long.'); return; }
       try {
         const data = await accountApi('register', { name, phone, password, referred_by: referredBy || null }, false);
         accountSessionToken = data.session?.token || data.session?.session_token || data.session;
@@ -3324,11 +3324,11 @@
       if (!state.user) { alert('Please login first.'); openAuthModal(); return; }
       if (accountIsDemo) { alert('Real withdrawals are not allowed from the demo wallet.'); return; }
       const amount = Number(document.getElementById('withdrawAmountInput').value || 0);
-      if (amount < 1000 || amount > 5000) { alert('Withdrawal ₹1,000 se ₹5,000 ke beech hona chahiye.'); return; }
+      if (amount < 1000 || amount > 5000) { alert('Withdrawal amount must be between ₹1,000 and ₹5,000.'); return; }
       let payoutDetails;
       if (currentWithdrawMethod === 'upi') {
         const upi = document.getElementById('withdrawUpiInput').value.trim();
-        if (!upi || !upi.includes('@')) { alert('Valid UPI ID daalein.'); return; }
+        if (!upi || !upi.includes('@')) { alert('Enter a valid UPI ID.'); return; }
         payoutDetails = { method:'upi', upi };
       } else {
         const holder = document.getElementById('bankHolderInput').value.trim();
@@ -3341,9 +3341,9 @@
       try {
         await accountApi('create_withdrawal', { amount, payout_details:payoutDetails });
         await refreshAccountBalance(); closeWithdrawModal();
-        addAppNotification({ type:'withdraw', title:'Withdrawal Request Submitted', message:`₹${amount} withdrawal request admin review ke liye submit hui.` });
+        addAppNotification({ type:'withdraw', title:'Withdrawal Request Submitted', message:`₹${amount} withdrawal request has been submitted for admin review.` });
         await syncUserRequestNotifications(true);
-        showAppToast('Withdrawal request submitted. Wallet balance server par update hua hai.');
+        showAppToast('Withdrawal request submitted. Wallet balance has been updated on the server.');
       } catch (err) { alert(err.message || 'Withdrawal request failed.'); }
     }
 
@@ -3384,7 +3384,7 @@
         updateUI(); showBetReceiptClip(state.currentMarketObj.name, roundLabel, nums, amount, potentialReturn, ref);
       } catch (err) {
         await refreshAccountBalance().catch(()=>{});
-        alert('Bet API error: ' + (err.message || 'Request failed') + '. Server balance refresh kar diya gaya hai.');
+        alert('Bet API error: ' + (err.message || 'Request failed') + '. The server balance has been refreshed.');
       }
     }
 
