@@ -775,6 +775,13 @@
           </div>
           <input type="hidden" id="depositUpiSelectedAmount" value="500">
 
+          <div id="depositPayNowWrap" class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-2">
+            <p class="text-[11px] font-bold text-emerald-900">Pay first, then enter your UTR below</p>
+            <button type="button" onclick="openUpiAppChooser()" class="w-full py-3 rounded-xl bg-emerald-700 text-white font-black text-sm shadow flex items-center justify-center gap-2">
+              <i class="fa-solid fa-mobile-screen-button"></i> Pay with UPI App
+            </button>
+            <p class="text-[10px] text-emerald-800">Android aapke phone mein available UPI apps ka chooser kholne ki koshish karega. App mein payment complete karke wapas aayen.</p>
+          </div>
           <div>
             <label class="text-xs font-bold text-slate-700 block mb-1">Enter 12-Digit UTR / Transaction Ref Number:</label>
             <input type="text" id="depositUtrInput" placeholder="e.g. 430198234823" maxlength="12" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-mono tracking-wider font-bold text-teal-950 outline-none focus:border-teal-700">
@@ -2105,6 +2112,8 @@
       upiPanel.classList.toggle('hidden', currentDepositMethod !== 'upi_pay');
       qrPanel.classList.toggle('hidden', currentDepositMethod !== 'qr_pay');
       amountWrap.classList.toggle('hidden', currentDepositMethod !== 'qr_pay');
+      const payNowWrap = document.getElementById('depositPayNowWrap');
+      if (payNowWrap) payNowWrap.classList.toggle('hidden', currentDepositMethod !== 'upi_pay');
       upiBtn.className = currentDepositMethod === 'upi_pay' ? 'rounded-xl border-2 border-emerald-500 bg-emerald-50 p-2 text-xs font-black text-emerald-800' : 'rounded-xl border border-slate-300 bg-white p-2 text-xs font-black text-slate-600';
       qrBtn.className = currentDepositMethod === 'qr_pay' ? 'rounded-xl border-2 border-blue-500 bg-blue-50 p-2 text-xs font-black text-blue-800' : 'rounded-xl border border-slate-300 bg-white p-2 text-xs font-black text-slate-600';
     }
@@ -2130,6 +2139,23 @@
       const input = document.getElementById('depositAmountInput');
       const amount = Number(input.value || 0);
       input.setCustomValidity(Number.isInteger(amount) && amount >= 100 && amount <= 5000 ? '' : 'Enter ₹100 to ₹5,000');
+    }
+    function openUpiAppChooser() {
+      const amount = Number(document.getElementById('depositUpiSelectedAmount')?.value || 0);
+      if (!Number.isInteger(amount) || amount < 100 || amount > 10000) {
+        alert('Please select a valid UPI amount first.');
+        return;
+      }
+      const params = new URLSearchParams({
+        pa: currentDepositUpi,
+        pn: 'TeerOnline',
+        am: String(amount),
+        cu: 'INR',
+        tn: 'Teer Online Deposit'
+      });
+      const upiUri = 'upi://pay?' + params.toString();
+      // User gesture opens Android's registered UPI handler/chooser. No payment is confirmed here.
+      window.location.href = upiUri;
     }
     function copyDepositUpi() {
       navigator.clipboard.writeText(currentDepositUpi);
