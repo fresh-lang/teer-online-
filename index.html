@@ -3257,10 +3257,11 @@
         await refreshAccountBalance();
         const roundLabel = state.currentRound === 'BS' ? 'FR + SR (BS)' : state.currentRound;
         const nums = state.selectedNumbers.join(', ');
+        const potentialReturn = document.getElementById('potentialWin').innerText.replace('₹','');
         state.selectedNumbers = []; updateSelectedTray(); calculatePayout();
         const bets = await accountApi('my_bets', {limit:100});
         state.bids = (bets.items || []).map(b => ({refId:b.client_ref || b.id,market:b.market,round:b.round,roundId:b.round_id,mode:b.bet_mode,number:b.bet_number,amount:Number(b.amount),status:(String(b.status).toLowerCase()==='active'?'Active':String(b.status).toUpperCase()),payout:Number(b.payout||0),date:b.created_at,time:''}));
-        updateUI(); showBetReceiptClip(state.currentMarketObj.name, roundLabel, nums, amount, document.getElementById('potentialWin').innerText.replace('₹',''), ref);
+        updateUI(); showBetReceiptClip(state.currentMarketObj.name, roundLabel, nums, amount, potentialReturn, ref);
       } catch (err) {
         await refreshAccountBalance().catch(()=>{});
         alert('Bet API error: ' + (err.message || 'Request failed') + '. Server balance refresh kar diya gaya hai.');
