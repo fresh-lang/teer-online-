@@ -18,44 +18,87 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    // Download the latest Android APK published by the main-branch build.
+    // Keep the update inside the app: show download progress, then hand the APK
+    // to Android's package installer (Android always requires user confirmation).
     function triggerInstallAction() {
       if (navigator.vibrate) navigator.vibrate(50);
       window.location.href = 'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk';
     }
 
-    // Native Android app update checker. The installed build number is embedded by the APK workflow.
+    function showAppUpdatePrompt(buildNumber) {
+      if (document.getElementById('teerUpdateOverlay')) return;
+      const overlay = document.createElement('div');
+      overlay.id = 'teerUpdateOverlay';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:22px;font-family:Arial,sans-serif;';
+      overlay.innerHTML = `
+        <div style="width:100%;max-width:360px;background:#fff;border-radius:18px;padding:22px;color:#123;box-shadow:0 18px 60px #0008">
+          <div style="font-size:20px;font-weight:800;margin-bottom:8px">Teer Online Update</div>
+          <div style="font-size:14px;color:#52616b;margin-bottom:18px">New version Build ${buildNumber} is available. Download and update now?</div>
+          <div id="teerUpdateProgressWrap" style="display:none;margin:14px 0">
+            <div id="teerUpdateProgressText" style="font-size:13px;margin-bottom:8px">Preparing download…</div>
+            <div style="height:9px;background:#e5ecec;border-radius:99px;overflow:hidden"><div id="teerUpdateProgressBar" style="height:100%;width:0;background:#0b8f72;transition:width .15s"></div></div>
+          </div>
+          <div id="teerUpdateError" style="display:none;color:#b42318;font-size:13px;margin:10px 0"></div>
+          <div style="display:flex;gap:10px;margin-top:20px">
+            <button id="teerUpdateLater" style="flex:1;padding:12px;border:1px solid #cbd5d9;border-radius:10px;background:#fff;font-weight:700">Later</button>
+            <button id="teerUpdateNow" style="flex:1;padding:12px;border:0;border-radius:10px;background:#087d67;color:#fff;font-weight:800">Update</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const later=overlay.querySelector('#teerUpdateLater');
+      const update=overlay.querySelector('#teerUpdateNow');
+      const wrap=overlay.querySelector('#teerUpdateProgressWrap');
+      const bar=overlay.querySelector('#teerUpdateProgressBar');
+      const progressText=overlay.querySelector('#teerUpdateProgressText');
+      const error=overlay.querySelector('#teerUpdateError');
+      later.onclick=()=>overlay.remove();
+      update.onclick=async()=>{
+        if (!window.TeerAppUpdater) {
+          error.style.display='block'; error.textContent='Update service is not available in this build. Please try again.';
+          return;
+        }
+        update.disabled=true; later.disabled=true; update.textContent='Downloading…';
+        wrap.style.display='block'; error.style.display='none';
+        try {
+          await window.TeerAppUpdater.downloadAndInstall(
+            'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk',
+            (p)=>{
+              const pct=p.total>0?Math.min(100,Math.round(p.bytes/p.total*100)):0;
+              bar.style.width=pct+'%';
+              progressText.textContent=p.total>0?'Downloading update… '+pct+'%':'Downloading update…';
+            }
+          );
+          bar.style.width='100%';
+          progressText.textContent='Download complete. Opening Android installer…';
+          update.textContent='Installer opened';
+        } catch(e) {
+          console.error('In-app APK update failed:',e);
+          error.style.display='block';
+          error.textContent='Download or installer could not open. '+String(e?.message||e);
+          update.disabled=false; later.disabled=false; update.textContent='Try Again';
+        }
+      };
+    }
+
     async function checkForAppUpdate() {
       try {
         const isNative = window.Capacitor &&
           typeof window.Capacitor.isNativePlatform === 'function' &&
           window.Capacitor.isNativePlatform();
         if (!isNative) return;
-
         const [installedResponse, releaseResponse] = await Promise.all([
           fetch('./build-info.json?check=' + Date.now(), { cache: 'no-store' }),
           fetch('https://api.github.com/repos/fresh-lang/teer-online-/releases/latest', {
-            cache: 'no-store',
-            headers: { 'Accept': 'application/vnd.github+json' }
+            cache: 'no-store', headers: { 'Accept': 'application/vnd.github+json' }
           })
         ]);
         if (!installedResponse.ok || !releaseResponse.ok) return;
-
         const installedInfo = await installedResponse.json();
         const latestRelease = await releaseResponse.json();
         const installedBuild = Number(installedInfo.build || 0);
-        const match = String(latestRelease.tag_name || '').match(/^apk-(\d+)$/);
+        const match = String(latestRelease.tag_name || '').match(/^apk-(\\d+)$/);
         const latestBuild = match ? Number(match[1]) : 0;
-
-        if (latestBuild > installedBuild) {
-          const accepted = window.confirm(
-            'A new version of Teer Online is available (Build ' + latestBuild +
-            '). Update now to get the latest improvements. Would you like to update now?'
-          );
-          if (accepted) {
-            window.location.href = 'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk';
-          }
-        }
+        if (latestBuild > installedBuild) showAppUpdatePrompt(latestBuild);
       } catch (error) {
         console.warn('App update check failed:', error);
       }
@@ -1000,6 +1043,7 @@
   </div>
 
   <script src="./onesignal-bridge.js"></script>
+  <script src="./update-bridge.js"></script>
   <script src="./native-back-bridge.js"></script>
   <script>
     // Volatile UI-only storage. Account, wallet, bets, results and settings live in Supabase.
