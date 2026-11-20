@@ -72,6 +72,14 @@ jobs:
           test -n "$APKSIGNER"
           test -n "$ZIPALIGN"
           "$APKSIGNER" verify --verbose --print-certs teer-online.apk
+          EXPECTED_CERT_SHA256="2c7267232cc990be39d2f2b4caa99268bf069f4ffafd12140f839a16c40cb893"
+          ACTUAL_CERT_SHA256="$("$APKSIGNER" verify --print-certs teer-online.apk | awk -F': ' '/certificate SHA-256 digest:/ {print tolower($2); exit}')"
+          echo "Expected signing certificate: $EXPECTED_CERT_SHA256"
+          echo "Actual signing certificate:   $ACTUAL_CERT_SHA256"
+          if [ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::APK signing certificate does not match the installed app. Refusing to publish an incompatible update."
+            exit 1
+          fi
           "$ZIPALIGN" -c -v 4 teer-online.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
