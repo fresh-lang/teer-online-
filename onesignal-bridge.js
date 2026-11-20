@@ -66,18 +66,43 @@ window.TeerOneSignalBridge = {
     if (!externalId || !(await initialize())) return false;
     try {
       // Link this native installation to the authenticated Teer Online account.
-      // Await login before opting in so the subscription is associated with the
-      // same OneSignal user instead of remaining an anonymous device.
+      // The account-api returns the database UUID as user.id; never use the
+      // display UID/phone number as the OneSignal external ID.
       await OneSignal.login(externalId);
+
+      // Verify the SDK actually switched identities. login() resolving alone
+      // is not enough to prove that the external_id alias is present.
+      let confirmedExternalId = await OneSignal.User.getExternalId();
+      if (confirmedExternalId !== externalId) {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+        await OneSignal.login(externalId);
+        confirmedExternalId = await OneSignal.User.getExternalId();
+      }
+      if (confirmedExternalId !== externalId) {
+        console.warn('OneSignal external ID verification failed:', {
+          expected: externalId,
+          actual: confirmedExternalId
+        });
+        return false;
+      }
+
       try {
         await OneSignal.User.pushSubscription.optIn();
       } catch (optInError) {
         console.warn('OneSignal push opt-in after login failed:', optInError);
       }
-      // Retry permission/registration after the user identity has been linked.
+
+      // Ask for permission/registration only after identity has been linked.
       await requestStartupPermission();
-      console.info('OneSignal account linked:', externalId);
-      return true;
+
+      // Re-check after the permission flow in case native startup was delayed.
+      confirmedExternalId = await OneSignal.User.getExternalId();
+      const subscriptionId = await OneSignal.User.pushSubscription.getIdAsync();
+      console.info('OneSignal account identity check:', {
+        externalIdMatches: confirmedExternalId === externalId,
+        hasPushSubscription: Boolean(subscriptionId)
+      });
+      return confirmedExternalId === externalId;
     } catch (error) {
       console.warn('OneSignal user registration failed:', error);
       return false;
