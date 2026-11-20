@@ -2788,8 +2788,8 @@
           state.transactions = (data.items || []).map(t => {
             const rawType = String(t.type || '').toLowerCase();
             const type = rawType === 'withdrawal' ? 'withdraw' : rawType;
-            const isCredit = statusRaw === 'refunded' || ['deposit','win','bonus','welcome','commission'].includes(type);
             const statusRaw = String(t.status || 'pending').toLowerCase();
+            const isCredit = statusRaw === 'refunded' || ['deposit','win','bonus','welcome','commission'].includes(type);
             const status = statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
             const date = t.created_at ? new Date(t.created_at) : new Date();
             return { id:t.id, type, title:t.description || (type === 'withdraw' ? 'Withdrawal' : type.charAt(0).toUpperCase()+type.slice(1)), amount:Number(t.amount || 0), isCredit, status, date:date.toLocaleDateString('en-GB'), time:date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) };
