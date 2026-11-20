@@ -506,10 +506,12 @@ Deno.serve(async (req) => {
       const user = await getSession(req);
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
       const amount = Number(body.amount);
+      const paymentMethod = String(body.payment_method ?? "upi_pay");
       const utr = String(body.utr ?? "").trim();
       const screenshotUrl = body.screenshot_url ? String(body.screenshot_url) : null;
-      if (!Number.isInteger(amount) || amount < 100 || amount > 5000 || !/^.{6,80}$/.test(utr)) {
-        return json({ error: "Invalid deposit amount or UTR" }, 400, origin);
+      const maxAmount = paymentMethod === "upi_pay" ? 10000 : paymentMethod === "qr_pay" ? 5000 : 0;
+      if (!Number.isInteger(amount) || amount < 100 || amount > maxAmount || !/^.{6,80}$/.test(utr)) {
+        return json({ error: "Invalid deposit amount, payment method or UTR" }, 400, origin);
       }
       const result = await rpc("api_create_deposit_request", {
         p_user_id: user.id,
