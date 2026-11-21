@@ -35,8 +35,8 @@ async function showInAppPermissionPrompt() {
   overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:22px;font-family:Arial,sans-serif;';
   overlay.innerHTML = `
     <div style="width:100%;max-width:360px;background:#fff;border-radius:18px;padding:22px;color:#123;box-shadow:0 18px 60px #0008">
-      <div style="font-size:20px;font-weight:800;margin-bottom:8px;color:#063b3d">Teer Online Notifications</div>
-      <div id="teerNotificationPermissionMessage" style="font-size:14px;line-height:1.55;color:#52616b;margin-bottom:18px">FR/SR results aur important updates turant paane ke liye notifications allow karein.</div>
+      <div style="font-size:20px;font-weight:800;margin-bottom:8px;color:#063b3d">Allow Notifications</div>
+      <div id="teerNotificationPermissionMessage" style="font-size:14px;line-height:1.55;color:#52616b;margin-bottom:18px">FR/SR result aur updates paane ke liye notifications allow karein.</div>
       <div style="display:flex;gap:10px;margin-top:18px">
         <button id="teerNotificationLater" type="button" style="flex:1;padding:12px;border:1px solid #cbd5d9;border-radius:10px;background:#fff;font-weight:700">Later</button>
         <button id="teerNotificationAllow" type="button" style="flex:1;padding:12px;border:0;border-radius:10px;background:#087d67;color:#fff;font-weight:800">Allow</button>
@@ -68,7 +68,7 @@ async function showInAppPermissionPrompt() {
         close();
         return;
       }
-      message.textContent = 'Android ab system permission popup dobara nahi dikha sakta. Phone Settings > Apps > Teer Online > Notifications me jaakar Allow notifications ON karein. Agli baar app kholne par ye reminder phir dikhega.';
+      message.textContent = 'Notifications ON karne ke liye Phone Settings > Apps > Teer Online > Notifications kholen.';
       const closeButton = allow.cloneNode(true);
       closeButton.textContent = 'Got it';
       closeButton.disabled = false;
@@ -77,7 +77,7 @@ async function showInAppPermissionPrompt() {
       closeButton.addEventListener('click', close);
     } catch (error) {
       console.warn('Notification permission action failed:', error);
-      message.textContent = 'Permission request abhi complete nahi hui. Phone Settings > Apps > Teer Online > Notifications me Allow notifications ON karein.';
+      message.textContent = 'Notifications ON karne ke liye Phone Settings > Apps > Teer Online > Notifications kholen.';
       const closeButton = allow.cloneNode(true);
       closeButton.textContent = 'Close';
       closeButton.disabled = false;
