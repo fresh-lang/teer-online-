@@ -621,7 +621,7 @@
           <span class="flex items-center gap-3"><i class="fa-solid fa-bell w-4 text-teal-800"></i> Notifications</span>
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
         </a>
-        <a onclick="switchTab('support'); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+        <a onclick="toggleDrawer(); openSupportWebsiteFromApp()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
           <span class="flex items-center gap-3"><i class="fa-solid fa-headset w-4 text-teal-800"></i> Support Chat</span>
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
         </a>
@@ -2755,6 +2755,39 @@
       window.open(whatsappUrl, '_blank');
     }
 
+    async function createSupportWebsiteLink() {
+      if (!state.user || !accountSessionToken || accountIsDemo) {
+        throw new Error('Please log in to your real Teer Online account before opening Support Chat.');
+      }
+      const issued = await accountApi('support_link_create', {});
+      const target = new URL('support/', window.location.href);
+      target.searchParams.set('ticket', issued.ticket);
+      return target.toString();
+    }
+
+    async function openSupportWebsiteFromApp() {
+      try {
+        const link = await createSupportWebsiteLink();
+        window.location.href = link;
+      } catch (error) {
+        showAppToast(error.message || 'Support Chat could not be opened.');
+      }
+    }
+
+    function addSupportWebsiteLinkBubble(container, url) {
+      const bubble = document.createElement('div');
+      bubble.className = 'bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[90%] text-xs';
+      bubble.dataset.role = 'assistant';
+      bubble.appendChild(document.createTextNode('Your secure Support Chat link is ready. Tap below to continue with the support team. '));
+      const link = document.createElement('a');
+      link.href = url;
+      link.textContent = 'Open Support Chat';
+      link.style.cssText = 'display:inline-block;margin-top:8px;padding:8px 12px;border-radius:10px;background:#073b3b;color:#f4c34e;font-weight:700;text-decoration:none';
+      bubble.appendChild(link);
+      container.appendChild(bubble);
+      container.scrollTop = container.scrollHeight;
+    }
+
     async function handleSendChat(e) {
       e.preventDefault();
       const input = document.getElementById('chatInput');
@@ -2783,11 +2816,8 @@
       try {
         const asksForAgent = /\b(agent|human|person|support staff)\b.*\b(connect|talk|chat|help|speak)\b|\b(connect|talk|chat|speak)\b.*\b(agent|human|person|support staff)\b/i.test(message);
         if (asksForAgent) {
-          const opened = await openAgentChat('general');
-          if (opened && activeAgentConversationId) {
-            await accountApi('user_support_send', { conversation_id: activeAgentConversationId, message });
-            await loadAgentChatMessages();
-          }
+          const supportLink = await createSupportWebsiteLink();
+          addSupportWebsiteLinkBubble(container, supportLink);
           return;
         }
         const history = [...container.querySelectorAll('[data-role]')].slice(-8).map(el => ({ role: el.dataset.role, content: el.innerText }));
