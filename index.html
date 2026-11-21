@@ -998,6 +998,7 @@
             </thead>
             <tbody id="chartTableBody" class="divide-y font-mono font-bold text-slate-700 text-xs"></tbody>
           </table>
+          <div id="chartHistoryPager" class="mt-2 flex items-center justify-between gap-2 flex-wrap"></div>
         </div>
       </div>
     </div>
@@ -2332,6 +2333,7 @@
     }
 
     async function loadMarketResultHistory(market) {
+      window.__chartHistoryPage = 0;
       if (!market || market === 'Teer Play') { renderSelectedMarketChart(); return; }
       window.__teerHistoryCache = window.__teerHistoryCache || {};
       const cached = window.__teerHistoryCache[market];
@@ -2362,6 +2364,7 @@
         const select = document.getElementById('chartMarketSelect');
         if (select) select.value = mName;
       }
+      window.__chartHistoryPage = 0;
       document.getElementById('chartModal').classList.remove('hidden');
       loadMarketResultHistory(document.getElementById('chartMarketSelect').value);
     }
@@ -2391,6 +2394,15 @@
       const mName = document.getElementById('chartMarketSelect').value || 'Shilong Morning Teer';
       const tbody = document.getElementById('chartTableBody');
       tbody.innerHTML = '';
+      const headerRow = document.querySelector('#chartModal table thead tr');
+      const pager = document.getElementById('chartHistoryPager');
+      if (headerRow) {
+        const labels = mName === 'Teer Play'
+          ? ['Date / Time', 'FR ID', 'FR Result', 'SR ID', 'SR Result']
+          : ['Date', 'FR Result', 'SR Result'];
+        headerRow.innerHTML = labels.map(label => '<th class="p-2 border border-teal-800">' + label + '</th>').join('');
+      }
+      if (pager) pager.classList.toggle('hidden', mName === 'Teer Play');
       renderChartPreviousAnalysis(mName);
       const patternTitle = document.getElementById('chartPatternTitle');
       const isShillong = /shilong|shillong/i.test(mName);
@@ -2466,7 +2478,25 @@
         tbody.appendChild(tr);
         return;
       }
-      records.forEach(r => {
+      const pageSize = 100;
+      const totalPages = Math.max(1, Math.ceil(records.length / pageSize));
+      const currentPage = Math.min(window.__chartHistoryPage || 0, totalPages - 1);
+      window.__chartHistoryPage = currentPage;
+      const pageRecords = records.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+      if (pager) {
+        pager.classList.remove('hidden');
+        pager.innerHTML = '<span class="text-[10px] text-slate-500">Showing ' +
+          (currentPage * pageSize + 1) + '-' + Math.min((currentPage + 1) * pageSize, records.length) +
+          ' of ' + records.length + ' results</span>' +
+          '<div class="flex gap-2"><button type="button" onclick="changeChartHistoryPage(-1)" ' +
+          (currentPage === 0 ? 'disabled' : '') +
+          ' class="px-3 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-40">Previous</button>' +
+          '<span class="text-xs font-bold text-slate-600 self-center">' + (currentPage + 1) + '/' + totalPages + '</span>' +
+          '<button type="button" onclick="changeChartHistoryPage(1)" ' +
+          (currentPage >= totalPages - 1 ? 'disabled' : '') +
+          ' class="px-3 py-1.5 rounded-lg border text-xs font-bold disabled:opacity-40">Next</button></div>';
+      }
+      pageRecords.forEach(r => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 border-b';
         [r.d, r.fr, r.sr].forEach((value,index) => {
@@ -2477,6 +2507,14 @@
         });
         tbody.appendChild(tr);
       });
+    }
+
+    function changeChartHistoryPage(delta) {
+      const market = document.getElementById('chartMarketSelect')?.value;
+      const rows = (window.teerResultHistory || []).filter(r => r.market === market);
+      const totalPages = Math.max(1, Math.ceil(rows.length / 100));
+      window.__chartHistoryPage = Math.max(0, Math.min(totalPages - 1, (window.__chartHistoryPage || 0) + delta));
+      renderSelectedMarketChart();
     }
 
     function toggleDrawer() {
