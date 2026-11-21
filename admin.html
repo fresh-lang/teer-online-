@@ -109,16 +109,16 @@
           <label class="text-xs text-slate-300 font-bold block mb-1">Select Market:</label>
           <select id="mkt" onchange="loadMarketExistingResult()" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white font-semibold outline-none focus:border-amber-400">
             <optgroup label="Morning Draws (Closed in Afternoon)">
-              <option value="Shilong Morning Teer">Shilong Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
-              <option value="Khanapara Morning Teer">Khanapara Morning Teer (FR 10:20 AM | SR 11:20 AM)</option>
+              <option value="Shilong Morning Teer">Shilong Morning Teer (FR 10:30 AM | SR 11:30 AM)</option>
+              <option value="Khanapara Morning Teer">Khanapara Morning Teer (FR 10:30 AM | SR 11:30 AM)</option>
             </optgroup>
             <optgroup label="Evening Official Draws (Currently Open)">
               
-              <option value="Shillong Teer (Evening)" selected>Shillong Teer Evening (FR 03:45 PM | SR 04:45 PM)</option>
-              <option value="Khanapara Teer (Evening)">Khanapara Teer Evening (FR 04:00 PM | SR 04:40 PM)</option>
+              <option value="Shillong Teer (Evening)" selected>Shillong Teer Evening (FR 03:15 PM | SR 04:15 PM)</option>
+              <option value="Khanapara Teer (Evening)">Khanapara Teer Evening (FR 04:10 PM | SR 04:45 PM)</option>
             </optgroup>
             <optgroup label="Night Draws">
-              <option value="Shillong Night Teer">Shillong Night Teer (FR 08:10 PM | SR 09:10 PM)</option>
+              <option value="Shillong Night Teer">Shillong Night Teer (FR 08:30 PM | SR 09:30 PM)</option>
               <option value="Khanapara Night Teer">Khanapara Night Teer (FR 10:30 PM | SR 11:30 PM)</option>
             </optgroup>
             <optgroup label="Fast Play">
@@ -786,12 +786,12 @@
 
     // --- MARKET SCHEDULE & CUTOFF EDITOR ---
     const defaultMarketList = [
-      { name: 'Shilong Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM' },
-      { name: 'Khanapara Morning Teer', frTime: '10:20 AM', srTime: '11:20 AM' },
+      { name: 'Shilong Morning Teer', frTime: '10:30 AM', srTime: '11:30 AM' },
+      { name: 'Khanapara Morning Teer', frTime: '10:30 AM', srTime: '11:30 AM' },
       { name: 'Juwai Teer (Evening)', frTime: '02:00 PM', srTime: '02:45 PM' },
-      { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM' },
-      { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM' },
-      { name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM' },
+      { name: 'Shillong Teer (Evening)', frTime: '03:15 PM', srTime: '04:15 PM' },
+      { name: 'Khanapara Teer (Evening)', frTime: '04:10 PM', srTime: '04:45 PM' },
+      { name: 'Shillong Night Teer', frTime: '08:30 PM', srTime: '09:30 PM' },
       { name: 'Khanapara Night Teer', frTime: '10:30 PM', srTime: '11:30 PM' },
       { name: 'Teer Play', frTime: '1 Min', srTime: '1 Min' }
     ];
