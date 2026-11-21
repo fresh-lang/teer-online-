@@ -1,6 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
-import { FileOpener } from '@capacitor-community/file-opener';
+import { registerPlugin } from '@capacitor/core';
+
+const ApkInstaller = registerPlugin('ApkInstaller');
 
 let updateInProgress = false;
 
@@ -30,11 +32,7 @@ window.TeerAppUpdater = {
       if (!info || Number(info.size || 0) < 1000000) throw new Error('Downloaded APK file is incomplete. Please try again.');
       const file = await Filesystem.getUri({ path, directory: Directory.Cache });
       if (!file || !file.uri) throw new Error('Could not prepare the downloaded APK for Android installer.');
-      await FileOpener.open({
-        filePath: file.uri,
-        contentType: 'application/vnd.android.package-archive',
-        openWithDefault: true
-      });
+      await ApkInstaller.install({ fileUri: file.uri });
       return true;
     } finally {
       if (listener) {
