@@ -26,20 +26,15 @@ async function requestStartupPermission() {
       try {
         await new Promise((resolve) => setTimeout(resolve, 1500));
         const hasPermission = await OneSignal.Notifications.hasPermission();
-        if (!hasPermission) {
-          const canPrompt = await OneSignal.Notifications.canRequestPermission();
-          if (!canPrompt) {
-            console.info('Notification permission cannot be prompted again; enable it in Android app settings.');
-            return false;
-          }
-          const granted = await OneSignal.Notifications.requestPermission(false);
-          if (!granted) return false;
-        }
+        // Restore the previous permission flow; do not force push opt-in.
+        if (hasPermission) return true;
 
-        // Android permission can already be allowed while the OneSignal
-        // push subscription is opted out. Explicitly opt the device back in.
-        await OneSignal.User.pushSubscription.optIn();
-        return true;
+        const canPrompt = await OneSignal.Notifications.canRequestPermission();
+        if (!canPrompt) {
+          console.info('Notification permission cannot be prompted again; enable it in Android app settings.');
+          return false;
+        }
+        return await OneSignal.Notifications.requestPermission(false);
       } catch (error) {
         console.warn('OneSignal notification permission request failed:', error);
         return false;
@@ -84,12 +79,6 @@ window.TeerOneSignalBridge = {
           actual: confirmedExternalId
         });
         return false;
-      }
-
-      try {
-        await OneSignal.User.pushSubscription.optIn();
-      } catch (optInError) {
-        console.warn('OneSignal push opt-in after login failed:', optInError);
       }
 
       // Ask for permission/registration only after identity has been linked.
