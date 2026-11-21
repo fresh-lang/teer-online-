@@ -515,8 +515,8 @@
               <i class="fa-solid fa-headphones"></i>
             </div>
             <div>
-              <p class="font-bold text-sm leading-tight">Live Chat Support</p>
-              <p class="text-[11px] text-emerald-300">Online &bull; typically replies instantly</p>
+              <p class="font-bold text-sm leading-tight">AI Chat Support</p>
+              <p class="text-[11px] text-emerald-300">Deposits • Withdrawals • Agent Number • Charts</p>
             </div>
           </div>
           <button onclick="resetChat()" class="text-teal-200 hover:text-white p-1">
@@ -533,7 +533,12 @@
           </a>
         </div>
 
-        <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[340px]">
+        <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[380px]">
+          <div class="grid grid-cols-3 gap-1.5 mb-2">
+            <button type="button" onclick="document.getElementById('chatInput').value='How do I deposit money?';document.querySelector('#screen-support form').requestSubmit();" class="bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg p-2 text-[10px] font-bold">Deposit Help</button>
+            <button type="button" onclick="document.getElementById('chatInput').value='How do I withdraw money?';document.querySelector('#screen-support form').requestSubmit();" class="bg-rose-50 text-rose-800 border border-rose-200 rounded-lg p-2 text-[10px] font-bold">Withdrawal Help</button>
+            <button type="button" onclick="document.getElementById('chatInput').value='Please tell me my Agent Number';document.querySelector('#screen-support form').requestSubmit();" class="bg-teal-50 text-teal-800 border border-teal-200 rounded-lg p-2 text-[10px] font-bold">Agent Number</button>
+          </div>
           <div id="chatMessages" class="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
             <div data-role="assistant" class="bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">
               Hello! I am Teer Online AI Support. Ask about charts, deposits, withdrawals or your Agent Number.
@@ -962,7 +967,7 @@
         </div>
 
         <div id="chartInsightsPanel" class="rounded-xl border border-teal-100 bg-teal-50 p-3 space-y-2 text-[11px]">
-          <div class="font-black text-teal-950 text-xs">Live Chart • House / Ending Numbers</div>
+          <div id="chartPatternTitle" class="font-black text-teal-950 text-xs">Shillong House / Ending Reference Pattern</div>
           <div class="grid grid-cols-2 gap-2">
             <div class="bg-white rounded-lg p-2"><b class="text-teal-900">FR House</b><div class="text-lg font-black tracking-widest">3 · 0 · 6</div></div>
             <div class="bg-white rounded-lg p-2"><b class="text-amber-800">SR House</b><div class="text-lg font-black tracking-widest">7 · 5 · 9</div></div>
@@ -2349,7 +2354,7 @@
         return;
       }
       const digitCounts = Array(10).fill(0);
-      rows.forEach(r => [r.fr,r.sr].forEach(v => { if (/^\\d{2}$/.test(String(v || ''))) { digitCounts[Number(String(v)[1])]++; } }));
+      rows.forEach(r => [r.fr,r.sr].forEach(v => { if (/^\d{2}$/.test(String(v || ''))) { digitCounts[Number(String(v)[1])]++; } }));
       const common = digitCounts.map((count,digit)=>({digit,count})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count).slice(0,3);
       box.innerHTML = '<div class="font-semibold">' + rows.length + ' saved result day(s) checked. Last-digit frequency: ' +
         (common.length ? common.map(x=>x.digit+' ('+x.count+')').join(', ') : 'not enough numeric data') +
@@ -2361,6 +2366,13 @@
       const tbody = document.getElementById('chartTableBody');
       tbody.innerHTML = '';
       renderChartPreviousAnalysis(mName);
+      const patternTitle = document.getElementById('chartPatternTitle');
+      const isShillong = /shilong|shillong/i.test(mName);
+      if (patternTitle) patternTitle.textContent = isShillong
+        ? 'Shillong House / Ending Reference Pattern (user supplied)'
+        : 'House / Ending reference pattern is currently supplied for Shillong only';
+      const patternGrid = document.querySelector('#chartInsightsPanel .grid.grid-cols-2');
+      if (patternGrid) patternGrid.classList.toggle('hidden', !isShillong);
 
       if (mName === 'Teer Play') {
         const grouped = new Map();
