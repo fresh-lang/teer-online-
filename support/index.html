@@ -95,11 +95,18 @@ $('image').onchange=async e=>{
  }catch(err){alert(err.message)}finally{e.target.value=''}
 };
 (async()=>{
+ token=sessionStorage.getItem('teer_support_token')||'';
+ uid=sessionStorage.getItem('teer_support_uid')||'';
+ if(token){
+  try{await api('support_agent_status');$('uid').textContent=uid||'Verified account';return}catch(_){sessionStorage.removeItem('teer_support_token');sessionStorage.removeItem('teer_support_uid');token=''}
+ }
  const ticket=new URLSearchParams(location.search).get('ticket');
  if(!ticket){$('verifyError').textContent='Open Support Chat from inside your logged-in Teer Online app to get a secure link.';$('continue').disabled=true;return}
  try{
   const d=await api('support_link_exchange',{ticket},false);token=d.support_token;uid=d.user?.uid||'';
-  sessionStorage.setItem('teer_support_token',token);$('uid').textContent=uid||'Verified account';
+  sessionStorage.setItem('teer_support_token',token);sessionStorage.setItem('teer_support_uid',uid);
+  history.replaceState({},document.title,location.pathname);
+  $('uid').textContent=uid||'Verified account';
  }catch(e){$('verifyError').textContent=e.message;$('continue').disabled=true}
 })();
 </script>
