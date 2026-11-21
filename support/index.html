@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Teer Online Support</title>
+<style>
+:root{color-scheme:light;--teal:#073b3b;--gold:#f4c34e;--bg:#eef3f3}*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:#172727;min-height:100vh}.top{background:var(--teal);color:white;padding:18px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 3px 12px #001b1b22}.logo{width:42px;height:42px;border-radius:14px;background:#0e5551;color:var(--gold);display:grid;place-items:center;font-weight:900}.top h1{font-size:17px;margin:0}.top p{font-size:11px;margin:3px 0 0;color:#c6dddd}.wrap{max-width:720px;margin:18px auto;padding:0 12px}.card{background:white;border-radius:18px;box-shadow:0 8px 28px #0b353510;padding:18px}.muted{color:#6c7c7c;font-size:13px;line-height:1.5}.btn{border:0;border-radius:12px;background:var(--teal);color:white;font-weight:700;padding:13px 16px;cursor:pointer}.btn:disabled{opacity:.5}.field{width:100%;border:1px solid #d5e0e0;border-radius:12px;padding:12px;font-size:15px}.hide{display:none!important}.identity{display:flex;align-items:center;gap:10px;padding:12px;background:#edf7f4;border-radius:12px;margin:14px 0}.dot{width:9px;height:9px;border-radius:50%;background:#22a06b;display:inline-block}.chat{height:min(62vh,600px);min-height:360px;display:flex;flex-direction:column}.head{display:flex;justify-content:space-between;gap:10px;align-items:center;border-bottom:1px solid #e7eeee;padding-bottom:12px}.msgs{flex:1;overflow:auto;padding:14px 2px;display:flex;flex-direction:column;gap:10px}.bubble{max-width:84%;padding:10px 12px;border-radius:15px;background:#edf2f2;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}.mine{align-self:flex-end;background:#0b514b;color:white;border-bottom-right-radius:4px}.theirs{align-self:flex-start;border-bottom-left-radius:4px}.bubble img{max-width:220px;width:100%;border-radius:10px;display:block;margin-top:6px}.composer{display:flex;gap:8px;border-top:1px solid #e7eeee;padding-top:12px}.composer input[type=text]{flex:1;min-width:0}.iconbtn{border:0;border-radius:12px;padding:0 13px;background:#e7f0ef;color:#0b514b;font-size:19px;cursor:pointer}.status{font-size:11px;color:#6c7c7c;margin-top:4px}.error{color:#b42318;font-size:13px;margin-top:10px}.small{font-size:11px;color:#718181;text-align:center;margin:14px 0}
+</style>
+</head>
+<body>
+<header class="top"><div class="logo">TO</div><div><h1>Teer Online Support</h1><p>Private customer support chat</p></div></header>
+<main class="wrap">
+<section id="verify" class="card">
+<h2 style="margin:0 0 6px;font-size:19px">Confirm your account</h2>
+<p class="muted">Your secure link came from the Teer Online app. Confirm the UID shown below to open your private support chat.</p>
+<div class="identity"><div style="font-size:12px;color:#668">YOUR UID</div><strong id="uid" style="font-size:20px">—</strong></div>
+<button id="continue" class="btn" style="width:100%">Continue to Chat</button>
+<p id="verifyError" class="error"></p>
+</section>
+<section id="chatCard" class="card chat hide">
+<div class="head"><div><strong id="agentTitle">Connecting to support…</strong><div id="agentSub" class="status">Checking agent availability</div></div><span class="dot"></span></div>
+<div id="messages" class="msgs"></div>
+<form id="composer" class="composer">
+<label class="iconbtn" title="Attach screenshot">＋<input id="image" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+<input id="message" class="field" type="text" maxlength="2000" placeholder="Write your message…" autocomplete="off">
+<button id="send" class="btn">Send</button>
+</form>
+<p class="status">You can send text or a JPG, PNG, or WEBP screenshot (max 5 MB).</p>
+</section>
+<p class="small">Never share your password, OTP, or UPI PIN in support chat.</p>
+</main>
+<script>
+const API='https://qzbqmbrzmfggzzeufkyh.supabase.co/functions/v1/account-api';
+const KEY='sb_publishable_Z2ij7JqELoVfBQ75wrSrFg_bKDt3aj1';
+let token='',conversationId='',uid='',poller=null,agentPoller=null,lastIds=new Set();
+const $=id=>document.getElementById(id);
+async function api(action,payload={},support=true){
+ const headers={'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY};
+ if(support&&token)headers['x-support-token']=token;
+ const res=await fetch(API,{method:'POST',headers,body:JSON.stringify({action,...payload})});
+ const data=await res.json().catch(()=>({}));
+ if(!res.ok)throw new Error(data.error||'Request failed ('+res.status+')');
+ return data;
+}
+function textBubble(message,role,id,attachment){
+ if(id&&lastIds.has(id))return; if(id)lastIds.add(id);
+ const el=document.createElement('div');el.className='bubble '+(role==='user'?'mine':'theirs');
+ const label=document.createElement('div');label.style.cssText='font-size:10px;opacity:.7;margin-bottom:4px';label.textContent=role==='user'?'You':(role==='admin'?'Support agent':'Support');el.appendChild(label);
+ const body=document.createElement('div');body.textContent=message==='Image attachment'?'Screenshot':message;el.appendChild(body);
+ if(attachment){const img=document.createElement('img');img.src=attachment;img.alt='Shared screenshot';el.appendChild(img)}
+ $('messages').appendChild(el);$('messages').scrollTop=$('messages').scrollHeight;
+}
+async function refreshMessages(){
+ if(!conversationId)return;
+ const d=await api('user_support_messages',{conversation_id:conversationId});
+ $('messages').innerHTML='';lastIds.clear();
+ (d.messages||[]).forEach(m=>textBubble(m.message,m.sender_role,m.id,m.attachment_url));
+}
+function fallbackAgent(){
+ const names=['Aarav','Riya','Maya','Kabir','Anaya','Ishaan','Tara','Dev'];
+ const slot=Math.floor(Date.now()/1800000);
+ return names[((slot%names.length)+names.length)%names.length];
+}
+async function refreshAgent(){
+ try{
+  const d=await api('support_agent_status');
+  if(d.agent){$('agentTitle').textContent=d.agent.name;$('agentSub').textContent='Real support agent online';}
+  else{$('agentTitle').textContent='Support Assistant '+fallbackAgent();$('agentSub').textContent='No human agent is online right now • automated waiting desk';}
+ }catch(_){$('agentSub').textContent='Agent availability temporarily unavailable';}
+}
+async function startChat(){
+ try{
+  const d=await api('user_support_open',{category:'general'});
+  conversationId=d.conversation.id;
+  $('verify').classList.add('hide');$('chatCard').classList.remove('hide');
+  await refreshMessages();await refreshAgent();
+  poller=setInterval(()=>refreshMessages().catch(()=>{}),4000);
+  agentPoller=setInterval(()=>refreshAgent(),15000);
+ }catch(e){$('verifyError').textContent=e.message}
+}
+$('continue').onclick=startChat;
+$('composer').onsubmit=async e=>{
+ e.preventDefault();const value=$('message').value.trim();if(!value||!conversationId)return;
+ $('send').disabled=true;
+ try{await api('user_support_send',{conversation_id:conversationId,message:value});$('message').value='';await refreshMessages();}
+ catch(err){alert(err.message)}finally{$('send').disabled=false}
+};
+$('image').onchange=async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ if(file.size>5*1024*1024){alert('Image must be 5 MB or smaller.');e.target.value='';return}
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)){alert('Please choose JPG, PNG, or WEBP.');e.target.value='';return}
+ try{
+  const base64=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(file)});
+  await api('support_attachment_upload',{conversation_id:conversationId,mime_type:file.type,file_base64:base64});await refreshMessages();
+ }catch(err){alert(err.message)}finally{e.target.value=''}
+};
+(async()=>{
+ const ticket=new URLSearchParams(location.search).get('ticket');
+ if(!ticket){$('verifyError').textContent='Open Support Chat from inside your logged-in Teer Online app to get a secure link.';$('continue').disabled=true;return}
+ try{
+  const d=await api('support_link_exchange',{ticket},false);token=d.support_token;uid=d.user?.uid||'';
+  sessionStorage.setItem('teer_support_token',token);$('uid').textContent=uid||'Verified account';
+ }catch(e){$('verifyError').textContent=e.message;$('continue').disabled=true}
+})();
+</script>
+</body></html>
