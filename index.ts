@@ -238,6 +238,39 @@ Deno.serve(async (req) => {
       return json({ success: true }, 200, origin);
     }
 
+    if (action === "place_bets") {
+      const user = await getSession(req);
+      if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
+      const clientRefPrefix = String(body.client_ref_prefix ?? "").trim();
+      const market = String(body.market ?? "").trim();
+      const rawSelections = Array.isArray(body.selections) ? body.selections : [];
+      if (!clientRefPrefix || clientRefPrefix.length > 90 || !market || market.length > 80 ||
+          rawSelections.length < 1 || rawSelections.length > 100) {
+        return json({ error: "Invalid batch bet details" }, 400, origin);
+      }
+      const selections = rawSelections.map((item: Record<string, unknown>) => ({
+        round: String(item?.round ?? "").trim().toUpperCase(),
+        round_id: item?.round_id == null ? null : Number(item.round_id),
+        bet_mode: String(item?.bet_mode ?? "").trim().toUpperCase(),
+        bet_number: String(item?.bet_number ?? "").trim(),
+        amount: Number(item?.amount),
+      }));
+      let result: unknown;
+      try {
+        result = await rpc("api_place_bets_batch", {
+          p_user_id: user.id,
+          p_client_ref_prefix: clientRefPrefix,
+          p_market: market,
+          p_selections: selections,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Bet batch could not be completed";
+        console.error("Batch bet failed:", message);
+        return json({ error: message.slice(0, 220) }, 400, origin);
+      }
+      return json({ success: true, result }, 200, origin);
+    }
+
     if (action === "place_bet") {
       const user = await getSession(req);
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
