@@ -912,8 +912,10 @@
         if (!preview || preview.market !== market || !/^\\d{2}$/.test(preview.fr) || !/^\\d{2}$/.test(preview.sr)) {
           throw new Error('Source preview did not pass validation');
         }
-        document.getElementById('fr').value = preview.fr;
-        document.getElementById('sr').value = preview.sr;
+        const existing = (window.__adminResults || {})[market] || {};
+        const sameDayExisting = existing.date === preview.date;
+        document.getElementById('fr').value = preview.fr || (sameDayExisting && existing.fr && existing.fr !== '**' ? existing.fr : '');
+        document.getElementById('sr').value = preview.sr || (sameDayExisting && existing.sr && existing.sr !== '**' ? existing.sr : '');
         sourceResultPreviewDate = preview.date;
         sourceResultPreviewMarket = market;
         alert(`Preview only — NOT published.\\nMarket: ${market}\\nDate: ${preview.date}\\nFR: ${preview.fr} | SR: ${preview.sr}\\n\\nVerify the source numbers before pressing Save & Broadcast.`);
