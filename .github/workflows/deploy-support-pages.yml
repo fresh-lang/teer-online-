@@ -1,9 +1,19 @@
-name: Deploy Teer Online Support to GitHub Pages
+name: Deploy Teer Online Website and Support to GitHub Pages
 
 on:
   push:
     branches: [main]
     paths:
+      - "index.html"
+      - "admin.html"
+      - "icon-192.png"
+      - "icon-512.png"
+      - "logo.png"
+      - "manifest.json"
+      - "native-back-bridge.js"
+      - "onesignal-bridge.js"
+      - "sw.js"
+      - "update-bridge.js"
       - "support/**"
       - ".github/workflows/deploy-support-pages.yml"
   workflow_dispatch:
@@ -30,11 +40,11 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
-      - name: Prepare support site only
+      - name: Prepare complete website
         run: |
           mkdir -p public/support
-          cp support/index.html public/support/index.html
-          cp support/agent.html public/support/agent.html
+          cp index.html admin.html icon-192.png icon-512.png logo.png manifest.json native-back-bridge.js onesignal-bridge.js sw.js update-bridge.js public/
+          cp support/index.html support/agent.html public/support/
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
