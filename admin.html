@@ -143,9 +143,11 @@
         </div>
         <p class="text-[10px] text-emerald-200/90">Automatic source sync checks these markets every 5 minutes. Admin corrections are locked for the day so the source cannot overwrite them. Correcting a result reverses the previous settlement, recalculates affected bets, and records wallet adjustments in the transaction ledger. Use the preview button when you want to inspect the source manually.</p>
         <div class="flex gap-2">
-          <button onclick="saveResultAndBroadcast()" class="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-xs text-white shadow-lg transition">
-            <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> Save &amp; Broadcast
+          <button onclick="saveResultAndBroadcast('both')" class="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-xs text-white shadow-lg transition">
+            <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> Save FR + SR
           </button>
+          <button onclick="saveResultAndBroadcast('FR')" class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-teal-950 font-black rounded-xl text-xs">Save FR Only</button>
+          <button onclick="saveResultAndBroadcast('SR')" class="flex-1 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-black rounded-xl text-xs">Save SR Only</button>
           <button onclick="resetMarketResult(document.getElementById('mkt').value)" class="px-4 py-3 bg-rose-600 hover:bg-rose-500 font-bold rounded-xl text-xs text-white shadow-lg transition">
             <i class="fa-solid fa-rotate-left mr-1"></i> Reset to **
           </button>
@@ -953,18 +955,30 @@
       }
     }
 
-    async function saveResultAndBroadcast() {
+    async function saveResultAndBroadcast(roundOnly = 'both') {
       const market = document.getElementById('mkt').value;
-      const fr = document.getElementById('fr').value.trim() || '**';
-      const sr = document.getElementById('sr').value.trim() || '**';
-      const resultDate = sourceResultPreviewMarket === market && sourceResultPreviewDate ? sourceResultPreviewDate : getTodayFormattedDate();
+      const enteredFR = document.getElementById('fr').value.trim();
+      const enteredSR = document.getElementById('sr').value.trim();
+      const current = (window.__adminResults || {})[market] || {};
+      const resultDate = sourceResultPreviewMarket === market && sourceResultPreviewDate
+        ? sourceResultPreviewDate
+        : (current.date || getTodayFormattedDate());
+      const sameDayExisting = current.date === resultDate;
+      // A one-round save preserves the other round's already-published value.
+      const fr = roundOnly === 'SR' ? (sameDayExisting && current.fr && current.fr !== '**' ? current.fr : '**') : (enteredFR || '**');
+      const sr = roundOnly === 'FR' ? (sameDayExisting && current.sr && current.sr !== '**' ? current.sr : '**') : (enteredSR || '**');
+      if (roundOnly === 'FR' && !/^\\d{1,2}$/.test(enteredFR)) { alert('Enter a valid FR number (00–99) first.'); return; }
+      if (roundOnly === 'SR' && !/^\\d{1,2}$/.test(enteredSR)) { alert('Enter a valid SR number (00–99) first.'); return; }
+      if (roundOnly === 'both' && fr === '**' && sr === '**') { alert('Enter FR or SR result before saving.'); return; }
       try {
-        await adminApi('admin_save_result', { market, fr, sr, result_date: resultDate });
+        const saved = await adminApi('admin_save_result', { market, fr, sr, result_date: resultDate });
         window.__adminResults = window.__adminResults || {};
         window.__adminResults[market] = { fr, sr, date: resultDate };
         sourceResultPreviewDate = '';
         sourceResultPreviewMarket = '';
-        alert('Result saved to Supabase and broadcast request completed.');
+        alert((roundOnly === 'FR' ? 'FR' : roundOnly === 'SR' ? 'SR' : 'FR + SR') + ' saved. ' +
+          (saved.push?.sent ? 'Notification sent to ' + saved.push.recipients + ' subscribers.' : 'Notification status: ' + (saved.push?.reason || 'not confirmed')) +
+          '\\nSaved result: FR ' + fr + ' | SR ' + sr);
       } catch (e) { alert('Result save failed: ' + e.message); }
     }
 
