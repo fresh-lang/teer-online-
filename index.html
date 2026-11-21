@@ -51,13 +51,17 @@
       const bar=overlay.querySelector('#teerUpdateProgressBar');
       const progressText=overlay.querySelector('#teerUpdateProgressText');
       const error=overlay.querySelector('#teerUpdateError');
-      later.onclick=()=>overlay.remove();
+      later.type='button';
+      update.type='button';
+      later.style.cssText += ';pointer-events:auto;touch-action:manipulation;position:relative;z-index:1';
+      update.style.cssText += ';pointer-events:auto;touch-action:manipulation;position:relative;z-index:1';
+      later.addEventListener('click', (event)=>{ event.preventDefault(); event.stopPropagation(); overlay.remove(); });
       update.onclick=async()=>{
         if (!window.TeerAppUpdater) {
           error.style.display='block'; error.textContent='Update service is not available in this build. Please try again.';
           return;
         }
-        update.disabled=true; later.disabled=true; update.textContent='Downloading…';
+        update.disabled=true; update.textContent='Downloading…';
         wrap.style.display='block'; error.style.display='none';
         try {
           await window.TeerAppUpdater.downloadAndInstall(
@@ -75,7 +79,7 @@
           console.error('In-app APK update failed:',e);
           error.style.display='block';
           error.textContent='Download or installer could not open. '+String(e?.message||e);
-          update.disabled=false; later.disabled=false; update.textContent='Try Again';
+          update.disabled=false; update.textContent='Try Again';
         }
       };
     }
@@ -1548,7 +1552,8 @@
     window.addEventListener('DOMContentLoaded', async () => {
       await loadStorage();
       // Restore the active server session after a page refresh.
-      await restoreSavedAccountSession();
+      // Paint market cards immediately; restore account data without blocking the first screen.
+      void restoreSavedAccountSession().catch(err => console.warn('Background session restore failed:', err));
       // Demo accounts are isolated in memory; no legacy remote sync.
       checkSundayHoliday();
       renderMarkets();
@@ -1565,11 +1570,9 @@
       initFakeBetsTicker();
       initTeerPlayAutoEngine();
 
-      setInterval(() => {
-        renderMarkets();
-        checkAndCreditWinnings();
-        syncNotifications();
-      }, 4000);
+      // Market cards are time-based; rebuild them every 30s instead of every 4s.
+      setInterval(renderMarkets, 30000);
+      setInterval(syncNotifications, 4000);
     });
 
     // 2. SUPABASE PUBLIC DATA REFRESH
