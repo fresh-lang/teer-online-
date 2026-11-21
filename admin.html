@@ -411,6 +411,12 @@
         <div class="flex justify-between"><span class="text-slate-400">Registered Date:</span> <span id="mUserCreatedAt" class="text-slate-400">--</span></div>
       </div>
 
+      <div class="space-y-2 border-t border-teal-900/60 pt-3">
+        <label class="text-xs font-bold text-amber-300 block">Assigned Agent WhatsApp Number:</label>
+        <input type="tel" id="mUserAgentNumber" inputmode="tel" placeholder="e.g. +918123456789" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">
+        <button onclick="saveAssignedAgentNumber()" class="w-full py-2 bg-teal-700 hover:bg-teal-600 text-white font-bold rounded-xl text-xs">Save Agent Number</button>
+        <p class="text-[10px] text-slate-500">This number will be shown when this user asks AI support for their Agent Number.</p>
+      </div>
       <div class="space-y-2">
         <label class="text-xs font-bold text-amber-300 block">Adjust Wallet Balance (+/-):</label>
         <div class="flex gap-2">
@@ -496,6 +502,7 @@
                 <span class="bg-amber-400/20 text-amber-300 font-mono text-[9px] px-1.5 py-0.5 rounded border border-amber-400/30">${u.uid || ('UID_' + (1001 + index))}</span>
               </div>
               <div class="text-[10px] text-slate-400">Reg: ${u.createdAt || 'Recent'}</div>
+              <div class="text-[10px] text-teal-300">Agent: ${u.agent_number || 'Not assigned'}</div>
             </td>
             <td class="p-2.5 font-mono text-amber-300 font-semibold">+91 ${u.phone}</td>
             <td class="p-2.5 font-black text-emerald-400 underline">₹${bal} (Edit)</td>
@@ -534,6 +541,8 @@
       document.getElementById('mUserBalance').innerText = '₹' + parseFloat(u.balance || 0).toFixed(2);
       document.getElementById('mUserReferredBy').innerText = u.referredBy || 'Direct Registration';
       document.getElementById('mUserCreatedAt').innerText = u.createdAt || 'Recent';
+      const agentInput = document.getElementById('mUserAgentNumber');
+      if (agentInput) agentInput.value = u.agent_number || '';
 
       // 1. Calculate Total Approved Deposits
       let totalDep = 0;
@@ -566,6 +575,24 @@
     function closeUserModal() {
       document.getElementById('userModal').classList.add('hidden');
       activeModalUserPhone = null;
+    }
+
+    async function saveAssignedAgentNumber() {
+      const user = activeModalUserPhone ? allUsersCache[activeModalUserPhone] : null;
+      const agentNumber = document.getElementById('mUserAgentNumber').value.trim();
+      if (!user) return;
+      if (!/^\\+?[0-9]{10,15}$/.test(agentNumber)) {
+        alert('Enter a valid WhatsApp number with country code (10-15 digits).');
+        return;
+      }
+      try {
+        const result = await adminApi('admin_assign_agent_number', { user_id: user.id, agent_number: agentNumber });
+        user.agent_number = result.agent_number;
+        renderUsersList();
+        alert('Agent WhatsApp number assigned to this user.');
+      } catch (error) {
+        alert('Could not assign Agent Number: ' + (error.message || error));
+      }
     }
 
     /* Removed disabled legacy adjustUserBalance handler. */
