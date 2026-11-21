@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>TEER ONLINE</title>
+  <script>if (window.Capacitor && typeof window.Capacitor.isNativePlatform === "function" && window.Capacitor.isNativePlatform()) document.documentElement.classList.add("native-app");</script>
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="shortcut icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -124,6 +125,7 @@
   <!-- Supabase Edge Function is authoritative for accounts, wallet, bets, results and settings. -->
 
   <style>
+    html.native-app #pwaBanner { display: none !important; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: 'Poppins', sans-serif; background-color: #021a1c; color: #1e293b; user-select: none; }
     .font-decorative { font-family: 'Caveat', cursive; }
@@ -219,7 +221,7 @@
         <!-- Promotional Auto-Slider -->
         <div class="p-3">
           <div class="relative w-full aspect-[2.1/1] rounded-2xl overflow-hidden shadow-lg border border-teal-800/40 bg-teal-950">
-            <div id="slide1" class="absolute inset-0 transition-opacity duration-500 opacity-100 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#012528] via-[#05373c] to-[#011c1e]">
+            <div id="slide1" class="absolute inset-0 pointer-events-auto transition-opacity duration-500 opacity-100 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#012528] via-[#05373c] to-[#011c1e]">
               <div class="flex justify-between items-start">
                 <div>
                   <div class="inline-block bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-bold mb-1">
@@ -242,16 +244,16 @@
                 <div class="text-center font-bold text-teal-100">ENDING <span class="text-amber-300">10-90</span></div>
               </div>
               <div class="flex gap-2">
-                <button onclick="openDepositModal()" class="flex-1 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px] text-center shadow">
+                <button type="button" onclick="openDepositModal()" class="flex-1 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[11px] text-center shadow">
                   DEPOSIT NOW
                 </button>
-                <button onclick="openPlayModalByName('Teer Play')" class="flex-1 py-1.5 rounded-lg gold-btn text-[11px] text-center shadow">
+                <button type="button" onclick="scrollToMainMarkets()" class="flex-1 py-1.5 rounded-lg gold-btn text-[11px] text-center shadow">
                   PLAY NOW &gt;
                 </button>
               </div>
             </div>
 
-            <div id="slide2" class="absolute inset-0 transition-opacity duration-500 opacity-0 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#2b0808] via-[#4d0b16] to-[#1a0408]">
+            <div id="slide2" class="absolute inset-0 pointer-events-none transition-opacity duration-500 opacity-0 flex flex-col justify-between p-3.5 bg-gradient-to-br from-[#2b0808] via-[#4d0b16] to-[#1a0408]">
               <div class="flex justify-between items-start">
                 <div>
                   <span class="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold">CRASH 100x</span>
@@ -331,7 +333,7 @@
         </div>
 
         <!-- Main Markets Section -->
-        <div class="px-3 pb-4">
+        <div id="mainMarketsSection" class="px-3 pb-4 scroll-mt-3">
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
               <h4 class="font-decorative text-2xl font-bold text-teal-950">Main Markets</h4>
@@ -2099,6 +2101,14 @@
       document.getElementById('potentialWin').innerText = count > 0 ? '₹' + potential.toFixed(2) : '₹0.00';
     }
 
+    function scrollToMainMarkets() {
+      const target = document.getElementById('mainMarketsSection');
+      const scroller = target ? target.closest('main') : null;
+      if (!target || !scroller) return;
+      const top = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 12;
+      scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }
+
     function openPlayModalByName(mName) {
       if (new Date().getDay() === 0) {
         alert('Sunday Holiday: Teer game is closed on Sundays!');
@@ -2409,6 +2419,10 @@
         if (s1 && s2) {
           s1.style.opacity = isFirst ? '1' : '0';
           s2.style.opacity = isFirst ? '0' : '1';
+          s1.classList.toggle('pointer-events-auto', isFirst);
+          s1.classList.toggle('pointer-events-none', !isFirst);
+          s2.classList.toggle('pointer-events-auto', !isFirst);
+          s2.classList.toggle('pointer-events-none', isFirst);
           d1.className = isFirst ? 'w-2 h-1 rounded-full bg-amber-400' : 'w-1.5 h-1 rounded-full bg-white/40';
           d2.className = isFirst ? 'w-1.5 h-1 rounded-full bg-white/40' : 'w-2 h-1 rounded-full bg-amber-400';
         }
