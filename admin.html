@@ -119,6 +119,7 @@
             </optgroup>
             <optgroup label="Night Draws">
               <option value="Shillong Night Teer">Shillong Night Teer (FR 08:10 PM | SR 09:10 PM)</option>
+              <option value="Khanapara Night Teer">Khanapara Night Teer (FR 10:30 PM | SR 11:30 PM)</option>
             </optgroup>
             <optgroup label="Fast Play">
               <option value="Teer Play">Teer Play (1 Min)</option>
@@ -135,6 +136,12 @@
             <input type="text" id="sr" placeholder="e.g. 15" maxlength="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-3 text-center font-black text-white text-2xl outline-none focus:border-amber-400">
           </div>
         </div>
+        <div class="flex gap-2">
+          <button onclick="fetchSourceResultForSelectedMarket()" class="w-full py-2.5 bg-sky-700 hover:bg-sky-600 font-bold rounded-xl text-xs text-white shadow transition">
+            <i class="fa-solid fa-cloud-arrow-down mr-1.5"></i> Fetch FR/SR from Result Website (Preview)
+          </button>
+        </div>
+        <p class="text-[10px] text-amber-200/80">Third-party website data is only a preview. Verify both numbers and date before Save &amp; Broadcast. Publishing settles winning bets.</p>
         <div class="flex gap-2">
           <button onclick="saveResultAndBroadcast()" class="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-xs text-white shadow-lg transition">
             <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> Save &amp; Broadcast
@@ -757,6 +764,7 @@
       { name: 'Shillong Teer (Evening)', frTime: '03:45 PM', srTime: '04:45 PM' },
       { name: 'Khanapara Teer (Evening)', frTime: '04:00 PM', srTime: '04:40 PM' },
       { name: 'Shillong Night Teer', frTime: '08:10 PM', srTime: '09:10 PM' },
+      { name: 'Khanapara Night Teer', frTime: '10:30 PM', srTime: '11:30 PM' },
       { name: 'Teer Play', frTime: '1 Min', srTime: '1 Min' }
     ];
 
@@ -881,22 +889,52 @@
       }
     }
 
+    let sourceResultPreviewDate = '';
+    let sourceResultPreviewMarket = '';
+
     function loadMarketExistingResult() {
       const market = document.getElementById('mkt').value;
+      sourceResultPreviewDate = '';
+      sourceResultPreviewMarket = '';
       const current = (window.__adminResults || {})[market] || { fr: '', sr: '' };
       document.getElementById('fr').value = current.fr && current.fr !== '**' ? current.fr : '';
       document.getElementById('sr').value = current.sr && current.sr !== '**' ? current.sr : '';
+    }
+
+    async function fetchSourceResultForSelectedMarket() {
+      const market = document.getElementById('mkt').value;
+      const button = document.querySelector('button[onclick="fetchSourceResultForSelectedMarket()"]');
+      if (button) { button.disabled = true; button.textContent = 'Fetching source result...'; }
+      try {
+        const response = await adminApi('admin_fetch_source_result', { market });
+        const preview = response.preview;
+        if (!preview || preview.market !== market || !/^\\d{2}$/.test(preview.fr) || !/^\\d{2}$/.test(preview.sr)) {
+          throw new Error('Source preview did not pass validation');
+        }
+        document.getElementById('fr').value = preview.fr;
+        document.getElementById('sr').value = preview.sr;
+        sourceResultPreviewDate = preview.date;
+        sourceResultPreviewMarket = market;
+        alert(`Preview only — NOT published.\\nMarket: ${market}\\nDate: ${preview.date}\\nFR: ${preview.fr} | SR: ${preview.sr}\\n\\nVerify the source numbers before pressing Save & Broadcast.`);
+      } catch (e) {
+        alert('Could not fetch a verified same-day result: ' + (e.message || e));
+      } finally {
+        if (button) { button.disabled = false; button.innerHTML = '<i class="fa-solid fa-cloud-arrow-down mr-1.5"></i> Fetch FR/SR from Result Website (Preview)'; }
+      }
     }
 
     async function saveResultAndBroadcast() {
       const market = document.getElementById('mkt').value;
       const fr = document.getElementById('fr').value.trim() || '**';
       const sr = document.getElementById('sr').value.trim() || '**';
+      const resultDate = sourceResultPreviewMarket === market && sourceResultPreviewDate ? sourceResultPreviewDate : getTodayFormattedDate();
       try {
-        await adminApi('admin_save_result', { market, fr, sr, result_date: getTodayFormattedDate() });
+        await adminApi('admin_save_result', { market, fr, sr, result_date: resultDate });
         window.__adminResults = window.__adminResults || {};
-        window.__adminResults[market] = { fr, sr, date: getTodayFormattedDate() };
-        alert('Result saved to Supabase.');
+        window.__adminResults[market] = { fr, sr, date: resultDate };
+        sourceResultPreviewDate = '';
+        sourceResultPreviewMarket = '';
+        alert('Result saved to Supabase and broadcast request completed.');
       } catch (e) { alert('Result save failed: ' + e.message); }
     }
 
