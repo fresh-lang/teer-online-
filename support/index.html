@@ -14,7 +14,7 @@
 <h2 style="margin:0 0 6px;font-size:19px">Confirm your account</h2>
 <p class="muted">Your secure link came from the Teer Online app. Confirm the UID shown below to open your private support chat.</p>
 <div class="identity"><div style="font-size:12px;color:#668">YOUR UID</div><strong id="uid" style="font-size:20px">—</strong></div>
-<button id="continue" class="btn" style="width:100%">Continue to Chat</button>
+<p id="opening" class="muted">UID verified. Opening your private chat…</p>
 <p id="verifyError" class="error"></p>
 </section>
 <section id="chatCard" class="card chat hide">
@@ -78,7 +78,7 @@ async function startChat(){
   agentPoller=setInterval(()=>refreshAgent(),15000);
  }catch(e){$('verifyError').textContent=e.message}
 }
-$('continue').onclick=startChat;
+// Support opens automatically after the secure UID ticket is verified.
 $('composer').onsubmit=async e=>{
  e.preventDefault();const value=$('message').value.trim();if(!value||!conversationId)return;
  $('send').disabled=true;
@@ -98,16 +98,22 @@ $('image').onchange=async e=>{
  token=sessionStorage.getItem('teer_support_token')||'';
  uid=sessionStorage.getItem('teer_support_uid')||'';
  if(token){
-  try{await api('support_agent_status');$('uid').textContent=uid||'Verified account';return}catch(_){sessionStorage.removeItem('teer_support_token');sessionStorage.removeItem('teer_support_uid');token=''}
+  try{
+   await api('support_agent_status');
+   $('uid').textContent=uid||'Verified account';
+   await startChat();
+   return;
+  }catch(_){sessionStorage.removeItem('teer_support_token');sessionStorage.removeItem('teer_support_uid');token=''}
  }
  const ticket=new URLSearchParams(location.search).get('ticket');
- if(!ticket){$('verifyError').textContent='Open Support Chat from inside your logged-in Teer Online app to get a secure link.';$('continue').disabled=true;return}
+ if(!ticket){$('verifyError').textContent='Open Support Chat from inside your logged-in Teer Online app to get a secure UID link.';$('opening').textContent='Secure UID link required.';return}
  try{
   const d=await api('support_link_exchange',{ticket},false);token=d.support_token;uid=d.user?.uid||'';
   sessionStorage.setItem('teer_support_token',token);sessionStorage.setItem('teer_support_uid',uid);
   history.replaceState({},document.title,location.pathname);
   $('uid').textContent=uid||'Verified account';
- }catch(e){$('verifyError').textContent=e.message;$('continue').disabled=true}
+  await startChat();
+ }catch(e){$('verifyError').textContent=e.message;$('opening').textContent=e.message}
 })();
 </script>
 </body></html>
