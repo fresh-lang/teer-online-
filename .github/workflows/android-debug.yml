@@ -50,6 +50,48 @@ jobs:
           npm run build:onesignal
           echo "{\"build\":${GITHUB_RUN_NUMBER}}" > www/build-info.json
           npx cap add android
+          # Create a dedicated Android notification channel with the device's
+          # default notification tone. OneSignal result pushes target this ID.
+          mkdir -p android/app/src/main/java/com/freshlang/teeronline
+          cat > android/app/src/main/java/com/freshlang/teeronline/MainActivity.java <<'JAVA'
+          package com.freshlang.teeronline;
+
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.media.AudioAttributes;
+          import android.media.RingtoneManager;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                      final String channelId = "teer_results_sound_v1";
+                      NotificationManager manager = getSystemService(NotificationManager.class);
+                      if (manager != null && manager.getNotificationChannel(channelId) == null) {
+                          Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                          AudioAttributes audio = new AudioAttributes.Builder()
+                              .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                              .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                              .build();
+                          NotificationChannel channel = new NotificationChannel(
+                              channelId,
+                              "Teer Online Results",
+                              NotificationManager.IMPORTANCE_HIGH
+                          );
+                          channel.setDescription("Sound alerts for FR/SR results and Teer Online notifications");
+                          channel.setSound(sound, audio);
+                          channel.enableVibration(true);
+                          manager.createNotificationChannel(channel);
+                      }
+                  }
+                  super.onCreate(savedInstanceState);
+              }
+          }
+          JAVA
           # Allow Android to ask the user to install APK updates downloaded by the app.
           sed -i '/<application/i\    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />' android/app/src/main/AndroidManifest.xml
           cat >> android/app/build.gradle <<'GRADLE'
