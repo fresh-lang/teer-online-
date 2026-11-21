@@ -70,7 +70,7 @@ jobs:
               public void onCreate(Bundle savedInstanceState) {
                   registerPlugin(ApkInstallerPlugin.class);
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                      final String channelId = "teer_results_sound_v1";
+                      final String channelId = "teer_results_sound_v2";
                       NotificationManager manager = getSystemService(NotificationManager.class);
                       if (manager != null && manager.getNotificationChannel(channelId) == null) {
                           Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
@@ -80,7 +80,7 @@ jobs:
                               .build();
                           NotificationChannel channel = new NotificationChannel(
                               channelId,
-                              "Teer Online Results",
+                              "Teer Online Results (Sound)",
                               NotificationManager.IMPORTANCE_HIGH
                           );
                           channel.setDescription("Sound alerts for FR/SR results and Teer Online notifications");
