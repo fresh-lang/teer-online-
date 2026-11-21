@@ -84,6 +84,7 @@
       <button onclick="switchTab('withdrawals')" id="tabBtn_withdrawals" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
         <i class="fa-solid fa-money-bill-transfer mr-1"></i> Withdrawals (<span id="tabCountWithdrawals" class="text-rose-400">0</span>)
       </button>
+      <button onclick="switchTab('support');loadAdminSupportList()" id="tabBtn_support" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap"><i class="fa-solid fa-headset mr-1"></i> Agent Chats</button>
       <button onclick="switchTab('analytics')" id="tabBtn_analytics" class="admin-tab-btn flex-1 py-2 px-3 rounded-xl text-slate-300 hover:text-white transition whitespace-nowrap">
         <i class="fa-solid fa-chart-pie mr-1"></i> Live Risk Analytics
       </button>
@@ -357,6 +358,23 @@
       </div>
     </div>
 
+    <div id="tabContent_support" class="tab-pane space-y-3 hidden">
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3">
+        <div class="flex items-center justify-between"><div><h3 class="font-bold text-sm text-amber-300">Private Agent Chats</h3><p class="text-[11px] text-slate-400">Only admin panel and the matching user can read these messages.</p></div><button onclick="loadAdminSupportList()" class="px-3 py-2 bg-teal-800 rounded-lg text-xs">Refresh</button></div>
+        <div class="grid md:grid-cols-2 gap-3">
+          <div id="adminSupportThreads" class="space-y-2 max-h-[520px] overflow-y-auto"><p class="text-xs text-slate-500">Loading chats...</p></div>
+          <div class="bg-black/30 rounded-xl p-3 flex flex-col min-h-[360px]">
+            <p id="adminSupportChatTitle" class="text-xs font-bold text-amber-300 mb-2">Select a user chat</p>
+            <div id="adminSupportMessages" class="flex-1 overflow-y-auto space-y-2 text-xs"><p class="text-slate-500">Messages will appear here.</p></div>
+            <form onsubmit="sendAdminSupportReply(event)" class="flex gap-2 border-t border-teal-900 pt-2 mt-2">
+              <input id="adminSupportReply" maxlength="2000" placeholder="Write private reply..." class="flex-1 min-w-0 bg-black/50 border border-teal-800 rounded-xl p-2 text-xs text-white" required>
+              <button class="px-3 rounded-xl bg-amber-400 text-teal-950 font-bold text-xs">Send</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="tabContent_settings" class="tab-pane space-y-3 hidden">
       <!-- Agent Ledger -->
       <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-2">
@@ -449,6 +467,66 @@
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || ('API error ' + response.status));
       return data;
+    }
+
+    let selectedAdminSupportConversation = null;
+
+    async function loadAdminSupportList() {
+      const box = document.getElementById('adminSupportThreads');
+      if (!box || !adminSessionToken) return;
+      try {
+        const data = await adminApi('admin_support_list');
+        box.innerHTML = '';
+        const items = data.conversations || [];
+        if (!items.length) { box.textContent = 'No agent chats yet.'; return; }
+        items.forEach(item => {
+          const user = Array.isArray(item.app_users) ? item.app_users[0] : item.app_users;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'w-full text-left p-3 rounded-xl border border-teal-900 bg-black/30 hover:bg-teal-950';
+          const title = document.createElement('div'); title.className='font-bold text-xs text-white';
+          title.textContent = (user?.name || 'User') + ' • ' + (item.category || 'general').toUpperCase();
+          const sub = document.createElement('div'); sub.className='text-[10px] text-slate-400 mt-1';
+          sub.textContent = (user?.phone || '') + ' · ' + (item.last_message || 'No messages yet');
+          btn.append(title,sub);
+          btn.addEventListener('click', () => openAdminSupportConversation(item.id, title.textContent));
+          box.appendChild(btn);
+        });
+      } catch (error) { box.textContent = error.message || 'Could not load agent chats.'; }
+    }
+
+    async function openAdminSupportConversation(id, title) {
+      selectedAdminSupportConversation = id;
+      document.getElementById('adminSupportChatTitle').textContent = title;
+      await loadAdminSupportMessages();
+    }
+
+    async function loadAdminSupportMessages() {
+      if (!selectedAdminSupportConversation) return;
+      const data = await adminApi('admin_support_messages', { conversation_id: selectedAdminSupportConversation });
+      const box = document.getElementById('adminSupportMessages');
+      box.innerHTML = '';
+      (data.messages || []).forEach(item => {
+        const bubble = document.createElement('div');
+        bubble.className = item.sender_role === 'admin' ? 'ml-auto max-w-[90%] rounded-xl bg-teal-900 p-2.5 text-white' : 'mr-auto max-w-[90%] rounded-xl bg-slate-800 p-2.5 text-slate-100';
+        bubble.textContent = (item.sender_role === 'admin' ? 'You: ' : 'User: ') + item.message;
+        box.appendChild(bubble);
+      });
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function sendAdminSupportReply(event) {
+      event.preventDefault();
+      if (!selectedAdminSupportConversation) { alert('Select a user chat first.'); return; }
+      const input = document.getElementById('adminSupportReply');
+      const message = input.value.trim();
+      if (!message) return;
+      try {
+        await adminApi('admin_support_reply', { conversation_id: selectedAdminSupportConversation, message });
+        input.value = '';
+        await loadAdminSupportMessages();
+        await loadAdminSupportList();
+      } catch (error) { alert(error.message || 'Reply could not be sent.'); }
     }
 
     let allUsersCache = {};
@@ -861,6 +939,7 @@
       window.__adminResults = data.results || {};
       window.__adminSettings = data.settings || {};
       renderUsersList(); renderDepositsList(); renderWithdrawalsList();
+      loadAdminSupportList().catch(() => {});
       await loadTeerRoundIds();
       const st = window.__adminSettings;
       document.getElementById('cfgPhone').value = st.helpline || '';
