@@ -547,7 +547,7 @@
         </div>
         <div id="agentChatPage" class="hidden bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[420px]">
           <div class="flex items-center justify-between border-b pb-2 mb-2">
-            <div><p id="agentChatTitle" class="font-bold text-sm text-slate-800">Agent Chat</p><p class="text-[10px] text-emerald-700">Private support conversation</p></div>
+            <div><p id="agentChatTitle" class="font-bold text-sm text-slate-800">Agent Chat</p><p class="text-[10px] text-emerald-700">Private inbox • Human reply when available</p></div>
             <button type="button" onclick="closeAgentChat()" class="text-slate-500 p-2"><i class="fa-solid fa-xmark"></i></button>
           </div>
           <div id="agentChatMessages" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs"><p class="text-slate-500">Connecting to support...</p></div>
@@ -2782,7 +2782,7 @@
       const send = e.submitter || document.querySelector('#screen-support form button[type="submit"]');
       if (send) send.disabled = true;
       try {
-        const asksForAgent = /\\b(agent|human|person|support staff)\\b.*\\b(connect|talk|chat|help|speak)\\b|\\b(connect|talk|chat|speak)\\b.*\\b(agent|human|person|support staff)\\b/i.test(message);
+        const asksForAgent = /\b(agent|human|person|support staff)\b.*\b(connect|talk|chat|help|speak)\b|\b(connect|talk|chat|speak)\b.*\b(agent|human|person|support staff)\b/i.test(message);
         if (asksForAgent) {
           const opened = await openAgentChat('general');
           if (opened && activeAgentConversationId) {
