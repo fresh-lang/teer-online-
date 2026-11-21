@@ -3433,14 +3433,24 @@
       if (total > state.balance) { alert('Insufficient wallet balance.'); return; }
       const ref = 'TO' + Date.now() + Math.floor(Math.random()*1000);
       try {
-        // API validates and deducts each selection on the server; report any partial result clearly.
-        let completed = 0;
-        for (const item of selections) {
+        // Submit the entire slip in one database transaction. Either every
+        // selected bet is recorded, or none are; retries are idempotent.
+        const batchSelections = selections.map(item => {
           const roundId = state.currentMarketObj.name === 'Teer Play' ? getCurrentTeerPlayRoundId(item.round) : null;
           if (state.currentMarketObj.name === 'Teer Play' && !roundId) throw new Error('No active ID was found for this round. Refresh and try again.');
-          await accountApi('place_bet', { client_ref:ref + '-' + completed, market:state.currentMarketObj.name, round:item.round, round_id:roundId, bet_mode:String(state.betMode).toUpperCase(), bet_number:item.number, amount });
-          completed++;
-        }
+          return {
+            round: item.round,
+            round_id: roundId,
+            bet_mode: String(state.betMode).toUpperCase(),
+            bet_number: item.number,
+            amount
+          };
+        });
+        await accountApi('place_bets', {
+          client_ref_prefix: ref,
+          market: state.currentMarketObj.name,
+          selections: batchSelections
+        });
         await refreshAccountBalance();
         const roundLabel = state.currentRound === 'BS' ? 'FR + SR (BS)' : state.currentRound;
         const nums = state.selectedNumbers.join(', ');
@@ -3451,7 +3461,7 @@
         updateUI(); showBetReceiptClip(state.currentMarketObj.name, roundLabel, nums, amount, potentialReturn, ref);
       } catch (err) {
         await refreshAccountBalance().catch(()=>{});
-        alert('Bet API error: ' + (err.message || 'Request failed') + '. The server balance has been refreshed.');
+        alert('Bet API error: ' + (err.message || 'Request failed') + '. No partial batch was saved; server balance refreshed.');
       }
     }
 
