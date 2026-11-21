@@ -956,14 +956,14 @@
         <div class="flex justify-between items-center border-b pb-2">
           <div>
             <h3 class="font-bold text-sm text-teal-950">Teer Previous Results Chart</h3>
-            <p class="text-[10px] text-slate-500">Official Past Records (10 to 15 Days)</p>
+            <p class="text-[10px] text-slate-500">Complete imported result archive</p>
           </div>
           <button onclick="closeChartModal()" class="text-slate-400"><i class="fa-solid fa-xmark text-lg"></i></button>
         </div>
 
         <div>
           <label class="text-[11px] font-bold text-slate-700 block mb-1">Select Market:</label>
-          <select id="chartMarketSelect" onchange="renderSelectedMarketChart()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs font-bold text-teal-950 outline-none"></select>
+          <select id="chartMarketSelect" onchange="loadMarketResultHistory(this.value)" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs font-bold text-teal-950 outline-none"></select>
         </div>
 
         <div id="chartInsightsPanel" class="rounded-xl border border-teal-100 bg-teal-50 p-3 space-y-2 text-[11px]">
@@ -2331,13 +2331,39 @@
       renderSelectedMarketChart();
     }
 
+    async function loadMarketResultHistory(market) {
+      if (!market || market === 'Teer Play') { renderSelectedMarketChart(); return; }
+      window.__teerHistoryCache = window.__teerHistoryCache || {};
+      const cached = window.__teerHistoryCache[market];
+      if (cached && Date.now() - cached.loadedAt < 300000) {
+        window.teerResultHistory = (window.teerResultHistory || []).filter(r => r.market !== market).concat(cached.rows);
+        renderSelectedMarketChart();
+        return;
+      }
+      const tbody = document.getElementById('chartTableBody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-slate-500">Loading full previous result archive…</td></tr>';
+      try {
+        const rows = [];
+        for (let page = 0; page < 10; page++) {
+          const result = await accountApi('public_result_history', { market, page }, false);
+          rows.push(...(result.history || []));
+          if (!result.has_more) break;
+        }
+        window.__teerHistoryCache[market] = { loadedAt: Date.now(), rows };
+        window.teerResultHistory = (window.teerResultHistory || []).filter(r => r.market !== market).concat(rows);
+        renderSelectedMarketChart();
+      } catch (error) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-rose-600">Could not load previous results: ' + String(error.message || error) + '</td></tr>';
+      }
+    }
+
     function openChartModal(mName) {
       if (mName) {
         const select = document.getElementById('chartMarketSelect');
         if (select) select.value = mName;
       }
-      renderSelectedMarketChart();
       document.getElementById('chartModal').classList.remove('hidden');
+      loadMarketResultHistory(document.getElementById('chartMarketSelect').value);
     }
     function closeChartModal() { document.getElementById('chartModal').classList.add('hidden'); }
 
