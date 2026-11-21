@@ -967,8 +967,8 @@
       // A one-round save preserves the other round's already-published value.
       const fr = roundOnly === 'SR' ? (sameDayExisting && current.fr && current.fr !== '**' ? current.fr : '**') : (enteredFR || '**');
       const sr = roundOnly === 'FR' ? (sameDayExisting && current.sr && current.sr !== '**' ? current.sr : '**') : (enteredSR || '**');
-      if (roundOnly === 'FR' && !/^\\d{1,2}$/.test(enteredFR)) { alert('Enter a valid FR number (00–99) first.'); return; }
-      if (roundOnly === 'SR' && !/^\\d{1,2}$/.test(enteredSR)) { alert('Enter a valid SR number (00–99) first.'); return; }
+      if (roundOnly === 'FR' && !/^\d{1,2}$/.test(enteredFR)) { alert('Enter a valid FR number (00–99) first.'); return; }
+      if (roundOnly === 'SR' && !/^\d{1,2}$/.test(enteredSR)) { alert('Enter a valid SR number (00–99) first.'); return; }
       if (roundOnly === 'both' && fr === '**' && sr === '**') { alert('Enter FR or SR result before saving.'); return; }
       try {
         const saved = await adminApi('admin_save_result', { market, fr, sr, result_date: resultDate });
