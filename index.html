@@ -2762,12 +2762,12 @@
       const issued = await accountApi('support_link_create', {});
       let target;
       if (window.location.hostname.includes('teeronline.fun')) {
-        target = new URL('/support/', window.location.origin);
+        target = new URL('/support/index.html', window.location.origin);
       } else if (window.location.hostname.includes('github.io')) {
          const basePath = window.location.pathname.replace(/index\.html?$/i, '').replace(/\/$/, '') + '/';
-        target = new URL(basePath + 'support/', window.location.origin);
+        target = new URL(basePath + 'support/index.html', window.location.origin);
       } else {
-        target = new URL('https://app.teeronline.fun/support/');
+        target = new URL('https://app.teeronline.fun/support/index.html');
       }
       target.searchParams.set('ticket', issued.ticket);
       return target.toString();
