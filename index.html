@@ -2764,7 +2764,7 @@
       if (window.location.hostname.includes('teeronline.fun')) {
         target = new URL('/support/', window.location.origin);
       } else if (window.location.hostname.includes('github.io')) {
-        const basePath = window.location.pathname.replace(/index\\.html?$/i, '').replace(/\\/$/, '') + '/';
+         const basePath = window.location.pathname.replace(/index\.html?$/i, '').replace(/\/$/, '') + '/';
         target = new URL(basePath + 'support/', window.location.origin);
       } else {
         target = new URL('https://app.teeronline.fun/support/');
