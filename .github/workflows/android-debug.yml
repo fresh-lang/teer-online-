@@ -176,7 +176,6 @@ jobs:
           p.write_text(s)
           PY
           # Allow Android to ask the user to install APK updates downloaded by the app.
- to ask the user to install APK updates downloaded by the app.
           sed -i '/<application/i\    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />' android/app/src/main/AndroidManifest.xml
           cat >> android/app/build.gradle <<'GRADLE'
 
