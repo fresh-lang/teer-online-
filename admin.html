@@ -909,7 +909,7 @@
       try {
         const response = await adminApi('admin_fetch_source_result', { market });
         const preview = response.preview;
-        if (!preview || preview.market !== market || (!/^\\d{2}$/.test(preview.fr || '') && !/^\\d{2}$/.test(preview.sr || ''))) {
+        if (!preview || preview.market !== market || (!/^\d{2}$/.test(preview.fr || '') && !/^\d{2}$/.test(preview.sr || ''))) {
           throw new Error('Source preview did not pass validation');
         }
         const existing = (window.__adminResults || {})[market] || {};
