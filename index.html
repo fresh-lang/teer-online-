@@ -882,7 +882,7 @@
               <label class="text-xs font-bold text-slate-700">Enter Withdrawal Amount:</label>
               <span class="text-[10px] text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">Daily Limit: ₹50,000</span>
             </div>
-            <input type="number" id="withdrawAmountInput" placeholder="Enter amount" min="1000" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-teal-950 outline-none focus:border-teal-700">
+            <input type="number" id="withdrawAmountInput" placeholder="Enter amount (₹1,000–₹5,000)" min="1000" max="5000" step="1" inputmode="numeric" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-teal-950 outline-none focus:border-teal-700">
             <div class="flex justify-end mt-1">
               <span id="withdrawDailyCountText" class="font-bold text-teal-700 text-[10px]">Daily Requests: 0/5</span>
             </div>
@@ -3405,7 +3405,7 @@
       if (!state.user) { alert('Please login first.'); openAuthModal(); return; }
       if (accountIsDemo) { alert('Real withdrawals are not allowed from the demo wallet.'); return; }
       const amount = Number(document.getElementById('withdrawAmountInput').value || 0);
-      if (amount < 1000 || amount > 5000) { alert('Withdrawal amount must be between ₹1,000 and ₹5,000.'); return; }
+      if (!Number.isInteger(amount) || amount < 1000 || amount > 5000) { alert('Enter any whole-rupee withdrawal amount from ₹1,000 to ₹5,000 (for example ₹1,050 or ₹1,100).'); return; }
       let payoutDetails;
       if (currentWithdrawMethod === 'upi') {
         const upi = document.getElementById('withdrawUpiInput').value.trim();
