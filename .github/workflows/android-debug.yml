@@ -90,7 +90,7 @@ jobs:
                   registerPlugin(ApkInstallerPlugin.class);
                   super.onCreate(savedInstanceState);
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                      final String channelId = "teer_results_sound_v4";
+                      final String channelId = "teer_results_sound_v5";
                       NotificationManager manager = getSystemService(NotificationManager.class);
                       if (manager != null && manager.getNotificationChannel(channelId) == null) {
                           Uri sound = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.teer_notification);
