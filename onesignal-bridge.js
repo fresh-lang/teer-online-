@@ -26,15 +26,20 @@ async function requestStartupPermission() {
       try {
         await new Promise((resolve) => setTimeout(resolve, 1500));
         const hasPermission = await OneSignal.Notifications.hasPermission();
-        // Restore the previous permission flow; do not force push opt-in.
-        if (hasPermission) return true;
-
-        const canPrompt = await OneSignal.Notifications.canRequestPermission();
-        if (!canPrompt) {
-          console.info('Notification permission cannot be prompted again; enable it in Android app settings.');
-          return false;
+        if (!hasPermission) {
+          const canPrompt = await OneSignal.Notifications.canRequestPermission();
+          if (!canPrompt) {
+            console.info('Notification permission cannot be prompted again; enable it in Android app settings.');
+            return false;
+          }
+          const granted = await OneSignal.Notifications.requestPermission(false);
+          if (!granted) return false;
         }
-        return await OneSignal.Notifications.requestPermission(false);
+
+        // Android permission and OneSignal subscription opt-in are separate states.
+        // Ensure an already-permitted device is also opted in to push.
+        await OneSignal.User.pushSubscription.optIn();
+        return true;
       } catch (error) {
         console.warn('OneSignal notification permission request failed:', error);
         return false;
