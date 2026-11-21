@@ -523,12 +523,10 @@
           </button>
         </div>
 
-        <button type="button" onclick="openAgentChat('general')" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold py-2 rounded-xl text-xs"><i class="fa-solid fa-headset mr-1"></i> Talk to a Human Agent</button>
-
         <div id="aiSupportChatCard" class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[420px]">
           <div class="grid grid-cols-3 gap-1.5 mb-2">
-            <button type="button" onclick="openAgentChat('deposit')" class="bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg p-2 text-[10px] font-bold">Deposit Help</button>
-            <button type="button" onclick="openAgentChat('withdrawal')" class="bg-rose-50 text-rose-800 border border-rose-200 rounded-lg p-2 text-[10px] font-bold">Withdrawal Help</button>
+            <button type="button" onclick="document.getElementById('chatInput').value='I need help with a deposit';document.querySelector('#screen-support form').requestSubmit();" class="bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg p-2 text-[10px] font-bold">Deposit Help</button>
+            <button type="button" onclick="document.getElementById('chatInput').value='I need help with a withdrawal';document.querySelector('#screen-support form').requestSubmit();" class="bg-rose-50 text-rose-800 border border-rose-200 rounded-lg p-2 text-[10px] font-bold">Withdrawal Help</button>
             <button type="button" onclick="document.getElementById('chatInput').value='Please tell me my Agent Number';document.querySelector('#screen-support form').requestSubmit();" class="bg-teal-50 text-teal-800 border border-teal-200 rounded-lg p-2 text-[10px] font-bold">Agent Number</button>
             <button type="button" onclick="document.getElementById('chatInput').value='Hit number analysis from previous results';document.querySelector('#screen-support form').requestSubmit();" class="bg-amber-50 text-amber-800 border border-amber-200 rounded-lg p-2 text-[10px] font-bold">Hit Number</button>
             <button type="button" onclick="document.getElementById('chatInput').value='Dream number analysis';document.querySelector('#screen-support form').requestSubmit();" class="bg-violet-50 text-violet-800 border border-violet-200 rounded-lg p-2 text-[10px] font-bold">Dream Number</button>
@@ -2784,11 +2782,20 @@
       const send = e.submitter || document.querySelector('#screen-support form button[type="submit"]');
       if (send) send.disabled = true;
       try {
+        const asksForAgent = /\\b(agent|human|person|support staff)\\b.*\\b(connect|talk|chat|help|speak)\\b|\\b(connect|talk|chat|speak)\\b.*\\b(agent|human|person|support staff)\\b/i.test(message);
+        if (asksForAgent) {
+          const opened = await openAgentChat('general');
+          if (opened && activeAgentConversationId) {
+            await accountApi('user_support_send', { conversation_id: activeAgentConversationId, message });
+            await loadAgentChatMessages();
+          }
+          return;
+        }
         const history = [...container.querySelectorAll('[data-role]')].slice(-8).map(el => ({ role: el.dataset.role, content: el.innerText }));
         const result = await accountApi('ai_support_chat', { message, history });
         addBubble('assistant', result.reply || 'No reply received.');
       } catch (error) {
-        addBubble('assistant', (error.message || 'AI support is unavailable.') + ' Tap Talk to a Human Agent for private support.');
+        addBubble('assistant', (error.message || 'AI support is unavailable.') + ' If you want a team member to reply, type “connect me to an agent”.');
       } finally {
         if (send) send.disabled = false;
       }
@@ -2808,18 +2815,19 @@
     async function openAgentChat(category) {
       if (!state.user || !accountSessionToken) { showAppToast('Please log in to contact an agent.'); openAuthModal(); return; }
       const selected = ['deposit','withdrawal'].includes(category) ? category : 'general';
-      document.getElementById('agentChatTitle').textContent = selected === 'deposit' ? 'Deposit Help — Agent Chat' : selected === 'withdrawal' ? 'Withdrawal Help — Agent Chat' : 'Human Agent Chat';
+      document.getElementById('agentChatTitle').textContent = selected === 'deposit' ? 'Deposit Help — Support Team' : selected === 'withdrawal' ? 'Withdrawal Help — Support Team' : 'Support Team Chat';
       document.getElementById('aiSupportChatCard').classList.add('hidden');
       document.getElementById('agentChatPage').classList.remove('hidden');
       const box = document.getElementById('agentChatMessages');
-      box.textContent = 'Connecting to support...';
+      box.textContent = 'Opening the private support inbox...';
       try {
         const opened = await accountApi('user_support_open', { category: selected });
         activeAgentConversationId = opened.conversation.id;
         await loadAgentChatMessages();
         if (agentChatRefreshTimer) clearInterval(agentChatRefreshTimer);
         agentChatRefreshTimer = setInterval(() => loadAgentChatMessages().catch(() => {}), 5000);
-      } catch (error) { box.textContent = error.message || 'Could not connect to support.'; }
+        return true;
+      } catch (error) { box.textContent = error.message || 'Could not open the support inbox.'; return false; }
     }
 
     async function loadAgentChatMessages() {
@@ -2830,11 +2838,11 @@
       (data.messages || []).forEach(item => {
         const bubble = document.createElement('div');
         bubble.className = item.sender_role === 'user' ? 'ml-auto max-w-[88%] rounded-2xl rounded-tr-none bg-teal-800 text-white p-2.5' : 'mr-auto max-w-[88%] rounded-2xl rounded-tl-none bg-slate-100 text-slate-800 p-2.5';
-        bubble.textContent = (item.sender_role === 'admin' ? 'Agent: ' : 'You: ') + item.message;
+        bubble.textContent = (item.sender_role === 'admin' ? 'Support team: ' : 'You: ') + item.message;
         box.appendChild(bubble);
       });
       if (!data.messages?.length) {
-        const note = document.createElement('p'); note.className='text-slate-500 text-center p-3'; note.textContent='Your private chat is ready. An agent will reply here.'; box.appendChild(note);
+        const note = document.createElement('p'); note.className='text-slate-500 text-center p-3'; note.textContent='Your support request is in the private inbox. A human team member will reply when available; this is not a live agent chat until staff responds.'; box.appendChild(note);
       }
       box.scrollTop = box.scrollHeight;
     }
