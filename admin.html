@@ -581,7 +581,7 @@
       const user = activeModalUserPhone ? allUsersCache[activeModalUserPhone] : null;
       const agentNumber = document.getElementById('mUserAgentNumber').value.trim();
       if (!user) return;
-      if (!/^\\+?[0-9]{10,15}$/.test(agentNumber)) {
+      if (!/^\+?[0-9]{10,15}$/.test(agentNumber)) {
         alert('Enter a valid WhatsApp number with country code (10-15 digits).');
         return;
       }
