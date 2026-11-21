@@ -36,7 +36,7 @@
           <div style="font-size:20px;font-weight:800;margin-bottom:8px">Teer Online Update</div>
           <div style="font-size:14px;color:#52616b;margin-bottom:18px">New version Build ${buildNumber} is available. Download and update now?</div>
           <div id="teerUpdateProgressWrap" style="display:none;margin:14px 0">
-            <div id="teerUpdateProgressText" style="font-size:13px;margin-bottom:8px">Preparing download…</div>
+            <div id="teerUpdateProgressText" style="font-size:13px;margin-bottom:8px">Opening secure download page…</div>
             <div style="height:9px;background:#e5ecec;border-radius:99px;overflow:hidden"><div id="teerUpdateProgressBar" style="height:100%;width:0;background:#0b8f72;transition:width .15s"></div></div>
           </div>
           <div id="teerUpdateError" style="display:none;color:#b42318;font-size:13px;margin:10px 0"></div>
@@ -62,24 +62,19 @@
           error.style.display='block'; error.textContent='Update service is not available in this build. Please try again.';
           return;
         }
-        update.disabled=true; update.textContent='Downloading…';
+        update.disabled=true; update.textContent='Opening…';
         wrap.style.display='block'; error.style.display='none';
         try {
-          await window.TeerAppUpdater.downloadAndInstall(
-            'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk',
-            (p)=>{
-              const pct=p.total>0?Math.min(100,Math.round(p.bytes/p.total*100)):0;
-              bar.style.width=pct+'%';
-              progressText.textContent=p.total>0?'Downloading update… '+pct+'%':'Downloading update…';
-            }
+          await window.TeerAppUpdater.openDownloadPage(
+            'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk'
           );
-          bar.style.width='100%';
-          progressText.textContent='Download complete. Opening Android installer…';
-          update.textContent='Installer opened';
+          progressText.textContent='Browser opened. Download the APK, then tap the downloaded file to install it.';
+          bar.parentElement.style.display='none';
+          update.textContent='Browser opened';
         } catch(e) {
           console.error('In-app APK update failed:',e);
           error.style.display='block';
-          error.textContent='Download or installer could not open. '+String(e?.message||e);
+          error.textContent='Could not open the APK download page. '+String(e?.message||e);
           update.disabled=false; update.textContent='Try Again';
         }
       };
