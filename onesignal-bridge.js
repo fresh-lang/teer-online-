@@ -69,17 +69,21 @@ async function showInAppPermissionPrompt() {
         return;
       }
       message.textContent = 'Android ab system permission popup dobara nahi dikha sakta. Phone Settings > Apps > Teer Online > Notifications me jaakar Allow notifications ON karein. Agli baar app kholne par ye reminder phir dikhega.';
-      allow.textContent = 'Got it';
-      allow.disabled = false;
+      const closeButton = allow.cloneNode(true);
+      closeButton.textContent = 'Got it';
+      closeButton.disabled = false;
+      allow.replaceWith(closeButton);
       later.disabled = false;
-      allow.onclick = close;
+      closeButton.addEventListener('click', close);
     } catch (error) {
       console.warn('Notification permission action failed:', error);
       message.textContent = 'Permission request abhi complete nahi hui. Phone Settings > Apps > Teer Online > Notifications me Allow notifications ON karein.';
-      allow.textContent = 'Close';
-      allow.disabled = false;
+      const closeButton = allow.cloneNode(true);
+      closeButton.textContent = 'Close';
+      closeButton.disabled = false;
+      allow.replaceWith(closeButton);
       later.disabled = false;
-      allow.onclick = close;
+      closeButton.addEventListener('click', close);
     }
   });
   return false;
