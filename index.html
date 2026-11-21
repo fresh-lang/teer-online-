@@ -3282,7 +3282,11 @@
     }
 
     window.addEventListener('popstate', handleAppBackNavigation);
-    window.addEventListener('teerNativeBack', () => window.history.back());
+    // Android hardware Back is handled directly against the app's tab stack.
+    // Do not call history.back(): that can consume the initial Home entry and skip the exit dialog.
+    window.addEventListener('teerNativeBack', () => {
+      handleAppBackNavigation({ state: null, preventDefault() {}, stopPropagation() {} });
+    });
 
     function closeExitModal() {
       isExitModalOpen = false;
