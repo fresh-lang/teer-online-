@@ -4,6 +4,86 @@ import { Capacitor } from '@capacitor/core';
 const APP_ID = '5c602eb8-04b1-4007-8edf-936fd353fcc1';
 let initialization = null;
 let permissionRequest = null;
+let permissionPromptVisible = false;
+
+function isNativeApp() {
+  return Capacitor.isNativePlatform();
+}
+
+async function showInAppPermissionPrompt() {
+  if (!isNativeApp() || !document.body) return false;
+  if (!(await initialize())) return false;
+
+  try {
+    if (await OneSignal.Notifications.hasPermission()) {
+      try { await OneSignal.User.pushSubscription.optIn(); } catch (error) {
+        console.warn('OneSignal opt-in failed:', error);
+      }
+      document.getElementById('teerNotificationPermissionPrompt')?.remove();
+      permissionPromptVisible = false;
+      return true;
+    }
+  } catch (error) {
+    console.warn('Could not read notification permission:', error);
+  }
+
+  if (permissionPromptVisible || document.getElementById('teerNotificationPermissionPrompt')) return false;
+  permissionPromptVisible = true;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'teerNotificationPermissionPrompt';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:22px;font-family:Arial,sans-serif;';
+  overlay.innerHTML = `
+    <div style="width:100%;max-width:360px;background:#fff;border-radius:18px;padding:22px;color:#123;box-shadow:0 18px 60px #0008">
+      <div style="font-size:20px;font-weight:800;margin-bottom:8px;color:#063b3d">Teer Online Notifications</div>
+      <div id="teerNotificationPermissionMessage" style="font-size:14px;line-height:1.55;color:#52616b;margin-bottom:18px">FR/SR results aur important updates turant paane ke liye notifications allow karein.</div>
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button id="teerNotificationLater" type="button" style="flex:1;padding:12px;border:1px solid #cbd5d9;border-radius:10px;background:#fff;font-weight:700">Later</button>
+        <button id="teerNotificationAllow" type="button" style="flex:1;padding:12px;border:0;border-radius:10px;background:#087d67;color:#fff;font-weight:800">Allow</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => {
+    overlay.remove();
+    permissionPromptVisible = false;
+  };
+  overlay.querySelector('#teerNotificationLater').addEventListener('click', close);
+  overlay.querySelector('#teerNotificationAllow').addEventListener('click', async () => {
+    const allow = overlay.querySelector('#teerNotificationAllow');
+    const later = overlay.querySelector('#teerNotificationLater');
+    const message = overlay.querySelector('#teerNotificationPermissionMessage');
+    allow.disabled = true;
+    later.disabled = true;
+    allow.textContent = 'Please wait…';
+    try {
+      const canPrompt = await OneSignal.Notifications.canRequestPermission();
+      if (canPrompt) {
+        const granted = await OneSignal.Notifications.requestPermission(false);
+        if (granted) {
+          await OneSignal.User.pushSubscription.optIn();
+          close();
+          return;
+        }
+        close();
+        return;
+      }
+      message.textContent = 'Android ab system permission popup dobara nahi dikha sakta. Phone Settings > Apps > Teer Online > Notifications me jaakar Allow notifications ON karein. Agli baar app kholne par ye reminder phir dikhega.';
+      allow.textContent = 'Got it';
+      allow.disabled = false;
+      later.disabled = false;
+      allow.onclick = close;
+    } catch (error) {
+      console.warn('Notification permission action failed:', error);
+      message.textContent = 'Permission request abhi complete nahi hui. Phone Settings > Apps > Teer Online > Notifications me Allow notifications ON karein.';
+      allow.textContent = 'Close';
+      allow.disabled = false;
+      later.disabled = false;
+      allow.onclick = close;
+    }
+  });
+  return false;
+}
 
 async function initialize() {
   if (!Capacitor.isNativePlatform()) return false;
@@ -86,10 +166,11 @@ window.TeerOneSignalBridge = {
         return false;
       }
 
-      // Ask for permission/registration only after identity has been linked.
-      await requestStartupPermission();
+      // Show our own reminder after account login whenever Android permission is off.
+      // The Android system dialog is requested only after the user taps Allow.
+      await showInAppPermissionPrompt();
 
-      // Re-check after the permission flow in case native startup was delayed.
+      // Re-check identity; subscription is created after permission is granted.
       confirmedExternalId = await OneSignal.User.getExternalId();
       const subscriptionId = await OneSignal.User.pushSubscription.getIdAsync();
       console.info('OneSignal account identity check:', {
@@ -109,4 +190,15 @@ window.TeerOneSignalBridge = {
   }
 };
 
-void requestStartupPermission();
+// Re-check on every native app launch. If permission is off, show the in-app
+// reminder; the Android system permission dialog appears only after Allow is tapped.
+function showPromptWhenReady() {
+  if (document.body) {
+    setTimeout(() => { void showInAppPermissionPrompt(); }, 900);
+  } else {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => { void showInAppPermissionPrompt(); }, 900);
+    }, { once: true });
+  }
+}
+showPromptWhenReady();
