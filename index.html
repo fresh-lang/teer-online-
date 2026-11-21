@@ -516,7 +516,7 @@
             </div>
             <div>
               <p class="font-bold text-sm leading-tight">AI Chat Support</p>
-              <p class="text-[11px] text-emerald-300">Deposits • Withdrawals • Agent Number • Charts</p>
+              <p class="text-[11px] text-emerald-300">Hello, I am Teer Online AI Support.</p>
             </div>
           </div>
           <button onclick="resetChat()" class="text-teal-200 hover:text-white p-1">
@@ -524,19 +524,12 @@
           </button>
         </div>
 
-        <div class="flex gap-2">
-          <a href="https://wa.me/918134834380?text=Hello%20Teer%20Online%20Support" target="_blank" class="flex-1 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold py-1.5 rounded-full text-center text-xs shadow-sm flex items-center justify-center gap-1">
-            <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Support
-          </a>
-          <a href="tel:+918134834380" class="flex-1 bg-teal-50 border border-teal-200 text-teal-800 font-bold py-1.5 rounded-full text-center text-xs shadow-sm flex items-center justify-center gap-1">
-            <i class="fa-solid fa-phone text-xs"></i> Call Support
-          </a>
-        </div>
+        <button type="button" onclick="openAgentChat('general')" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold py-2 rounded-xl text-xs"><i class="fa-solid fa-headset mr-1"></i> Talk to a Human Agent</button>
 
         <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[420px]">
           <div class="grid grid-cols-3 gap-1.5 mb-2">
-            <button type="button" onclick="document.getElementById('chatInput').value='How do I deposit money?';document.querySelector('#screen-support form').requestSubmit();" class="bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg p-2 text-[10px] font-bold">Deposit Help</button>
-            <button type="button" onclick="document.getElementById('chatInput').value='How do I withdraw money?';document.querySelector('#screen-support form').requestSubmit();" class="bg-rose-50 text-rose-800 border border-rose-200 rounded-lg p-2 text-[10px] font-bold">Withdrawal Help</button>
+            <button type="button" onclick="openAgentChat('deposit')" class="bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg p-2 text-[10px] font-bold">Deposit Help</button>
+            <button type="button" onclick="openAgentChat('withdrawal')" class="bg-rose-50 text-rose-800 border border-rose-200 rounded-lg p-2 text-[10px] font-bold">Withdrawal Help</button>
             <button type="button" onclick="document.getElementById('chatInput').value='Please tell me my Agent Number';document.querySelector('#screen-support form').requestSubmit();" class="bg-teal-50 text-teal-800 border border-teal-200 rounded-lg p-2 text-[10px] font-bold">Agent Number</button>
             <button type="button" onclick="document.getElementById('chatInput').value='Hit number analysis from previous results';document.querySelector('#screen-support form').requestSubmit();" class="bg-amber-50 text-amber-800 border border-amber-200 rounded-lg p-2 text-[10px] font-bold">Hit Number</button>
             <button type="button" onclick="document.getElementById('chatInput').value='Dream number analysis';document.querySelector('#screen-support form').requestSubmit();" class="bg-violet-50 text-violet-800 border border-violet-200 rounded-lg p-2 text-[10px] font-bold">Dream Number</button>
@@ -544,7 +537,7 @@
           </div>
           <div id="chatMessages" class="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
             <div data-role="assistant" class="bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">
-              Hello! I am Teer Online AI Support. Ask about charts, deposits, withdrawals or your Agent Number.
+              Hello, I am Teer Online AI Support.
             </div>
           </div>
 
@@ -553,6 +546,17 @@
             <button type="submit" class="w-8 h-8 rounded-full bg-[#032427] text-amber-400 flex items-center justify-center shadow">
               <i class="fa-solid fa-paper-plane text-xs"></i>
             </button>
+          </form>
+        </div>
+        <div id="agentChatPage" class="hidden bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[420px]">
+          <div class="flex items-center justify-between border-b pb-2 mb-2">
+            <div><p id="agentChatTitle" class="font-bold text-sm text-slate-800">Agent Chat</p><p class="text-[10px] text-emerald-700">Private support conversation</p></div>
+            <button type="button" onclick="closeAgentChat()" class="text-slate-500 p-2"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div id="agentChatMessages" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs"><p class="text-slate-500">Connecting to support...</p></div>
+          <form onsubmit="sendAgentChatMessage(event)" class="mt-2 pt-2 border-t flex gap-2">
+            <input id="agentChatInput" maxlength="2000" placeholder="Write your message..." class="flex-1 bg-slate-50 border rounded-full px-3 py-2 text-xs" required>
+            <button class="w-9 h-9 rounded-full bg-[#032427] text-amber-400"><i class="fa-solid fa-paper-plane"></i></button>
           </form>
         </div>
       </section>
@@ -2794,9 +2798,66 @@
     function resetChat() {
       document.getElementById('chatMessages').innerHTML = `
         <div data-role="assistant" class="bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[85%]">
-          Hello! I am Teer Online AI Support. Ask about charts, deposits, withdrawals or your Agent Number.
+          Hello, I am Teer Online AI Support.
         </div>
       `;
+    }
+
+    let activeAgentConversationId = null;
+    let agentChatRefreshTimer = null;
+
+    async function openAgentChat(category) {
+      if (!state.user || !accountSessionToken) { showAppToast('Please log in to contact an agent.'); openAuthModal(); return; }
+      const selected = ['deposit','withdrawal'].includes(category) ? category : 'general';
+      document.getElementById('agentChatTitle').textContent = selected === 'deposit' ? 'Deposit Help — Agent Chat' : selected === 'withdrawal' ? 'Withdrawal Help — Agent Chat' : 'Human Agent Chat';
+      document.querySelector('#screen-support .bg-white.rounded-2xl.p-3.shadow-sm.border').classList.add('hidden');
+      document.getElementById('agentChatPage').classList.remove('hidden');
+      const box = document.getElementById('agentChatMessages');
+      box.textContent = 'Connecting to support...';
+      try {
+        const opened = await accountApi('user_support_open', { category: selected });
+        activeAgentConversationId = opened.conversation.id;
+        await loadAgentChatMessages();
+        if (agentChatRefreshTimer) clearInterval(agentChatRefreshTimer);
+        agentChatRefreshTimer = setInterval(() => loadAgentChatMessages().catch(() => {}), 5000);
+      } catch (error) { box.textContent = error.message || 'Could not connect to support.'; }
+    }
+
+    async function loadAgentChatMessages() {
+      if (!activeAgentConversationId) return;
+      const data = await accountApi('user_support_messages', { conversation_id: activeAgentConversationId });
+      const box = document.getElementById('agentChatMessages');
+      box.innerHTML = '';
+      (data.messages || []).forEach(item => {
+        const bubble = document.createElement('div');
+        bubble.className = item.sender_role === 'user' ? 'ml-auto max-w-[88%] rounded-2xl rounded-tr-none bg-teal-800 text-white p-2.5' : 'mr-auto max-w-[88%] rounded-2xl rounded-tl-none bg-slate-100 text-slate-800 p-2.5';
+        bubble.textContent = (item.sender_role === 'admin' ? 'Agent: ' : 'You: ') + item.message;
+        box.appendChild(bubble);
+      });
+      if (!data.messages?.length) {
+        const note = document.createElement('p'); note.className='text-slate-500 text-center p-3'; note.textContent='Your private chat is ready. An agent will reply here.'; box.appendChild(note);
+      }
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function sendAgentChatMessage(event) {
+      event.preventDefault();
+      const input = document.getElementById('agentChatInput');
+      const message = input.value.trim();
+      if (!message || !activeAgentConversationId) return;
+      const button = event.submitter; if (button) button.disabled = true;
+      try {
+        await accountApi('user_support_send', { conversation_id: activeAgentConversationId, message });
+        input.value = ''; await loadAgentChatMessages();
+      } catch (error) { showAppToast(error.message || 'Message could not be sent.'); }
+      finally { if (button) button.disabled = false; }
+    }
+
+    function closeAgentChat() {
+      if (agentChatRefreshTimer) clearInterval(agentChatRefreshTimer);
+      agentChatRefreshTimer = null; activeAgentConversationId = null;
+      document.getElementById('agentChatPage').classList.add('hidden');
+      document.querySelector('#screen-support .bg-white.rounded-2xl.p-3.shadow-sm.border').classList.remove('hidden');
     }
 
     function getBaseShareUrl() {
