@@ -85,27 +85,27 @@
       };
     }
 
-    async function checkForAppUpdate() {
+    async function checkForAppUpdate(manual = false) {
       try {
-        const isNative = window.Capacitor &&
-          typeof window.Capacitor.isNativePlatform === 'function' &&
-          window.Capacitor.isNativePlatform();
-        if (!isNative) return;
+        const isNative = window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform();
+        if (!isNative) { if (manual) alert('App update check is available in the Android app only.'); return false; }
         const [installedResponse, releaseResponse] = await Promise.all([
           fetch('./build-info.json?check=' + Date.now(), { cache: 'no-store' }),
-          fetch('https://api.github.com/repos/fresh-lang/teer-online-/releases/latest', {
-            cache: 'no-store', headers: { 'Accept': 'application/vnd.github+json' }
-          })
+          fetch('https://api.github.com/repos/fresh-lang/teer-online-/releases/latest', { cache: 'no-store', headers: { 'Accept': 'application/vnd.github+json' } })
         ]);
-        if (!installedResponse.ok || !releaseResponse.ok) return;
+        if (!installedResponse.ok || !releaseResponse.ok) { if (manual) alert('Update check abhi nahi ho paaya. Internet connection check karke dobara try karein.'); return false; }
         const installedInfo = await installedResponse.json();
         const latestRelease = await releaseResponse.json();
         const installedBuild = Number(installedInfo.build || 0);
         const match = String(latestRelease.tag_name || '').match(/^apk-(\d+)$/);
         const latestBuild = match ? Number(match[1]) : 0;
-        if (latestBuild > installedBuild) showAppUpdatePrompt(latestBuild);
+        if (latestBuild > installedBuild) { showAppUpdatePrompt(latestBuild); return true; }
+        if (manual) alert('Aapka Teer Online app latest version par hai.');
+        return false;
       } catch (error) {
         console.warn('App update check failed:', error);
+        if (manual) alert('Update check abhi nahi ho paaya. Thodi der baad try karein.');
+        return false;
       }
     }
 
@@ -623,6 +623,10 @@
         </a>
         <a onclick="openNotificationModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
           <span class="flex items-center gap-3"><i class="fa-solid fa-bell w-4 text-teal-800"></i> Notifications</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+        </a>
+        <a onclick="toggleDrawer(); checkForAppUpdate(true)" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
+          <span class="flex items-center gap-3"><i class="fa-solid fa-cloud-arrow-down w-4 text-teal-800"></i> Check Latest Update</span>
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
         </a>
         <a href="https://wa.me/918134834380" target="_blank" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
