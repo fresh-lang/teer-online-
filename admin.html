@@ -614,7 +614,7 @@
 
     function renderDepositsList() {
       const tbody = document.getElementById('depositsTableBody');
-      const depIds = Object.keys(allDepositsCache).reverse();
+      const depIds = Object.keys(allDepositsCache).sort((a, b) => new Date(allDepositsCache[b]?.created_at || 0).getTime() - new Date(allDepositsCache[a]?.created_at || 0).getTime());
       const pendingList = depIds.filter(id => allDepositsCache[id].status === 'pending');
       
       document.getElementById('statPendingDeposits').innerText = pendingList.length;
@@ -689,7 +689,7 @@
     // RENDER WITHDRAWALS
     function renderWithdrawalsList() {
       const tbody = document.getElementById('withdrawalsTableBody');
-      const wIds = Object.keys(allWithdrawalsCache).reverse();
+      const wIds = Object.keys(allWithdrawalsCache).sort((a, b) => new Date(allWithdrawalsCache[b]?.created_at || 0).getTime() - new Date(allWithdrawalsCache[a]?.created_at || 0).getTime());
       const pendingList = wIds.filter(id => allWithdrawalsCache[id].status === 'pending');
 
       document.getElementById('statPendingWithdrawals').innerText = pendingList.length;
