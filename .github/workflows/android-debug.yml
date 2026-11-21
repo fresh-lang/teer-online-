@@ -50,8 +50,28 @@ jobs:
           npm run build:onesignal
           echo "{\"build\":${GITHUB_RUN_NUMBER}}" > www/build-info.json
           npx cap add android
-          # Create a dedicated Android notification channel with the device's
-          # default notification tone. OneSignal result pushes target this ID.
+          # Bundle a dedicated alert tone so Android does not depend on the
+          # device's possibly silent/default notification ringtone.
+          mkdir -p android/app/src/main/res/raw
+          python3 - <<'PY'
+          import math, struct, wave
+          rate = 44100
+          notes = [(880, 0.18), (1175, 0.18), (880, 0.28)]
+          samples = []
+          for frequency, duration in notes:
+              count = int(rate * duration)
+              for i in range(count):
+                  edge = min(1.0, i / 500, (count - 1 - i) / 700)
+                  envelope = max(0.0, edge)
+                  value = int(10500 * envelope * math.sin(2 * math.pi * frequency * i / rate))
+                  samples.append(struct.pack('<h', value))
+              samples.extend([b'\x00\x00'] * int(rate * 0.045))
+          with wave.open('android/app/src/main/res/raw/teer_notification.wav', 'wb') as audio:
+              audio.setnchannels(1)
+              audio.setsampwidth(2)
+              audio.setframerate(rate)
+              audio.writeframes(b''.join(samples))
+          PY
           mkdir -p android/app/src/main/java/com/freshlang/teeronline
           cat > android/app/src/main/java/com/freshlang/teeronline/MainActivity.java <<'JAVA'
           package com.freshlang.teeronline;
@@ -59,7 +79,6 @@ jobs:
           import android.app.NotificationChannel;
           import android.app.NotificationManager;
           import android.media.AudioAttributes;
-          import android.media.RingtoneManager;
           import android.net.Uri;
           import android.os.Build;
           import android.os.Bundle;
@@ -69,11 +88,12 @@ jobs:
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   registerPlugin(ApkInstallerPlugin.class);
+                  super.onCreate(savedInstanceState);
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                      final String channelId = "teer_results_sound_v3";
+                      final String channelId = "teer_results_sound_v4";
                       NotificationManager manager = getSystemService(NotificationManager.class);
                       if (manager != null && manager.getNotificationChannel(channelId) == null) {
-                          Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                          Uri sound = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.teer_notification);
                           AudioAttributes audio = new AudioAttributes.Builder()
                               .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                               .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -85,13 +105,12 @@ jobs:
                           );
                           channel.setDescription("Sound alerts for FR/SR results and Teer Online notifications");
                           channel.setSound(sound, audio);
-                           channel.setVibrationPattern(new long[] { 0, 350, 180, 350 });
-                           channel.setShowBadge(true);
+                          channel.setVibrationPattern(new long[] { 0, 350, 180, 350 });
+                          channel.setShowBadge(true);
                           channel.enableVibration(true);
                           manager.createNotificationChannel(channel);
                       }
                   }
-                  super.onCreate(savedInstanceState);
               }
           }
           JAVA
