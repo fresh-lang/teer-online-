@@ -526,7 +526,7 @@
 
         <button type="button" onclick="openAgentChat('general')" class="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold py-2 rounded-xl text-xs"><i class="fa-solid fa-headset mr-1"></i> Talk to a Human Agent</button>
 
-        <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[420px]">
+        <div id="aiSupportChatCard" class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 flex flex-col h-[420px]">
           <div class="grid grid-cols-3 gap-1.5 mb-2">
             <button type="button" onclick="openAgentChat('deposit')" class="bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg p-2 text-[10px] font-bold">Deposit Help</button>
             <button type="button" onclick="openAgentChat('withdrawal')" class="bg-rose-50 text-rose-800 border border-rose-200 rounded-lg p-2 text-[10px] font-bold">Withdrawal Help</button>
@@ -2789,7 +2789,7 @@
         const result = await accountApi('ai_support_chat', { message, history });
         addBubble('assistant', result.reply || 'No reply received.');
       } catch (error) {
-        addBubble('assistant', (error.message || 'AI support is unavailable.') + ' You can contact WhatsApp support below.');
+        addBubble('assistant', (error.message || 'AI support is unavailable.') + ' Tap Talk to a Human Agent for private support.');
       } finally {
         if (send) send.disabled = false;
       }
@@ -2810,7 +2810,7 @@
       if (!state.user || !accountSessionToken) { showAppToast('Please log in to contact an agent.'); openAuthModal(); return; }
       const selected = ['deposit','withdrawal'].includes(category) ? category : 'general';
       document.getElementById('agentChatTitle').textContent = selected === 'deposit' ? 'Deposit Help — Agent Chat' : selected === 'withdrawal' ? 'Withdrawal Help — Agent Chat' : 'Human Agent Chat';
-      document.querySelector('#screen-support .bg-white.rounded-2xl.p-3.shadow-sm.border').classList.add('hidden');
+      document.getElementById('aiSupportChatCard').classList.add('hidden');
       document.getElementById('agentChatPage').classList.remove('hidden');
       const box = document.getElementById('agentChatMessages');
       box.textContent = 'Connecting to support...';
@@ -2857,7 +2857,7 @@
       if (agentChatRefreshTimer) clearInterval(agentChatRefreshTimer);
       agentChatRefreshTimer = null; activeAgentConversationId = null;
       document.getElementById('agentChatPage').classList.add('hidden');
-      document.querySelector('#screen-support .bg-white.rounded-2xl.p-3.shadow-sm.border').classList.remove('hidden');
+      document.getElementById('aiSupportChatCard').classList.remove('hidden');
     }
 
     function getBaseShareUrl() {
