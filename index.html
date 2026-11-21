@@ -214,7 +214,7 @@
     </a>
 
     <!-- MAIN SCREENS CONTAINER -->
-    <main class="flex-1 overflow-y-auto no-scrollbar">
+    <main class="flex-1 min-h-0 overflow-y-auto no-scrollbar">
 
       <!-- SCREEN 1: HOME -->
       <section id="screen-home" class="app-screen active">
@@ -552,7 +552,7 @@
     </main>
 
     <!-- FOOTER NAVIGATION -->
-    <nav class="bg-white border-t border-slate-200 px-2 py-1.5 flex justify-around items-center fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-30 shadow-lg">
+    <nav style="padding-bottom:max(0.375rem, env(safe-area-inset-bottom))" class="sticky bottom-0 mt-auto shrink-0 bg-white border-t border-slate-200 px-2 py-1.5 flex justify-around items-center w-full z-30 shadow-lg">
       <button onclick="switchTab('home')" class="nav-btn active flex flex-col items-center text-teal-900 group" data-tab="home">
         <i class="fa-solid fa-house text-base"></i>
         <span class="text-[10px] font-bold mt-0.5">Home</span>
@@ -3001,61 +3001,78 @@
     }
 
     let currentActiveTab = 'home';
+    let appTabHistory = ['home'];
     let isExitModalOpen = false;
 
-    // Push initial home state on load
-    window.history.pushState({ tab: 'home' }, '', '');
+    // Keep the current tab as the initial WebView history entry.
+    window.history.replaceState({ tab: 'home', teerApp: true }, '', window.location.href);
 
-    // Override switchTab to also push history state so back button works across tabs & modals
     const originalSwitchTab = switchTab;
     switchTab = function(t, push = true) {
+      if (!document.getElementById('screen-' + t)) return;
+      if (t !== currentActiveTab && push) {
+        appTabHistory.push(t);
+        window.history.pushState({ tab: t, teerApp: true }, '', window.location.href);
+      }
       currentActiveTab = t;
       originalSwitchTab(t);
-      if (push) {
-        window.history.pushState({ tab: t }, '', '');
-      }
     };
 
-    function handleAppBackNavigation(event) {
-      // Close the topmost app modal first; keep the current page in history.
-      const openModals = document.querySelectorAll('.fixed:not(.hidden)');
-      let modalClosed = false;
-      openModals.forEach(m => {
-        if (m.id !== 'exitAppModal' && m.id !== 'lockScreen') {
-          m.classList.add('hidden');
-          modalClosed = true;
-        }
-      });
+    function closeTopmostAppOverlay() {
+      const overlays = Array.from(document.querySelectorAll('.fixed.inset-0:not(.hidden)'))
+        .filter(el => el.id !== 'exitAppModal' && el.id !== 'lockScreen');
+      if (!overlays.length) return false;
+      const top = overlays[overlays.length - 1];
+      if (top.id === 'drawerOverlay') {
+        top.classList.add('hidden');
+        const drawer = document.getElementById('sideDrawer');
+        if (drawer) drawer.classList.add('-translate-x-full');
+      } else {
+        top.classList.add('hidden');
+      }
+      return true;
+    }
 
-      if (modalClosed) {
-        window.history.pushState({ tab: currentActiveTab }, '', '');
+    function handleAppBackNavigation(event) {
+      // First Back closes one open modal/drawer, without changing the active tab.
+      if (closeTopmostAppOverlay()) {
+        window.history.pushState({ tab: currentActiveTab, teerApp: true }, '', window.location.href);
         return;
       }
 
-      // Restore the actual previous tab from browser history instead of
-      // forcing every Back press to Home.
-      const previousTab = event && event.state && event.state.tab;
-      if (previousTab && document.getElementById('screen-' + previousTab)) {
+      const targetTab = event && event.state && event.state.teerApp
+        ? event.state.tab
+        : null;
+
+      if (targetTab && document.getElementById('screen-' + targetTab)) {
+        const previousIndex = appTabHistory.lastIndexOf(targetTab);
+        if (previousIndex >= 0) appTabHistory = appTabHistory.slice(0, previousIndex + 1);
+        else appTabHistory = [targetTab];
+        currentActiveTab = targetTab;
+        originalSwitchTab(targetTab);
+        return;
+      }
+
+      // Fallback for WebViews that deliver a history entry without our state.
+      if (appTabHistory.length > 1) {
+        appTabHistory.pop();
+        const previousTab = appTabHistory[appTabHistory.length - 1] || 'home';
         currentActiveTab = previousTab;
         originalSwitchTab(previousTab);
         return;
       }
 
-      // Only when Home is reached and there is no earlier app page, ask to exit.
       if (currentActiveTab === 'home' && !isExitModalOpen) {
         isExitModalOpen = true;
         document.getElementById('exitAppModal').classList.remove('hidden');
-        window.history.pushState({ tab: 'home' }, '', '');
+        window.history.pushState({ tab: 'home', teerApp: true }, '', window.location.href);
         return;
       }
 
-      // Keep the app on its current page if the history entry is unavailable.
-      window.history.pushState({ tab: currentActiveTab }, '', '');
+      window.history.pushState({ tab: currentActiveTab, teerApp: true }, '', window.location.href);
     }
 
-    // Browser history back and the native Android hardware Back button share one handler.
     window.addEventListener('popstate', handleAppBackNavigation);
-    // Native Android Back first consumes the browser history entry; popstate then restores the previous app page.
     window.addEventListener('teerNativeBack', () => window.history.back());
 
     function closeExitModal() {
