@@ -1621,7 +1621,7 @@
     }
 
     function checkSundayHoliday() {
-      const isSunday = (new Date().getDay() === 0);
+      const isSunday = isSundayInIndia();
       const badge = document.getElementById('dayStatusBadge');
       if (isSunday) {
         badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300";
@@ -1842,11 +1842,15 @@
       return Math.floor((drawTime - now) / 60000);
     }
 
+    function isSundayInIndia() {
+      return new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(new Date()) === 'Sun';
+    }
+
     function isRoundBettingOpen(timeStr, marketName) {
       if (marketName === 'Teer Play' || (timeStr === '1 Min' || timeStr === '1 Min Auto')) {
         return true;
       }
-      if (new Date().getDay() === 0) return false;
+      if (isSundayInIndia()) return false;
       return (getMinutesRemaining(timeStr) > 10);
     }
 
@@ -1889,7 +1893,7 @@
         const allClosed = (!frOpen && !srOpen);
 
         let bottomBarHtml = '';
-        if (isSunday) {
+        if (isSunday && m.name !== 'Teer Play') {
           bottomBarHtml = `
             <div class="flex justify-between items-center pt-1">
               <span class="font-decorative text-base text-rose-600 font-bold">Sunday Official Holiday</span>
