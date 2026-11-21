@@ -509,7 +509,29 @@
       (data.messages || []).forEach(item => {
         const bubble = document.createElement('div');
         bubble.className = item.sender_role === 'admin' ? 'ml-auto max-w-[90%] rounded-xl bg-teal-900 p-2.5 text-white' : 'mr-auto max-w-[90%] rounded-xl bg-slate-800 p-2.5 text-slate-100';
-        bubble.textContent = (item.sender_role === 'admin' ? 'You: ' : 'User: ') + item.message;
+        const label = document.createElement('div');
+        label.textContent = (item.sender_role === 'admin' ? 'You: ' : 'User: ') + item.message;
+        bubble.appendChild(label);
+        if (item.attachment_url) {
+          const link = document.createElement('a');
+          link.href = item.attachment_url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.className = 'block mt-2';
+          const image = document.createElement('img');
+          image.src = item.attachment_url;
+          image.alt = 'Customer screenshot';
+          image.loading = 'lazy';
+          image.className = 'max-w-full max-h-72 rounded-lg object-contain bg-black/20';
+          image.onerror = () => {
+            const note = document.createElement('p');
+            note.className = 'mt-2 text-xs text-amber-300';
+            note.textContent = 'Screenshot preview unavailable. Tap to open the image.';
+            image.replaceWith(note);
+          };
+          link.appendChild(image);
+          bubble.appendChild(link);
+        }
         box.appendChild(bubble);
       });
       box.scrollTop = box.scrollHeight;
