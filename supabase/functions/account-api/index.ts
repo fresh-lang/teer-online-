@@ -925,18 +925,15 @@ async function fetchShillongMorningSourcePreview(): Promise<{
   if (!html || html.length < 1000) throw new Error("Shillong Morning source page was empty or incomplete");
 
   const plain = htmlToPlainText(html);
-  const heading = "Shillong Morning Result";
-  const start = plain.toLowerCase().indexOf(heading.toLowerCase());
-  if (start < 0) {
-    return { ready: false, status: "section_missing", market: SHILLONG_MORNING_MARKET, source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
+  // Match the date-bearing live result card itself. The page contains several
+  // other mentions of "Shillong Morning Result" before/after the live card.
+  const card = plain.match(/Shillong Morning Result\s*[-–:]\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})[\s\S]{0,700}?F\/R\s*\(10:30\s*AM\)\s*\|\s*S\/R\s*\(11:30\s*AM\)\s*(\d{2}|soon|pending|awaiting|off|--|xx)\s*\|\s*(\d{2}|soon|pending|awaiting|off|--|xx)/i);
+  if (!card) {
+    return { ready: false, status: "live_card_not_found", market: SHILLONG_MORNING_MARKET, source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
   }
-  const nextHeading = plain.toLowerCase().indexOf("welcome morning result", start + heading.length);
-  const section = plain.slice(start, nextHeading >= 0 ? nextHeading : Math.min(plain.length, start + 1800));
-  const dateMatch = section.match(/Shillong Morning Result\s*[-–:]\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})/i);
-  const date = dateMatch ? parseGroundDate(dateMatch[1]) : "";
-  const values = section.match(/F\/R\s*\(10:30\s*AM\)\s*\|\s*S\/R\s*\(11:30\s*AM\)\s*(\d{2}|soon|pending|awaiting|off|--|xx)\s*\|\s*(\d{2}|soon|pending|awaiting|off|--|xx)/i);
-  const fr = values?.[1] && /^\d{2}$/.test(values[1]) ? values[1] : undefined;
-  const sr = values?.[2] && /^\d{2}$/.test(values[2]) ? values[2] : undefined;
+  const date = parseGroundDate(card[1]);
+  const fr = /^\d{2}$/.test(card[2]) ? card[2] : undefined;
+  const sr = /^\d{2}$/.test(card[3]) ? card[3] : undefined;
   const today = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
   }).format(new Date());
