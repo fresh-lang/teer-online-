@@ -2510,9 +2510,10 @@
           const response = await accountApi('public_result_history', { market: market.key, page: 0 }, false);
           return { ...market, rows: Array.isArray(response.history) ? response.history.slice(0, 5) : [] };
         }));
+        const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
         box.innerHTML = results.map(item => {
-          const rows = item.rows.length ? item.rows.map(row => '<div class="flex items-center justify-between gap-2 py-1 border-t border-slate-100 text-[11px]"><span class="text-slate-500">'+String(row.result_date || '—')+'</span><span class="font-mono font-bold text-teal-900">FR '+String(row.fr || '**')+' / SR '+String(row.sr || '**')+'</span></div>').join('') : '<p class="text-[10px] text-slate-400 py-1">No dated history saved yet.</p>';
-          return '<div class="rounded-xl border border-slate-200 px-2.5 py-2"><div class="font-bold text-xs text-slate-800">'+item.label+'</div>'+rows+'</div>';
+          const rows = item.rows.length ? item.rows.map(row => '<div class="flex items-center justify-between gap-2 py-1 border-t border-slate-100 text-[11px]"><span class="text-slate-500">'+escapeHtml(row.result_date || '—')+'</span><span class="font-mono font-bold text-teal-900">FR '+escapeHtml(row.fr || '**')+' / SR '+escapeHtml(row.sr || '**')+'</span></div>').join('') : '<p class="text-[10px] text-slate-400 py-1">No dated history saved yet.</p>';
+          return '<div class="rounded-xl border border-slate-200 px-2.5 py-2"><div class="font-bold text-xs text-slate-800">'+escapeHtml(item.label)+'</div>'+rows+'</div>';
         }).join('');
         window.__homePreviousResultsLoaded = true;
       } catch (error) {
