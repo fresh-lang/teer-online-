@@ -934,7 +934,7 @@ async function fetchShillongMorningSourcePreview(): Promise<{
   const section = plain.slice(start, nextHeading >= 0 ? nextHeading : Math.min(plain.length, start + 1800));
   const dateMatch = section.match(/Shillong Morning Result\s*[-–:]\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})/i);
   const date = dateMatch ? parseGroundDate(dateMatch[1]) : "";
-  const values = section.match(/F\/R\s*\(10:30\s*AM\)\s*\|\s*S\/R\s*\(11:30\s*AM\)\s*(\d{2})\s*\|\s*(\d{2})/i);
+  const values = section.match(/F\/R\s*\(10:30\s*AM\)\s*\|\s*S\/R\s*\(11:30\s*AM\)\s*(\d{2}|soon|pending|awaiting|off|--|xx)\s*\|\s*(\d{2}|soon|pending|awaiting|off|--|xx)/i);
   const fr = values?.[1] && /^\d{2}$/.test(values[1]) ? values[1] : undefined;
   const sr = values?.[2] && /^\d{2}$/.test(values[2]) ? values[2] : undefined;
   const today = new Intl.DateTimeFormat("en-GB", {
