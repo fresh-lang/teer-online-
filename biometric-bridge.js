@@ -7,7 +7,7 @@ window.TeerBiometricBridge = {
   authenticate: () => BiometricAuth.authenticate({
     reason: 'Unlock Teer Online',
     cancelTitle: 'Cancel',
-    allowDeviceCredential: false,
+    allowDeviceCredential: true,
     androidTitle: 'Unlock Teer Online',
     androidSubtitle: 'Use fingerprint or face',
     androidConfirmationRequired: false
