@@ -1899,11 +1899,18 @@
       return new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(new Date()) === 'Sun';
     }
 
+    function isSundayOffMarket(marketName) {
+      // Sunday closures apply to the main afternoon counters only.
+      // Morning and Night sessions remain eligible to run every day.
+      return marketName === 'Shillong Teer (Evening)' ||
+        marketName === 'Khanapara Teer (Evening)';
+    }
+
     function isRoundBettingOpen(timeStr, marketName) {
       if (marketName === 'Teer Play' || (timeStr === '1 Min' || timeStr === '1 Min Auto')) {
         return true;
       }
-      if (isSundayInIndia()) return false;
+      if (isSundayInIndia() && isSundayOffMarket(marketName)) return false;
       return (getMinutesRemaining(timeStr) > 10);
     }
 
@@ -1956,7 +1963,7 @@
         const allClosed = (!frOpen && !srOpen);
 
         let bottomBarHtml = '';
-        if (isSunday && m.name !== 'Teer Play') {
+        if (isSunday && isSundayOffMarket(m.name)) {
           bottomBarHtml = `
             <div class="flex justify-between items-center pt-1">
               <span class="font-decorative text-base text-rose-600 font-bold">Sunday Official Holiday</span>
