@@ -382,19 +382,30 @@ async function flushResultPushNotifications() {
     const fullOffMatch = eventKey.match(/^market_off:(.+):(\d{4}-\d{2}-\d{2})$/);
     const roundOffMatch = eventKey.match(/^market_round_off:(.+):(\d{4}-\d{2}-\d{2}):(FR|SR)$/);
     if (fullOffMatch || roundOffMatch) {
-      const market = fullOffMatch?.[1] ?? roundOffMatch?.[1] ?? "";
-      const eventDate = fullOffMatch?.[2] ?? roundOffMatch?.[2] ?? "";
-      const { data: currentResult, error: resultError } = await supabase.from("teer_results")
-        .select("fr,sr,result_date").eq("market", market).maybeSingle();
-      if (resultError) throw resultError;
-      const savedDate = String(currentResult?.result_date ?? "");
-      const savedDateIso = savedDate.includes("/") ? dateDmyToIso(savedDate) : savedDate;
-      const sameDate = savedDateIso === eventDate;
-      const frPublished = sameDate && /^\d{2}$/.test(String(currentResult?.fr ?? ""));
-      const srPublished = sameDate && /^\d{2}$/.test(String(currentResult?.sr ?? ""));
-      const staleOff = fullOffMatch
-        ? frPublished || srPublished
-        : roundOffMatch?.[3] === "FR" ? frPublished : srPublished;
+      let staleOff = false;
+      try {
+        const market = fullOffMatch?.[1] ?? roundOffMatch?.[1] ?? "";
+        const eventDate = fullOffMatch?.[2] ?? roundOffMatch?.[2] ?? "";
+        const { data: currentResult, error: resultError } = await supabase.from("teer_results")
+          .select("fr,sr,result_date").eq("market", market).maybeSingle();
+        if (resultError) throw resultError;
+        const savedDate = String(currentResult?.result_date ?? "");
+        const savedDateIso = savedDate.includes("/") ? dateDmyToIso(savedDate) : savedDate;
+        const sameDate = savedDateIso === eventDate;
+        const frPublished = sameDate && /^\d{2}$/.test(String(currentResult?.fr ?? ""));
+        const srPublished = sameDate && /^\d{2}$/.test(String(currentResult?.sr ?? ""));
+        staleOff = fullOffMatch
+          ? frPublished || srPublished
+          : roundOffMatch?.[3] === "FR" ? frPublished : srPublished;
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        await supabase.from("broadcast_notifications").update({
+          status: "failed",
+          error_message: ("Suppressed before delivery: result recheck failed — " + detail).slice(0, 500),
+        }).eq("id", item.id).eq("status", "sending");
+        suppressed++;
+        continue;
+      }
       if (staleOff) {
         await supabase.from("broadcast_notifications").update({
           status: "failed",
