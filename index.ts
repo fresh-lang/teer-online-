@@ -149,7 +149,7 @@ async function requireAdmin(user: Record<string, unknown> | null) {
 
 // Khanapara Teer source verification. The source page's current result is accepted
 // only when its FR/SR pair matches the newest archive row and the page update date.
-const KHANAPARA_SOURCE_URL = "https://teer-result.com/khanapara-teer-result/";
+const KHANAPARA_SOURCE_URL = "https://shillongteergrounds.in/";
 const KHANAPARA_MARKET = "Khanapara Teer (Evening)";
 let khanaparaLastCheckAt = 0;
 let khanaparaCheckPromise: Promise<unknown> | null = null;
@@ -232,10 +232,10 @@ async function queueMarketOffPushNotifications() {
   // Accept a non-Sunday OFF only when the exact market page explicitly says
   // OFF/holiday for today's date. Awaiting, stale dates and fetch errors are not OFF.
   const sourceChecks = [
-    { market: "Shillong Morning Teer", heading: "Shillong Morning Teer Result Today", url: "https://teer-result.com/shillong-morning-teer-result/", frTime: "10:30 AM", srTime: "11:30 AM" },
+    { market: "Shilong Morning Teer", heading: "Shillong Morning Result", url: "https://shillongteergrounds.in/", frTime: "10:30 AM", srTime: "11:30 AM", verifyTimes: true },
     { market: "Khanapara Morning Teer", heading: "Khanapara Morning Teer Result Today", url: "https://teer-result.com/khanapara-morning-teer-result/", frTime: "10:30 AM", srTime: "11:30 AM" },
-    { market: "Shillong Teer (Evening)", heading: "Shillong Teer Result Today", url: "https://teer-result.com/shillong-teer-result/", frTime: "03:15 PM", srTime: "04:15 PM" },
-    { market: "Khanapara Teer (Evening)", heading: "Khanapara Teer Result Today", url: "https://teer-result.com/khanapara-teer-result/", frTime: "04:10 PM", srTime: "04:45 PM" },
+    { market: "Shillong Teer (Evening)", heading: "Shillong Teer Result", url: "https://shillongteergrounds.in/", frTime: "03:15 PM", srTime: "04:15 PM", verifyTimes: true },
+    { market: "Khanapara Teer (Evening)", heading: "Khanapara Teer Result", url: "https://shillongteergrounds.in/", frTime: "04:10 PM", srTime: "04:45 PM", verifyTimes: true },
     { market: "Shillong Night Teer", heading: "Shillong Night Teer Result Today", url: "https://teer-result.com/shillong-night-teer-result/", frTime: "08:30 PM", srTime: "09:30 PM" },
     { market: "Khanapara Night Teer", heading: "Khanapara Night Teer Result Today", url: "https://shillongnighteer.com/khanapara-teer-result-today/", frTime: "10:30 PM", srTime: "11:30 PM", verifyTimes: true },
   ];
@@ -264,7 +264,16 @@ async function queueMarketOffPushNotifications() {
       const headingIndex = plain.toLowerCase().indexOf(source.heading.toLowerCase());
       // Search a wider section after the exact market heading; source sites often
       // place date, FR and SR labels in separate cards within the same market block.
-      const section = headingIndex >= 0 ? plain.slice(headingIndex, headingIndex + 4200) : "";
+      const nextCardHeadings = [
+        "Khanapara Teer Result", "Juwai Teer Result", "Shillong Morning Result",
+        "Welcome Morning Result", "Shillong Night", "Night Teer Result",
+        "Khanapara Morning Teer Result", "Khanapara Night Result",
+      ];
+      const nextCardStarts = nextCardHeadings
+        .map((heading) => plain.toLowerCase().indexOf(heading.toLowerCase(), headingIndex + source.heading.length))
+        .filter((index) => index >= 0);
+      const sectionEnd = nextCardStarts.length ? Math.min(...nextCardStarts) : headingIndex + 1400;
+      const section = headingIndex >= 0 ? plain.slice(headingIndex, sectionEnd) : "";
       const normalizedSection = section.replace(/\s+/g, " ").toLowerCase();
       const hasMarketHeading = headingIndex >= 0;
       const hasSessionTimes = !source.verifyTimes || (normalizedSection.includes(source.frTime.toLowerCase()) &&
@@ -273,7 +282,8 @@ async function queueMarketOffPushNotifications() {
       const monthShort = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", month: "short" }).format(now);
       const dateLong = part("day") + " " + monthLong + " " + part("year");
       const dateShort = part("day") + " " + monthShort + " " + part("year");
-      const datePattern = [dateIso, dateDash, date, dateLong, dateShort];
+      const dateDot = part("day") + "." + part("month") + "." + part("year");
+      const datePattern = [dateIso, dateDash, date, dateDot, dateLong, dateShort];
       const lowerSection = section.toLowerCase();
       const hasCurrentDate = datePattern.some(value => lowerSection.includes(value.toLowerCase()));
       const explicitOff = /\b(?:off\s+today|today\s+(?:is\s+)?(?:off|a\s+holiday)|holiday\s+today|no\s+game\s+today|market\s+(?:is\s+)?closed\s+today|game\s+is\s+off\s+today|no\s+teer\s+today)\b/i.test(section);
@@ -287,9 +297,22 @@ async function queueMarketOffPushNotifications() {
       };
       const frOff = hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("FR");
       const srOff = hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("SR");
-      if (frOff) await enqueueRoundOff(source.market, "FR", "Source-confirmed round closure.");
-      if (srOff) await enqueueRoundOff(source.market, "SR", "Source-confirmed round closure.");
-      if (hasMarketHeading && hasSessionTimes && hasCurrentDate && (explicitOff || (frOff && srOff))) {
+      // A source can contain stale OFF text while a verified result has already
+      // been published for today. Never send contradictory OFF notifications.
+      const { data: currentResult, error: currentResultError } = await supabase.from("teer_results")
+        .select("fr,sr,result_date").eq("market", source.market).maybeSingle();
+      if (currentResultError) throw currentResultError;
+      const currentResultDate = String(currentResult?.result_date ?? "");
+      const currentResultIso = currentResultDate.includes("/")
+        ? dateDmyToIso(currentResultDate)
+        : currentResultDate;
+      const resultIsForToday = currentResultIso === dateIso;
+      const frAlreadyPublished = resultIsForToday && /^\d{2}$/.test(String(currentResult?.fr ?? ""));
+      const srAlreadyPublished = resultIsForToday && /^\d{2}$/.test(String(currentResult?.sr ?? ""));
+      if (frOff && !frAlreadyPublished) await enqueueRoundOff(source.market, "FR", "Source-confirmed round closure.");
+      if (srOff && !srAlreadyPublished) await enqueueRoundOff(source.market, "SR", "Source-confirmed round closure.");
+      if (hasMarketHeading && hasSessionTimes && hasCurrentDate &&
+          (explicitOff || (frOff && srOff)) && !frAlreadyPublished && !srAlreadyPublished) {
         await enqueueOff(source.market, "Source-confirmed full-market holiday.");
         confirmedOff++;
       }
@@ -306,8 +329,17 @@ async function queueMarketOffPushNotifications() {
 }
 async function queueResultRoundPushNotification(market: string, date: string, round: "FR" | "SR", value: string) {
   const eventKey = `${market}:${date}:${round}:${value}`;
-  const title = `${market} ${round} Result Updated`.slice(0, 80);
-  const message = `${date} | ${round}: ${value}`;
+  const marketNames: Record<string, string> = {
+    "Shilong Morning Teer": "Shillong Morning Teer",
+    "Khanapara Morning Teer": "Khanapara Morning Teer",
+    "Shillong Teer (Evening)": "Shillong Evening Teer",
+    "Khanapara Teer (Evening)": "Khanapara Evening Teer",
+    "Shillong Night Teer": "Shillong Night Teer",
+    "Khanapara Night Teer": "Khanapara Night Teer",
+  };
+  const displayMarket = marketNames[market] ?? market;
+  const title = `🎯 ${displayMarket} — ${round} Result`.slice(0, 80);
+  const message = `${round} Number: ${value} 🎯 Check your wallet now!`;
   const { error } = await supabase.from("broadcast_notifications").insert({
     title, message, status: "pending", recipients: 0, event_key: eventKey, created_by: null,
   });
@@ -352,7 +384,7 @@ async function flushResultPushNotifications() {
         },
         body: JSON.stringify({
           app_id: ONESIGNAL_APP_ID,
-          included_segments: ["Subscribed Users"],
+          included_segments: ["Active Subscriptions"],
           headings: { en: item.title },
           contents: { en: item.message },
           name: `Teer notification ${item.event_key}`,
@@ -478,64 +510,82 @@ type KhanaparaSourcePreview =
   | { ready: false; status: string; market: string; page_date?: string; source_update_date?: string; previous_date?: string; previous_fr?: string; previous_sr?: string; source_updated_at: string | null; source_url: string }
   | { ready: true; status: "verified"; market: string; fr?: string; sr?: string; date: string; source_updated_at: string | null; source_url: string };
 
-async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
-  const response = await fetch(KHANAPARA_SOURCE_URL, {
+function parseGroundsMarketCard(
+  plain: string, market: string, heading: string, frTime: string, srTime: string,
+) {
+  const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const token = "(\\d{2}|off|soon|pending|awaiting|--|xx)";
+  const lowerPlain = plain.toLowerCase();
+  const headingIndex = lowerPlain.indexOf(heading.toLowerCase());
+  if (headingIndex < 0) {
+    return { ready: false as const, status: "live_card_not_found", market, source_updated_at: null, source_url: "https://shillongteergrounds.in/" };
+  }
+  const otherHeadings = [
+    "Khanapara Teer Result", "Shillong Teer Result", "Shillong Morning Result",
+    "Khanapara Morning Result", "Welcome Morning Result", "Shillong Night (8:30)",
+    "Night Teer Result", "Khanapara Night Result",
+  ].filter((value) => value.toLowerCase() !== heading.toLowerCase());
+  const nextStarts = otherHeadings
+    .map((value) => lowerPlain.indexOf(value.toLowerCase(), headingIndex + heading.length))
+    .filter((index) => index >= 0);
+  const sectionEnd = nextStarts.length ? Math.min(...nextStarts) : Math.min(plain.length, headingIndex + 1800);
+  const section = plain.slice(headingIndex, sectionEnd);
+  const dateMatch = section.match(new RegExp(
+    escapePattern(heading) + "\\s*[-–:]\\s*(\\d{2}[.\\/-]\\d{2}[.\\/-]\\d{4})", "i",
+  ));
+  const rounds = new RegExp(
+    "F\\/R\\s*\\(" + escapePattern(frTime) + "\\)[\\s\\S]{0,100}?S\\/R\\s*\\(" +
+      escapePattern(srTime) + "\\)[\\s\\S]{0,60}?" + token + "(?:\\s*\\|\\s*|\\s+)" + token,
+    "i",
+  );
+  const card = dateMatch && section.match(rounds)
+    ? [section, dateMatch[1], ...section.match(rounds)!.slice(1)] as RegExpMatchArray
+    : null;
+  const sourceUrl = "https://shillongteergrounds.in/";
+  if (!card) {
+    return { ready: false as const, status: "live_card_not_found", market, source_updated_at: null, source_url: sourceUrl };
+  }
+  const date = parseGroundDate(card[1]);
+  const frValue = card[2].toLowerCase();
+  const srValue = card[3].toLowerCase();
+  const today = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
+  }).format(new Date());
+  if (date !== today) {
+    return { ready: false as const, status: date ? "date_not_current" : "date_missing", market, ...(date ? { page_date: date } : {}), source_updated_at: null, source_url: sourceUrl };
+  }
+  if (frValue === "off" && srValue === "off") {
+    return { ready: false as const, status: "off", market, page_date: date, source_updated_at: null, source_url: sourceUrl };
+  }
+  const fr = /^\d{2}$/.test(frValue) ? frValue : undefined;
+  const sr = /^\d{2}$/.test(srValue) ? srValue : undefined;
+  if (!fr && !sr) {
+    return { ready: false as const, status: "awaiting", market, page_date: date, source_updated_at: null, source_url: sourceUrl };
+  }
+  return { ready: true as const, status: "verified" as const, market, date, ...(fr ? { fr } : {}), ...(sr ? { sr } : {}), source_updated_at: null, source_url: sourceUrl };
+}
+
+async function fetchGroundsMarketPreview(
+  market: string, heading: string, frTime: string, srTime: string,
+) {
+  const response = await fetch("https://shillongteergrounds.in/", {
     method: "GET",
     headers: {
-      "User-Agent": "TeerOnlineResultSync/1.0 (+source verification)",
+      "User-Agent": "TeerOnlineResultSync/1.0 (+market result verification)",
       "Accept": "text/html,application/xhtml+xml",
       "Cache-Control": "no-cache",
     },
   });
-  if (!response.ok) throw new Error("Source website returned HTTP " + response.status);
+  if (!response.ok) throw new Error("ShillongTeerGrounds source returned HTTP " + response.status);
   const html = await response.text();
-  if (!html || html.length < 1000) throw new Error("Source page content was empty or incomplete");
+  if (!html || html.length < 1000) throw new Error("ShillongTeerGrounds source page was empty or incomplete");
+  return parseGroundsMarketCard(htmlToPlainText(html), market, heading, frTime, srTime);
+}
 
-  const plain = htmlToPlainText(html);
-  const updatedMatch = plain.match(/Updated\s+(\d{4}-\d{2}-\d{2})/i);
-  const pageDateMatch = plain.match(/Khanapara Teer Result Today\s+(\d{2}-\d{2}-\d{4})/i);
-  const updatedIso = updatedMatch?.[1] ?? "";
-  const pageDate = pageDateMatch?.[1] ?? "";
-  const awaiting = /Awaiting today's result/i.test(plain.slice(0, 6000));
-
-  const archiveStart = plain.toLowerCase().indexOf("khanapara teer previous result list");
-  const archiveText = archiveStart >= 0 ? plain.slice(archiveStart) : "";
-  const archiveRow = archiveText.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2})\s+(\d{2})/);
-  const topText = archiveStart >= 0 ? plain.slice(0, archiveStart) : plain.slice(0, 9000);
-  const frMatch = topText.match(/FR\s*[·•]?\s*4:15\s*pm\s*(\d{2})/i);
-  const srMatch = topText.match(/SR\s*[·•]?\s*5:00\s*pm\s*(\d{2})/i);
-  const frResult = frMatch?.[1] ?? "";
-  const srResult = srMatch?.[1] ?? "";
-
-  const jsonLdModified = html.match(/"dateModified"\s*:\s*"([^"]+)"/i)?.[1] ?? "";
-  const metaModified = html.match(/<meta[^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
-    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["']/i)?.[1] ?? "";
-  const candidateTimestamp = [jsonLdModified, metaModified].find((value) => /T\d{2}:\d{2}/i.test(value)) ?? "";
-  const parsedTimestamp = candidateTimestamp ? new Date(candidateTimestamp) : null;
-  const sourceUpdatedAt = parsedTimestamp && Number.isFinite(parsedTimestamp.getTime()) &&
-    parsedTimestamp.toISOString().slice(0, 10) === updatedIso
-      ? parsedTimestamp.toISOString()
-      : null;
-
-  const hasFr = /^[0-9]{2}$/.test(frResult);
-  const hasSr = /^[0-9]{2}$/.test(srResult);
-  const dateVerified = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(updatedIso) && pageDate === dateIsoToDmy(updatedIso);
-  const archiveIsToday = Boolean(archiveRow && archiveRow[1] === dateIsoToDmy(updatedIso));
-  if (!dateVerified || (!hasFr && !hasSr) || (awaiting && !archiveIsToday) ||
-      (archiveIsToday && ((hasFr && archiveRow?.[2] !== frResult) || (hasSr && archiveRow?.[3] !== srResult)))) {
-    return {
-      ready: false, status: awaiting && !hasFr && !hasSr ? "awaiting" : "not_verified",
-      market: KHANAPARA_MARKET, page_date: pageDate, source_update_date: updatedIso,
-      source_updated_at: sourceUpdatedAt, source_url: KHANAPARA_SOURCE_URL,
-    };
-  }
-  return {
-    ready: true, status: "verified", market: KHANAPARA_MARKET,
-    ...(hasFr ? { fr: frResult } : {}),
-    ...(hasSr ? { sr: srResult } : {}),
-    date: dateIsoToDmy(updatedIso),
-    source_updated_at: sourceUpdatedAt, source_url: KHANAPARA_SOURCE_URL,
-  };
+async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
+  return await fetchGroundsMarketPreview(
+    KHANAPARA_MARKET, "Khanapara Teer Result", "04:10 PM", "04:45 PM",
+  ) as KhanaparaSourcePreview;
 }
 
 async function syncKhanaparaSourceIfDue(force = false) {
@@ -546,7 +596,7 @@ async function syncKhanaparaSourceIfDue(force = false) {
         .select("last_checked_at").eq("market", KHANAPARA_MARKET).maybeSingle();
       if (stateError) throw stateError;
       const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-      if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
+      if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
 
       const checkedAt = new Date().toISOString();
       const { error: markError } = await supabase.from("result_source_sync")
@@ -673,6 +723,59 @@ async function fetchKhanaparaSessionPreview(
   };
 }
 
+const KHANAPARA_NIGHT_PREFERRED_URL = "https://shillongnighteer.com/khanapara-teer-result-today/";
+
+async function fetchKhanaparaNightPreferredPreview(): Promise<{
+  ready: boolean; status: string; market: string; date?: string;
+  fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
+}> {
+  const market = KHANAPARA_NIGHT_MARKET;
+  const response = await fetch(KHANAPARA_NIGHT_PREFERRED_URL, {
+    method: "GET",
+    headers: {
+      "User-Agent": "TeerOnlineResultSync/1.0 (+Khanapara Night result verification)",
+      "Accept": "text/html,application/xhtml+xml",
+      "Cache-Control": "no-cache",
+    },
+  });
+  if (!response.ok) throw new Error("Khanapara Night source returned HTTP " + response.status);
+  const html = await response.text();
+  if (!html || html.length < 1000) throw new Error("Khanapara Night source page was empty or incomplete");
+  const plain = htmlToPlainText(html);
+  const heading = "Khanapara Night Teer Result Today";
+  const start = plain.toLowerCase().lastIndexOf(heading.toLowerCase());
+  if (start < 0) {
+    return { ready: false, status: "section_missing", market, source_updated_at: null, source_url: KHANAPARA_NIGHT_PREFERRED_URL };
+  }
+  const nextHeading = plain.toLowerCase().indexOf("khanapara teer common number", start + heading.length);
+  const section = plain.slice(start, nextHeading >= 0 ? nextHeading : Math.min(plain.length, start + 1800));
+  const dateMatch = section.match(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i);
+  const monthIndex = dateMatch ? ["january","february","march","april","may","june","july","august","september","october","november","december"].indexOf(dateMatch[2].toLowerCase()) + 1 : 0;
+  const date = dateMatch ? dateMatch[1].padStart(2, "0") + "/" + String(monthIndex).padStart(2, "0") + "/" + dateMatch[3] : "";
+  const frMatch = section.match(/FR\s*10:30\s*PM\s*(\d{2})/i);
+  const srMatch = section.match(/SR\s*11:30\s*PM\s*(\d{2})/i);
+  const fr = frMatch?.[1] ?? "";
+  const sr = srMatch?.[1] ?? "";
+  const today = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
+  }).format(new Date());
+  // Some result sites keep yesterday's numbers on the page while updating the
+  // page header to today's date. Never accept that stale card as today's result.
+  const awaitingNotice = /aaj ka result abhi update nahi hua|result (?:has )?not (?:yet )?updated|showing (?:the )?previous day/i.test(section);
+  if (date !== today || awaitingNotice) {
+    return { ready: false, status: date ? "date_not_current" : "date_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: KHANAPARA_NIGHT_PREFERRED_URL };
+  }
+  if (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr)) {
+    return { ready: false, status: "awaiting", market, date, source_updated_at: null, source_url: KHANAPARA_NIGHT_PREFERRED_URL };
+  }
+  return {
+    ready: true, status: "verified", market, date,
+    ...( /^\d{2}$/.test(fr) ? { fr } : {}),
+    ...( /^\d{2}$/.test(sr) ? { sr } : {}),
+    source_updated_at: null, source_url: KHANAPARA_NIGHT_PREFERRED_URL,
+  };
+}
+
 async function syncKhanaparaSessionIfDue(session: "morning" | "night") {
   const market = session === "morning" ? KHANAPARA_MORNING_MARKET : KHANAPARA_NIGHT_MARKET;
   try {
@@ -680,16 +783,21 @@ async function syncKhanaparaSessionIfDue(session: "morning" | "night") {
       .select("last_checked_at").eq("market", market).maybeSingle();
     if (stateError) throw stateError;
     const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-    if (lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
+    if (lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
 
     const checkedAt = new Date().toISOString();
     const { error: markError } = await supabase.from("result_source_sync")
       .upsert({ market, last_checked_at: checkedAt }, { onConflict: "market" });
     if (markError) throw markError;
 
-    let primary: Awaited<ReturnType<typeof fetchKhanaparaSessionPreview>> | null = null;
+    let primary: {
+      ready: boolean; status: string; market: string; date?: string;
+      fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
+    } | null = null;
     try {
-      primary = await fetchKhanaparaSessionPreview(session);
+      primary = session === "morning"
+        ? await fetchKhanaparaSecondaryPreview("morning")
+        : await fetchKhanaparaNightPreferredPreview();
       if (primary.ready) {
         const applied = await applyVerifiedRoundResults({
           market, date: primary.date!,
@@ -697,15 +805,20 @@ async function syncKhanaparaSessionIfDue(session: "morning" | "night") {
           ...(primary.sr ? { sr: primary.sr } : {}),
           source_updated_at: primary.source_updated_at,
         });
-        return { ...primary, source_used: "shillongteergrounds.in", applied };
+        return { ...primary, source_used: session === "morning" ? "teer-result.com" : "shillongnighteer.com", applied };
       }
     } catch (error) {
-      console.error("Khanapara " + session + " primary source failed:", error instanceof Error ? error.message : error);
+      console.error("Khanapara " + session + " preferred source failed:", error instanceof Error ? error.message : error);
     }
 
-    let secondary: Awaited<ReturnType<typeof fetchKhanaparaSecondaryPreview>> | null = null;
+    let secondary: {
+      ready: boolean; status: string; market: string; date?: string;
+      fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
+    } | null = null;
     try {
-      secondary = await fetchKhanaparaSecondaryPreview(session);
+      secondary = session === "morning"
+        ? await fetchKhanaparaSessionPreview("morning")
+        : await fetchKhanaparaSecondaryPreview("night");
       if (secondary.ready) {
         const applied = await applyVerifiedRoundResults({
           market, date: secondary.date!,
@@ -713,7 +826,12 @@ async function syncKhanaparaSessionIfDue(session: "morning" | "night") {
           ...(secondary.sr ? { sr: secondary.sr } : {}),
           source_updated_at: secondary.source_updated_at,
         });
-        return { ...secondary, source_used: "teer-result.com", fallback_from: primary?.status ?? "source_error", applied };
+        return {
+          ...secondary,
+          source_used: session === "morning" ? "shillongteergrounds.in" : "teer-result.com",
+          fallback_from: primary?.status ?? "source_error",
+          applied,
+        };
       }
     } catch (error) {
       console.error("Khanapara " + session + " secondary source failed:", error instanceof Error ? error.message : error);
@@ -728,10 +846,7 @@ async function syncKhanaparaSessionIfDue(session: "morning" | "night") {
           ...(tertiary.sr ? { sr: tertiary.sr } : {}),
           source_updated_at: tertiary.source_updated_at,
         });
-        return {
-          ...tertiary, source_used: "shillongteeresults.com",
-          fallback_from: secondary?.status ?? primary?.status ?? "source_error", applied,
-        };
+        return { ...tertiary, source_used: "shillongteeresults.com", fallback_from: secondary?.status ?? primary?.status ?? "source_error", applied };
       }
       return {
         ready: false, status: tertiary.status, market,
@@ -753,8 +868,6 @@ async function syncKhanaparaSessionIfDue(session: "morning" | "night") {
     return { ready: false, status: "source_error", market };
   }
 }
-
-
 // Secondary source: teer-result.com. Morning has its own named result card.
 // Night is accepted ONLY if this site publishes an explicit Khanapara Night
 // card with the user's exact 10:30 PM / 11:30 PM session times.
@@ -892,8 +1005,12 @@ async function fetchKhanaparaTertiaryPreview(
   if (!date || (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr))) {
     return { ready: false, status: "result_values_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL };
   }
-  if (dateDmyToIso(date) > dateDmyToIso(today)) {
-    return { ready: false, status: "future_date_rejected", market, date, source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL };
+  if (dateDmyToIso(date) !== dateDmyToIso(today)) {
+    return {
+      ready: false,
+      status: dateDmyToIso(date) > dateDmyToIso(today) ? "future_date_rejected" : "date_not_current",
+      market, date, source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL,
+    };
   }
   return {
     ready: true, status: "verified", market, date,
@@ -906,49 +1023,15 @@ async function fetchKhanaparaTertiaryPreview(
 // Shillong Morning is a separate 10:30 AM / 11:30 AM market.
 // Read only its named card from the user's selected ShillongTeerGrounds source.
 const SHILLONG_MORNING_SOURCE_URL = "https://shillongteergrounds.in/";
-const SHILLONG_MORNING_MARKET = "Shillong Morning Teer";
+const SHILLONG_MORNING_MARKET = "Shilong Morning Teer";
 
 async function fetchShillongMorningSourcePreview(): Promise<{
   ready: boolean; status: string; market: string; date?: string;
   fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
 }> {
-  const response = await fetch(SHILLONG_MORNING_SOURCE_URL, {
-    method: "GET",
-    headers: {
-      "User-Agent": "TeerOnlineResultSync/1.0 (+Shillong Morning result verification)",
-      "Accept": "text/html,application/xhtml+xml",
-      "Cache-Control": "no-cache",
-    },
-  });
-  if (!response.ok) throw new Error("Shillong Morning source returned HTTP " + response.status);
-  const html = await response.text();
-  if (!html || html.length < 1000) throw new Error("Shillong Morning source page was empty or incomplete");
-
-  const plain = htmlToPlainText(html);
-  // Match the date-bearing live result card itself. The page contains several
-  // other mentions of "Shillong Morning Result" before/after the live card.
-  const card = plain.match(/Shillong Morning Result\s*[-–:]\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})[\s\S]{0,5000}?F\/R\s*\(10:30\s*AM\)\s*\|\s*S\/R\s*\(11:30\s*AM\)\s*(\d{2}|soon|pending|awaiting|off|--|xx)\s*\|\s*(\d{2}|soon|pending|awaiting|off|--|xx)/i);
-  if (!card) {
-    return { ready: false, status: "live_card_not_found", market: SHILLONG_MORNING_MARKET, source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
-  }
-  const date = parseGroundDate(card[1]);
-  const fr = /^\d{2}$/.test(card[2]) ? card[2] : undefined;
-  const sr = /^\d{2}$/.test(card[3]) ? card[3] : undefined;
-  const today = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
-  }).format(new Date());
-
-  if (date !== today) {
-    return { ready: false, status: date ? "date_not_current" : "date_missing", market: SHILLONG_MORNING_MARKET, ...(date ? { date } : {}), source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
-  }
-  if (!fr && !sr) {
-    return { ready: false, status: "awaiting_or_off", market: SHILLONG_MORNING_MARKET, date, source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
-  }
-  return {
-    ready: true, status: "verified", market: SHILLONG_MORNING_MARKET, date,
-    ...(fr ? { fr } : {}), ...(sr ? { sr } : {}),
-    source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL,
-  };
+  return await fetchGroundsMarketPreview(
+    SHILLONG_MORNING_MARKET, "Shillong Morning Result", "10:30 AM", "11:30 AM",
+  );
 }
 
 async function syncShillongMorningIfDue(force = false) {
@@ -958,7 +1041,7 @@ async function syncShillongMorningIfDue(force = false) {
       .select("last_checked_at").eq("market", market).maybeSingle();
     if (stateError) throw stateError;
     const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-    if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
+    if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
 
     const { error: markError } = await supabase.from("result_source_sync")
       .upsert({ market, last_checked_at: new Date().toISOString() }, { onConflict: "market" });
@@ -981,7 +1064,7 @@ async function syncShillongMorningIfDue(force = false) {
 
 // Shillong Night is a separate 8:30 PM / 9:30 PM market.
 // Read only its dedicated result card; never mix it with the late 11:10 PM Night Teer.
-const SHILLONG_NIGHT_SOURCE_URL = "https://shillongnightteer.me/shillong-night-teer-result";
+const SHILLONG_NIGHT_SOURCE_URL = "https://teer-result.com/shillong-night-teer-result/";
 
 async function fetchShillongNightSourcePreview(): Promise<{
   ready: boolean; status: string; market: string; date?: string;
@@ -1000,17 +1083,18 @@ async function fetchShillongNightSourcePreview(): Promise<{
   const html = await response.text();
   if (!html || html.length < 1000) throw new Error("Shillong Night source page was empty or incomplete");
   const plain = htmlToPlainText(html);
-  const heading = "Shillong Night (8:30)";
+  const heading = "Shillong Night Teer Result Today";
   const start = plain.toLowerCase().indexOf(heading.toLowerCase());
   if (start < 0) {
     return { ready: false, status: "section_missing", market, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
   }
-  const nextHeading = plain.toLowerCase().indexOf("night teer result", start + heading.length);
-  const section = plain.slice(start, nextHeading >= 0 ? nextHeading : Math.min(plain.length, start + 1400));
-  const dateMatch = section.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  const nextHeadings = ["Khanapara Teer Result Today", "Shillong Morning Teer Result Today", "Khanapara Morning Teer Result Today"];
+  const ends = nextHeadings.map(h => plain.toLowerCase().indexOf(h.toLowerCase(), start + heading.length)).filter(n => n >= 0);
+  const section = plain.slice(start, ends.length ? Math.min(...ends) : Math.min(plain.length, start + 1800));
+  const dateMatch = section.match(/(\d{2})-(\d{2})-(\d{4})/);
   const date = dateMatch ? dateMatch[1] + "/" + dateMatch[2] + "/" + dateMatch[3] : "";
-  const frMatch = section.match(/F\/R\s*\(08:30\s*PM\)\s*(\d{2})/i);
-  const srMatch = section.match(/S\/R\s*\(09:30\s*PM\)\s*(\d{2})/i);
+  const frMatch = section.match(/FR\s*[·•]?\s*08:30\s*PM\s*(\d{2})/i);
+  const srMatch = section.match(/SR\s*[·•]?\s*09:30\s*PM\s*(\d{2})/i);
   const fr = frMatch?.[1] ?? "";
   const sr = srMatch?.[1] ?? "";
   const today = new Intl.DateTimeFormat("en-GB", {
@@ -1029,7 +1113,6 @@ async function fetchShillongNightSourcePreview(): Promise<{
     source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL,
   };
 }
-
 async function syncShillongNightIfDue(force = false) {
   const market = "Shillong Night Teer";
   try {
@@ -1037,7 +1120,7 @@ async function syncShillongNightIfDue(force = false) {
       .select("last_checked_at").eq("market", market).maybeSingle();
     if (stateError) throw stateError;
     const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-    if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
+    if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
     const { error: markError } = await supabase.from("result_source_sync")
       .upsert({ market, last_checked_at: new Date().toISOString() }, { onConflict: "market" });
     if (markError) throw markError;
@@ -1058,7 +1141,7 @@ async function syncShillongNightIfDue(force = false) {
 
 // Shillong Teer source verification. The source page's current result is accepted
 // only when its FR/SR pair matches the newest archive row and the page update date.
-const SHILLONG_SOURCE_URL = "https://teer-result.com/shillong-teer-result/";
+const SHILLONG_SOURCE_URL = "https://shillongteergrounds.in/";
 const SHILLONG_MARKET = "Shillong Teer (Evening)";
 let shillongLastCheckAt = 0;
 let shillongCheckPromise: Promise<unknown> | null = null;
@@ -1068,63 +1151,9 @@ type ShillongSourcePreview =
   | { ready: true; status: "verified"; market: string; fr?: string; sr?: string; date: string; source_updated_at: string | null; source_url: string };
 
 async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
-  const response = await fetch(SHILLONG_SOURCE_URL, {
-    method: "GET",
-    headers: {
-      "User-Agent": "TeerOnlineResultSync/1.0 (+source verification)",
-      "Accept": "text/html,application/xhtml+xml",
-      "Cache-Control": "no-cache",
-    },
-  });
-  if (!response.ok) throw new Error("Source website returned HTTP " + response.status);
-  const html = await response.text();
-  if (!html || html.length < 1000) throw new Error("Source page content was empty or incomplete");
-
-  const plain = htmlToPlainText(html);
-  const updatedMatch = plain.match(/Updated\s+(\d{4}-\d{2}-\d{2})/i);
-  const pageDateMatch = plain.match(/Shillong Teer Result Today\s+(\d{2}-\d{2}-\d{4})/i);
-  const updatedIso = updatedMatch?.[1] ?? "";
-  const pageDate = pageDateMatch?.[1] ?? "";
-  const awaiting = /Awaiting today's result/i.test(plain.slice(0, 6000));
-
-  const archiveStart = plain.toLowerCase().indexOf("shillong teer previous result list");
-  const archiveText = archiveStart >= 0 ? plain.slice(archiveStart) : "";
-  const archiveRow = archiveText.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2})\s+(\d{2})/);
-  const topText = archiveStart >= 0 ? plain.slice(0, archiveStart) : plain.slice(0, 9000);
-  const frMatch = topText.match(/FR\s*[·•]?\s*3:45\s*pm\s*(\d{2})/i);
-  const srMatch = topText.match(/SR\s*[·•]?\s*4:45\s*pm\s*(\d{2})/i);
-  const frResult = frMatch?.[1] ?? "";
-  const srResult = srMatch?.[1] ?? "";
-
-  const jsonLdModified = html.match(/"dateModified"\s*:\s*"([^"]+)"/i)?.[1] ?? "";
-  const metaModified = html.match(/<meta[^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
-    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["']/i)?.[1] ?? "";
-  const candidateTimestamp = [jsonLdModified, metaModified].find((value) => /T\d{2}:\d{2}/i.test(value)) ?? "";
-  const parsedTimestamp = candidateTimestamp ? new Date(candidateTimestamp) : null;
-  const sourceUpdatedAt = parsedTimestamp && Number.isFinite(parsedTimestamp.getTime()) &&
-    parsedTimestamp.toISOString().slice(0, 10) === updatedIso
-      ? parsedTimestamp.toISOString()
-      : null;
-
-  const hasFr = /^[0-9]{2}$/.test(frResult);
-  const hasSr = /^[0-9]{2}$/.test(srResult);
-  const dateVerified = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(updatedIso) && pageDate === dateIsoToDmy(updatedIso);
-  const archiveIsToday = Boolean(archiveRow && archiveRow[1] === dateIsoToDmy(updatedIso));
-  if (!dateVerified || (!hasFr && !hasSr) || (awaiting && !archiveIsToday) ||
-      (archiveIsToday && ((hasFr && archiveRow?.[2] !== frResult) || (hasSr && archiveRow?.[3] !== srResult)))) {
-    return {
-      ready: false, status: awaiting && !hasFr && !hasSr ? "awaiting" : "not_verified",
-      market: SHILLONG_MARKET, page_date: pageDate, source_update_date: updatedIso,
-      source_updated_at: sourceUpdatedAt, source_url: SHILLONG_SOURCE_URL,
-    };
-  }
-  return {
-    ready: true, status: "verified", market: SHILLONG_MARKET,
-    ...(hasFr ? { fr: frResult } : {}),
-    ...(hasSr ? { sr: srResult } : {}),
-    date: dateIsoToDmy(updatedIso),
-    source_updated_at: sourceUpdatedAt, source_url: SHILLONG_SOURCE_URL,
-  };
+  return await fetchGroundsMarketPreview(
+    SHILLONG_MARKET, "Shillong Teer Result", "03:15 PM", "04:15 PM",
+  ) as ShillongSourcePreview;
 }
 
 async function syncShillongSourceIfDue(force = false) {
@@ -1135,7 +1164,7 @@ async function syncShillongSourceIfDue(force = false) {
         .select("last_checked_at").eq("market", SHILLONG_MARKET).maybeSingle();
       if (stateError) throw stateError;
       const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-      if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
+      if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
 
       const checkedAt = new Date().toISOString();
       const { error: markError } = await supabase.from("result_source_sync")
@@ -1519,7 +1548,7 @@ Deno.serve(async (req) => {
       const part = (type: string) => indiaParts.find((item) => item.type === type)?.value ?? "";
       const todayIso = part("year") + "-" + part("month") + "-" + part("day");
       const date = part("day") + "/" + part("month") + "/" + part("year");
-      const marketNames = ["Shillong Morning Teer","Khanapara Morning Teer","Shillong Teer (Evening)","Khanapara Teer (Evening)","Shillong Night Teer","Khanapara Night Teer"];
+      const marketNames = ["Shilong Morning Teer","Khanapara Morning Teer","Shillong Teer (Evening)","Khanapara Teer (Evening)","Shillong Night Teer","Khanapara Night Teer"];
       const offKeys = marketNames.flatMap((market) => [
         "market_off:" + market + ":" + todayIso,
         "market_round_off:" + market + ":" + todayIso + ":FR",
@@ -1557,6 +1586,53 @@ Deno.serve(async (req) => {
         marketOff["Khanapara Teer (Evening)"] = true;
       }
       return json({ success: true, date, results: resultMap, market_off: marketOff, market_round_off: marketRoundOff, settings: settings ?? {}, rounds: rounds ?? [] }, 200, origin);
+    }
+
+
+    if (action === "admin_send_push") {
+      const admin = await getSession(req);
+      if (!admin || !admin.id) return json({ error: "Please login again" }, 401, origin);
+      if (!(await requireAdmin(admin))) return json({ error: "Admin access denied" }, 403, origin);
+      const title = String(body.title ?? "").trim().slice(0, 80);
+      const message = String(body.message ?? "").trim().slice(0, 1000);
+      if (!title || !message) return json({ error: "Notification title and message are required" }, 400, origin);
+      const restKey = Deno.env.get("ONESIGNAL_REST_API_KEY")?.trim();
+      if (!restKey) return json({ error: "OneSignal is not configured on the server" }, 503, origin);
+      const eventKey = "admin_broadcast:" + crypto.randomUUID();
+      const { data: logRow, error: logError } = await supabase.from("broadcast_notifications").insert({
+        title, message, status: "sending", recipients: 0, event_key: eventKey, created_by: admin.id,
+      }).select("id").single();
+      if (logError) throw logError;
+      try {
+        const response = await fetch("https://api.onesignal.com/notifications", {
+          method: "POST",
+          headers: { "Authorization": "Key " + restKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            app_id: ONESIGNAL_APP_ID,
+            included_segments: ["Active Subscriptions"],
+            headings: { en: title },
+            contents: { en: message },
+            name: "Teer Online admin broadcast " + eventKey,
+            android_channel_id: "478b866d-a74d-4808-91d2-6e926e3f456b",
+            priority: 10,
+            data: { type: "admin_broadcast", event_key: eventKey },
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        const hasErrors = Array.isArray(payload.errors) ? payload.errors.length > 0 : Boolean(payload.errors);
+        if (!response.ok || hasErrors) {
+          const reason = String(payload.errors?.[0] || payload.errors || ("OneSignal HTTP " + response.status)).slice(0, 500);
+          await supabase.from("broadcast_notifications").update({ status: "failed", error_message: reason }).eq("id", logRow.id);
+          return json({ error: "OneSignal rejected the notification", details: reason }, 502, origin);
+        }
+        const recipients = Number(payload.recipients || 0);
+        await supabase.from("broadcast_notifications").update({ status: "sent", notification_id: payload.id ?? null, recipients, sent_at: new Date().toISOString(), error_message: null }).eq("id", logRow.id);
+        return json({ success: true, recipients, notification_id: payload.id ?? null, delivery: "accepted_by_onesignal" }, 200, origin);
+      } catch (sendError) {
+        const reason = String(sendError instanceof Error ? sendError.message : sendError).slice(0, 500);
+        await supabase.from("broadcast_notifications").update({ status: "failed", error_message: reason }).eq("id", logRow.id);
+        throw sendError;
+      }
     }
 
     if (["admin_dashboard", "admin_save_result", "admin_reset_result", "admin_save_settings", "admin_fetch_source_result"].includes(action)) {
