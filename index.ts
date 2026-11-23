@@ -183,17 +183,133 @@ function dateDmyToIso(value: string): string {
 // the Supabase secret ONESIGNAL_REST_API_KEY; without it, messages stay pending.
 const ONESIGNAL_APP_ID = "5c602eb8-04b1-4007-8edf-936fd353fcc1";
 
-async function queueResultPushNotification(market: string, date: string, fr: string, sr: string) {
-  const eventKey = `${market}:${date}:${fr}:${sr}`;
-  const title = `${market} Result Updated`.slice(0, 80);
-  const message = `${date} | FR: ${fr} | SR: ${sr}`;
+async function queueMarketOffPushNotifications() {
+  const now = new Date();
+  const localParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short",
+  }).formatToParts(now);
+  const part = (type: string) => localParts.find(p => p.type === type)?.value ?? "";
+  const dateIso = part("year") + "-" + part("month") + "-" + part("day");
+  const date = part("day") + "/" + part("month") + "/" + part("year");
+  const dateDash = part("day") + "-" + part("month") + "-" + part("year");
+  const sunday = part("weekday") === "Sun";
+  const sundayOffMarkets = sunday
+    ? ["Shillong Teer (Evening)", "Khanapara Teer (Evening)"]
+    : [];
+  let queued = 0;
+  let confirmedOff = 0;
+
+  const enqueueOff = async (market: string, reason: string) => {
+    const eventKey = "market_off:" + market + ":" + dateIso;
+    const { error } = await supabase.from("broadcast_notifications").insert({
+      title: (market + " — OFF Today").slice(0, 80),
+      message: date + " | " + reason + " " + market + " is closed today.",
+      status: "pending", recipients: 0, event_key: eventKey, created_by: null,
+    });
+    if (error?.code === "23505") return false;
+    if (error) throw error;
+    queued++;
+    return true;
+  };
+  const enqueueRoundOff = async (market: string, round: "FR" | "SR", reason: string) => {
+    const eventKey = "market_round_off:" + market + ":" + dateIso + ":" + round;
+    const { error } = await supabase.from("broadcast_notifications").insert({
+      title: (market + " " + round + " — OFF Today").slice(0, 80),
+      message: date + " | " + market + " " + round + " is OFF. " + reason,
+      status: "pending", recipients: 0, event_key: eventKey, created_by: null,
+    });
+    if (error?.code === "23505") return false;
+    if (error) throw error;
+    queued++;
+    return true;
+  };
+
+  for (const market of sundayOffMarkets) {
+    await enqueueOff(market, "Official Sunday holiday.");
+    confirmedOff++;
+  }
+
+  // Accept a non-Sunday OFF only when the exact market page explicitly says
+  // OFF/holiday for today's date. Awaiting, stale dates and fetch errors are not OFF.
+  const sourceChecks = [
+    { market: "Shillong Morning Teer", heading: "Shillong Morning Teer Result Today", url: "https://teer-result.com/shillong-morning-teer-result/", frTime: "10:30 AM", srTime: "11:30 AM" },
+    { market: "Khanapara Morning Teer", heading: "Khanapara Morning Teer Result Today", url: "https://teer-result.com/khanapara-morning-teer-result/", frTime: "10:30 AM", srTime: "11:30 AM" },
+    { market: "Shillong Teer (Evening)", heading: "Shillong Teer Result Today", url: "https://teer-result.com/shillong-teer-result/", frTime: "03:15 PM", srTime: "04:15 PM" },
+    { market: "Khanapara Teer (Evening)", heading: "Khanapara Teer Result Today", url: "https://teer-result.com/khanapara-teer-result/", frTime: "04:10 PM", srTime: "04:45 PM" },
+    { market: "Shillong Night Teer", heading: "Shillong Night Teer Result Today", url: "https://teer-result.com/shillong-night-teer-result/", frTime: "08:30 PM", srTime: "09:30 PM" },
+    { market: "Khanapara Night Teer", heading: "Khanapara Night Teer Result Today", url: "https://shillongnighteer.com/khanapara-teer-result-today/", frTime: "10:30 PM", srTime: "11:30 PM", verifyTimes: true },
+  ];
+  let sourceErrors = 0;
+  for (const source of sourceChecks) {
+    try {
+      const checkKey = "off-status:" + source.market;
+      const { data: state, error: stateError } = await supabase.from("result_source_sync")
+        .select("last_checked_at").eq("market", checkKey).maybeSingle();
+      if (stateError) throw stateError;
+      const lastChecked = state?.last_checked_at ? new Date(state.last_checked_at).getTime() : 0;
+      if (lastChecked && Date.now() - lastChecked < 10 * 60 * 1000) continue;
+      // Do not mark a source checked until fetch + parsing succeeds.
+      // Otherwise a timeout/blocked request suppresses retries for 10 minutes.
+      const response = await fetch(source.url, {
+        headers: {
+          "User-Agent": "TeerOnlineResultSync/1.0 (+market status verification)",
+          "Accept": "text/html,application/xhtml+xml",
+          "Cache-Control": "no-cache",
+        },
+      });
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const html = await response.text();
+      if (!html || html.length < 500) throw new Error("empty market status page");
+      const plain = htmlToPlainText(html);
+      const headingIndex = plain.toLowerCase().indexOf(source.heading.toLowerCase());
+      // Search a wider section after the exact market heading; source sites often
+      // place date, FR and SR labels in separate cards within the same market block.
+      const section = headingIndex >= 0 ? plain.slice(headingIndex, headingIndex + 4200) : "";
+      const normalizedSection = section.replace(/\s+/g, " ").toLowerCase();
+      const hasMarketHeading = headingIndex >= 0;
+      const hasSessionTimes = !source.verifyTimes || (normalizedSection.includes(source.frTime.toLowerCase()) &&
+        normalizedSection.includes(source.srTime.toLowerCase()));
+      const monthLong = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", month: "long" }).format(now);
+      const monthShort = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", month: "short" }).format(now);
+      const dateLong = part("day") + " " + monthLong + " " + part("year");
+      const dateShort = part("day") + " " + monthShort + " " + part("year");
+      const datePattern = [dateIso, dateDash, date, dateLong, dateShort];
+      const lowerSection = section.toLowerCase();
+      const hasCurrentDate = datePattern.some(value => lowerSection.includes(value.toLowerCase()));
+      const explicitOff = /\b(?:off\s+today|today\s+(?:is\s+)?(?:off|a\s+holiday)|holiday\s+today|no\s+game\s+today|market\s+(?:is\s+)?closed\s+today|game\s+is\s+off\s+today|no\s+teer\s+today)\b/i.test(section);
+      const roundOff = (round: "FR" | "SR") => {
+        const labels = round === "FR" ? "(?:FR|F\\s*\\/\\s*R|First\\s+Round)" : "(?:SR|S\\s*\\/\\s*R|Second\\s+Round)";
+        const patterns = [
+          new RegExp("\\b" + labels + "\\b[^.!?]{0,100}\\bOFF\\b", "i"),
+          new RegExp("\\bOFF\\b[^.!?]{0,100}\\b" + labels + "\\b", "i"),
+        ];
+        return patterns.some(pattern => pattern.test(normalizedSection));
+      };
+      const frOff = hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("FR");
+      const srOff = hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("SR");
+      if (frOff) await enqueueRoundOff(source.market, "FR", "Source-confirmed round closure.");
+      if (srOff) await enqueueRoundOff(source.market, "SR", "Source-confirmed round closure.");
+      if (hasMarketHeading && hasSessionTimes && hasCurrentDate && (explicitOff || (frOff && srOff))) {
+        await enqueueOff(source.market, "Source-confirmed full-market holiday.");
+        confirmedOff++;
+      }
+      // Record a successful check only after the source was fetched and parsed.
+      const { error: markError } = await supabase.from("result_source_sync")
+        .upsert({ market: checkKey, last_checked_at: new Date().toISOString() }, { onConflict: "market" });
+      if (markError) throw markError;
+    } catch (error) {
+      sourceErrors++;
+      console.error("Market OFF source check failed for " + source.market + ":", error instanceof Error ? error.message : error);
+    }
+  }
+  return { checked: true, date, sunday, off: confirmedOff, queued, source_errors: sourceErrors };
+}
+async function queueResultRoundPushNotification(market: string, date: string, round: "FR" | "SR", value: string) {
+  const eventKey = `${market}:${date}:${round}:${value}`;
+  const title = `${market} ${round} Result Updated`.slice(0, 80);
+  const message = `${date} | ${round}: ${value}`;
   const { error } = await supabase.from("broadcast_notifications").insert({
-    title,
-    message,
-    status: "pending",
-    recipients: 0,
-    event_key: eventKey,
-    created_by: null,
+    title, message, status: "pending", recipients: 0, event_key: eventKey, created_by: null,
   });
   if (error?.code === "23505") return { queued: false, reason: "duplicate_event" };
   if (error) throw error;
@@ -239,8 +355,10 @@ async function flushResultPushNotifications() {
           included_segments: ["Subscribed Users"],
           headings: { en: item.title },
           contents: { en: item.message },
-          name: `Teer result ${item.event_key}`,
-          data: { type: "teer_result", event_key: item.event_key },
+          name: `Teer notification ${item.event_key}`,
+          android_channel_id: "478b866d-a74d-4808-91d2-6e926e3f456b",
+          priority: 10,
+          data: { type: item.event_key.startsWith("market_off:") ? "market_off" : "teer_result", event_key: item.event_key },
         }),
       });
       const responseText = await response.text();
@@ -280,7 +398,7 @@ async function flushResultPushNotifications() {
   return { configured: true, sent, failed, remaining: Math.max(0, (pending?.length ?? 0) - sent - failed) };
 }
 
-async function saveVerifiedResultHistory(market: string, date: string, fr: string, sr: string, source: "source" | "admin") {
+async function saveVerifiedResultHistory(market: string, date: string, fr: string, sr: string, source: "source" | "admin", sourceUpdatedAt: string | null = null) {
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date) || !/^\d{2}$/.test(fr) || !/^\d{2}$/.test(sr)) {
     throw new Error("Only complete dated FR/SR pairs can be archived");
   }
@@ -294,15 +412,50 @@ async function saveVerifiedResultHistory(market: string, date: string, fr: strin
     return { saved: false, reason: "date_already_archived" };
   }
   const { error } = await supabase.from("teer_result_history").upsert({
-    market, result_date: resultDate, fr, sr, source
+    market, result_date: resultDate, fr, sr, source, source_updated_at: sourceUpdatedAt
   }, { onConflict: "market,result_date" });
   if (error) throw error;
   return { saved: true, repaired_incomplete: Boolean(existing) };
 }
 
+
+async function applyVerifiedRoundResults(preview: {
+  market: string; date: string; fr?: string; sr?: string; source_updated_at: string | null;
+}) {
+  const { data: current, error: currentError } = await supabase.from("teer_results")
+    .select("market,fr,sr,result_date,updated_by,source_updated_at")
+    .eq("market", preview.market).maybeSingle();
+  if (currentError) throw currentError;
+  if (current?.updated_by && current.result_date === preview.date) return { applied: false, reason: "admin_correction_locked" };
+  if (current?.result_date && current.result_date !== preview.date) {
+    const currentIso = current.result_date.includes("/") ? dateDmyToIso(current.result_date) : current.result_date;
+    if (currentIso > dateDmyToIso(preview.date)) return { applied: false, reason: "older_source_date" };
+  }
+  const sameDate = current?.result_date === preview.date;
+  const nextFr = preview.fr ?? (sameDate ? current?.fr : "**") ?? "**";
+  const nextSr = preview.sr ?? (sameDate ? current?.sr : "**") ?? "**";
+  const frChanged = /^[0-9]{2}$/.test(String(preview.fr ?? "")) && (!sameDate || current?.fr !== preview.fr);
+  const srChanged = /^[0-9]{2}$/.test(String(preview.sr ?? "")) && (!sameDate || current?.sr !== preview.sr);
+  if (!frChanged && !srChanged) return { applied: false, reason: "already_current" };
+  const { error: saveError } = await supabase.from("teer_results").upsert({
+    market: preview.market, fr: nextFr, sr: nextSr, result_date: preview.date,
+    updated_at: new Date().toISOString(), updated_by: null,
+    source_updated_at: preview.source_updated_at ?? (sameDate ? current?.source_updated_at ?? null : null),
+  }, { onConflict: "market" });
+  if (saveError) throw saveError;
+  let history: unknown = { saved: false, reason: "waiting_for_both_rounds" };
+  if (/^[0-9]{2}$/.test(String(nextFr)) && /^[0-9]{2}$/.test(String(nextSr))) {
+    history = await saveVerifiedResultHistory(preview.market, preview.date, nextFr, nextSr, "source", preview.source_updated_at);
+  }
+  const notifications: unknown[] = [];
+  if (frChanged) notifications.push(await queueResultRoundPushNotification(preview.market, preview.date, "FR", String(preview.fr)));
+  if (srChanged) notifications.push(await queueResultRoundPushNotification(preview.market, preview.date, "SR", String(preview.sr)));
+  return { applied: true, fr_changed: frChanged, sr_changed: srChanged, history, notifications };
+}
+
 type KhanaparaSourcePreview =
   | { ready: false; status: string; market: string; page_date?: string; source_update_date?: string; previous_date?: string; previous_fr?: string; previous_sr?: string; source_updated_at: string | null; source_url: string }
-  | { ready: true; status: "verified"; market: string; fr: string; sr: string; date: string; source_updated_at: string | null; source_url: string };
+  | { ready: true; status: "verified"; market: string; fr?: string; sr?: string; date: string; source_updated_at: string | null; source_url: string };
 
 async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
   const response = await fetch(KHANAPARA_SOURCE_URL, {
@@ -343,28 +496,23 @@ async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
       ? parsedTimestamp.toISOString()
       : null;
 
-  if (awaiting) {
+  const hasFr = /^[0-9]{2}$/.test(frResult);
+  const hasSr = /^[0-9]{2}$/.test(srResult);
+  const dateVerified = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(updatedIso) && pageDate === dateIsoToDmy(updatedIso);
+  const archiveIsToday = Boolean(archiveRow && archiveRow[1] === dateIsoToDmy(updatedIso));
+  if (!dateVerified || (!hasFr && !hasSr) || (awaiting && !archiveIsToday) ||
+      (archiveIsToday && ((hasFr && archiveRow?.[2] !== frResult) || (hasSr && archiveRow?.[3] !== srResult)))) {
     return {
-      ready: false, status: "awaiting", market: KHANAPARA_MARKET,
-      page_date: pageDate, source_update_date: updatedIso,
-      previous_date: archiveRow?.[1] ?? "", previous_fr: archiveRow?.[2] ?? "", previous_sr: archiveRow?.[3] ?? "",
+      ready: false, status: awaiting && !hasFr && !hasSr ? "awaiting" : "not_verified",
+      market: KHANAPARA_MARKET, page_date: pageDate, source_update_date: updatedIso,
       source_updated_at: sourceUpdatedAt, source_url: KHANAPARA_SOURCE_URL,
     };
   }
-
-  if (!/^\d{2}$/.test(frResult) || !/^\d{2}$/.test(srResult) ||
-      !updatedIso || !archiveRow || archiveRow[1] !== dateIsoToDmy(updatedIso) ||
-      archiveRow[2] !== frResult || archiveRow[3] !== srResult) {
-    return {
-      ready: false, status: "not_verified", market: KHANAPARA_MARKET,
-      page_date: pageDate, source_update_date: updatedIso,
-      source_updated_at: sourceUpdatedAt, source_url: KHANAPARA_SOURCE_URL,
-    };
-  }
-
   return {
     ready: true, status: "verified", market: KHANAPARA_MARKET,
-    fr: frResult, sr: srResult, date: dateIsoToDmy(updatedIso),
+    ...(hasFr ? { fr: frResult } : {}),
+    ...(hasSr ? { sr: srResult } : {}),
+    date: dateIsoToDmy(updatedIso),
     source_updated_at: sourceUpdatedAt, source_url: KHANAPARA_SOURCE_URL,
   };
 }
@@ -377,7 +525,7 @@ async function syncKhanaparaSourceIfDue(force = false) {
         .select("last_checked_at").eq("market", KHANAPARA_MARKET).maybeSingle();
       if (stateError) throw stateError;
       const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-      if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
+      if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
 
       const checkedAt = new Date().toISOString();
       const { error: markError } = await supabase.from("result_source_sync")
@@ -418,32 +566,13 @@ async function syncKhanaparaSourceIfDue(force = false) {
         return preview;
       }
 
-      const { data: current, error: currentError } = await supabase.from("teer_results")
-        .select("market,fr,sr,result_date,updated_by")
-        .eq("market", KHANAPARA_MARKET).maybeSingle();
-      if (currentError) throw currentError;
-
-      if (current?.updated_by && current.result_date === preview.date) {
-        return { ...preview, applied: false, reason: "admin_correction_locked" };
-      }
-      if (current?.result_date === preview.date &&
-          current.fr === preview.fr && current.sr === preview.sr) {
-        return { ...preview, applied: false, reason: "already_current" };
-      }
-
-      const { error: saveError } = await supabase.from("teer_results").upsert({
-        market: KHANAPARA_MARKET,
-        fr: preview.fr,
-        sr: preview.sr,
-        result_date: preview.date,
-        updated_at: new Date().toISOString(),
-        updated_by: null,
+      const applied = await applyVerifiedRoundResults({
+        market: KHANAPARA_MARKET, date: preview.date,
+        ...(preview.fr ? { fr: preview.fr } : {}),
+        ...(preview.sr ? { sr: preview.sr } : {}),
         source_updated_at: preview.source_updated_at,
-      }, { onConflict: "market" });
-      if (saveError) throw saveError;
-      const history = await saveVerifiedResultHistory(KHANAPARA_MARKET, preview.date, preview.fr, preview.sr, "source");
-      const notification = await queueResultPushNotification(KHANAPARA_MARKET, preview.date, preview.fr, preview.sr);
-      return { ...preview, applied: true, history, notification };
+      });
+      return { ...preview, ...applied };
     } catch (error) {
       console.error("Khanapara source sync failed:", error instanceof Error ? error.message : error);
       return { ready: false, status: "source_error" };
@@ -452,6 +581,382 @@ async function syncKhanaparaSourceIfDue(force = false) {
     }
   })();
   return await khanaparaCheckPromise;
+}
+
+
+// Khanapara Morning and Night are separate sessions on the ShillongTeerGrounds page.
+// Never read values from the Evening result block for either session.
+const KHANAPARA_SESSIONS_SOURCE_URL = "https://shillongteergrounds.in/khanapara-teer-result-today/";
+const KHANAPARA_MORNING_MARKET = "Khanapara Morning Teer";
+const KHANAPARA_NIGHT_MARKET = "Khanapara Night Teer";
+
+function parseGroundDate(value: string): string {
+  const match = value.match(/^(\d{2})[.\/-](\d{2})[.\/-](\d{4})$/);
+  if (!match) return "";
+  return match[1] + "/" + match[2] + "/" + match[3];
+}
+
+async function fetchKhanaparaSessionPreview(
+  session: "morning" | "night",
+): Promise<{
+  ready: boolean; status: string; market: string; date?: string;
+  fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
+}> {
+  const market = session === "morning" ? KHANAPARA_MORNING_MARKET : KHANAPARA_NIGHT_MARKET;
+  const response = await fetch(KHANAPARA_SESSIONS_SOURCE_URL, {
+    method: "GET",
+    headers: {
+      "User-Agent": "TeerOnlineResultSync/1.0 (+source verification)",
+      "Accept": "text/html,application/xhtml+xml",
+      "Cache-Control": "no-cache",
+    },
+  });
+  if (!response.ok) throw new Error("Khanapara sessions source returned HTTP " + response.status);
+  const html = await response.text();
+  if (!html || html.length < 1000) throw new Error("Khanapara sessions page was empty or incomplete");
+  const plain = htmlToPlainText(html);
+
+  const heading = session === "morning" ? "Khanapara Morning Result" : "Khanapara Night Result";
+  const nextHeading = session === "morning" ? "Khanapara Night Result" : "DIRECT GROUND CONNECTED";
+  const start = plain.toLowerCase().indexOf(heading.toLowerCase());
+  if (start < 0) {
+    return { ready: false, status: "section_missing", market, source_updated_at: null, source_url: KHANAPARA_SESSIONS_SOURCE_URL };
+  }
+  const endCandidate = plain.toLowerCase().indexOf(nextHeading.toLowerCase(), start + heading.length);
+  const section = plain.slice(start, endCandidate >= 0 ? endCandidate : Math.min(plain.length, start + 2200));
+  const dateMatch = section.match(/Khanapara (?:Morning|Night) Result\s*[-–:]\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})/i);
+  const date = dateMatch ? parseGroundDate(dateMatch[1]) : "";
+  const resultPattern = session === "morning"
+    ? /F\/R\s*\(10:30\s*AM\)\s*\|\s*S\/R\s*\(11:30\s*AM\)\s*(\d{2})\s*\|?\s*(\d{2})?/i
+    : /F\/R\s*\(10:30\s*PM\)\s*\|\s*S\/R\s*\(11:30\s*PM\)\s*(\d{2})\s*\|?\s*(\d{2})?/i;
+  const values = section.match(resultPattern);
+  const fr = values?.[1] && /^\d{2}$/.test(values[1]) ? values[1] : undefined;
+  const sr = values?.[2] && /^\d{2}$/.test(values[2]) ? values[2] : undefined;
+
+  // Do not accept a previous day's cached block as today's live result.
+  const today = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
+  }).format(new Date());
+  const dateIsToday = date === today;
+  if (!dateIsToday || (!fr && !sr)) {
+    return {
+      ready: false, status: dateIsToday ? "awaiting" : "date_not_current",
+      market, ...(date ? { date } : {}), source_updated_at: null,
+      source_url: KHANAPARA_SESSIONS_SOURCE_URL,
+    };
+  }
+  return {
+    ready: true, status: "verified", market, date,
+    ...(fr ? { fr } : {}), ...(sr ? { sr } : {}),
+    source_updated_at: null, source_url: KHANAPARA_SESSIONS_SOURCE_URL,
+  };
+}
+
+async function syncKhanaparaSessionIfDue(session: "morning" | "night") {
+  const market = session === "morning" ? KHANAPARA_MORNING_MARKET : KHANAPARA_NIGHT_MARKET;
+  try {
+    const { data: syncState, error: stateError } = await supabase.from("result_source_sync")
+      .select("last_checked_at").eq("market", market).maybeSingle();
+    if (stateError) throw stateError;
+    const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
+    if (lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
+
+    const checkedAt = new Date().toISOString();
+    const { error: markError } = await supabase.from("result_source_sync")
+      .upsert({ market, last_checked_at: checkedAt }, { onConflict: "market" });
+    if (markError) throw markError;
+
+    let primary: Awaited<ReturnType<typeof fetchKhanaparaSessionPreview>> | null = null;
+    try {
+      primary = await fetchKhanaparaSessionPreview(session);
+      if (primary.ready) {
+        const applied = await applyVerifiedRoundResults({
+          market, date: primary.date!,
+          ...(primary.fr ? { fr: primary.fr } : {}),
+          ...(primary.sr ? { sr: primary.sr } : {}),
+          source_updated_at: primary.source_updated_at,
+        });
+        return { ...primary, source_used: "shillongteergrounds.in", applied };
+      }
+    } catch (error) {
+      console.error("Khanapara " + session + " primary source failed:", error instanceof Error ? error.message : error);
+    }
+
+    let secondary: Awaited<ReturnType<typeof fetchKhanaparaSecondaryPreview>> | null = null;
+    try {
+      secondary = await fetchKhanaparaSecondaryPreview(session);
+      if (secondary.ready) {
+        const applied = await applyVerifiedRoundResults({
+          market, date: secondary.date!,
+          ...(secondary.fr ? { fr: secondary.fr } : {}),
+          ...(secondary.sr ? { sr: secondary.sr } : {}),
+          source_updated_at: secondary.source_updated_at,
+        });
+        return { ...secondary, source_used: "teer-result.com", fallback_from: primary?.status ?? "source_error", applied };
+      }
+    } catch (error) {
+      console.error("Khanapara " + session + " secondary source failed:", error instanceof Error ? error.message : error);
+    }
+
+    try {
+      const tertiary = await fetchKhanaparaTertiaryPreview(session);
+      if (tertiary.ready) {
+        const applied = await applyVerifiedRoundResults({
+          market, date: tertiary.date!,
+          ...(tertiary.fr ? { fr: tertiary.fr } : {}),
+          ...(tertiary.sr ? { sr: tertiary.sr } : {}),
+          source_updated_at: tertiary.source_updated_at,
+        });
+        return {
+          ...tertiary, source_used: "shillongteeresults.com",
+          fallback_from: secondary?.status ?? primary?.status ?? "source_error", applied,
+        };
+      }
+      return {
+        ready: false, status: tertiary.status, market,
+        primary_status: primary?.status ?? "source_error",
+        secondary_status: secondary?.status ?? "source_error",
+        tertiary_status: tertiary.status,
+        tertiary_url: tertiary.source_url,
+      };
+    } catch (error) {
+      console.error("Khanapara " + session + " tertiary source failed:", error instanceof Error ? error.message : error);
+      return {
+        ready: false, status: "all_sources_unavailable", market,
+        primary_status: primary?.status ?? "source_error",
+        secondary_status: secondary?.status ?? "source_error",
+      };
+    }
+  } catch (error) {
+    console.error("Khanapara " + session + " source sync failed:", error instanceof Error ? error.message : error);
+    return { ready: false, status: "source_error", market };
+  }
+}
+
+
+// Secondary source: teer-result.com. Morning has its own named result card.
+// Night is accepted ONLY if this site publishes an explicit Khanapara Night
+// card with the user's exact 10:30 PM / 11:30 PM session times.
+const KHANAPARA_SECONDARY_HOME_URL = "https://teer-result.com/";
+
+async function fetchKhanaparaSecondaryPreview(
+  session: "morning" | "night",
+): Promise<{
+  ready: boolean; status: string; market: string; date?: string;
+  fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
+}> {
+  const market = session === "morning" ? KHANAPARA_MORNING_MARKET : KHANAPARA_NIGHT_MARKET;
+  const response = await fetch(KHANAPARA_SECONDARY_HOME_URL, {
+    method: "GET",
+    headers: {
+      "User-Agent": "TeerOnlineResultSync/1.0 (+secondary result verification)",
+      "Accept": "text/html,application/xhtml+xml",
+      "Cache-Control": "no-cache",
+    },
+  });
+  if (!response.ok) throw new Error("Secondary source returned HTTP " + response.status);
+  const html = await response.text();
+  if (!html || html.length < 1000) throw new Error("Secondary source page was empty or incomplete");
+  const plain = htmlToPlainText(html);
+
+  const heading = session === "morning"
+    ? "Khanapara Morning Result Today"
+    : "Khanapara Night Result Today";
+  const nextHeadings = session === "morning"
+    ? ["Night Teer Result Today", "Night Teer"]
+    : ["Shillong Teer Result Today", "Night Teer Result Today"];
+  const start = plain.toLowerCase().indexOf(heading.toLowerCase());
+  if (start < 0) {
+    return { ready: false, status: "section_missing", market, source_updated_at: null, source_url: KHANAPARA_SECONDARY_HOME_URL };
+  }
+  let end = plain.length;
+  for (const nextHeading of nextHeadings) {
+    const candidate = plain.toLowerCase().indexOf(nextHeading.toLowerCase(), start + heading.length);
+    if (candidate >= 0 && candidate < end) end = candidate;
+  }
+  const section = plain.slice(start, end);
+  const dateMatch = section.match(/Khanapara (?:Morning|Night) Result Today\s+(\d{2}-\d{2}-\d{4})/i);
+  const date = dateMatch ? parseGroundDate(dateMatch[1]) : "";
+  const isMorning = session === "morning";
+  const frTime = isMorning ? "10:30\\s*am" : "10:30\\s*pm";
+  const srTime = isMorning ? "11:30\\s*am" : "11:30\\s*pm";
+  const frMatch = section.match(new RegExp("FR\\s*[·•]?\\s*" + frTime + "\\s*(\\d{2})", "i"));
+  const srMatch = section.match(new RegExp("SR\\s*[·•]?\\s*" + srTime + "\\s*(\\d{2})", "i"));
+  const fr = frMatch?.[1] ?? "";
+  const sr = srMatch?.[1] ?? "";
+
+  const today = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
+  }).format(new Date());
+  const dateIsToday = date === today;
+  const awaiting = /Awaiting today's result/i.test(section);
+  if (!dateIsToday || awaiting || (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr))) {
+    return {
+      ready: false,
+      status: !dateIsToday ? "date_not_current" : awaiting ? "awaiting" : "result_values_missing",
+      market, ...(date ? { date } : {}), source_updated_at: null,
+      source_url: KHANAPARA_SECONDARY_HOME_URL,
+    };
+  }
+  return {
+    ready: true, status: "verified", market, date,
+    ...( /^\d{2}$/.test(fr) ? { fr } : {}),
+    ...( /^\d{2}$/.test(sr) ? { sr } : {}),
+    source_updated_at: null, source_url: KHANAPARA_SECONDARY_HOME_URL,
+  };
+}
+
+
+// Third independent listing with explicitly separated Khanapara Morning/Night cards.
+// The exact Khanapara card heading and round times are required.
+const KHANAPARA_TERTIARY_URL = "https://shillongteeresults.com/khanapara-teer-result-today/";
+
+function monthNameToNumber(value: string): string {
+  const months = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+  const index = months.indexOf(value.toLowerCase());
+  return index >= 0 ? String(index + 1).padStart(2, "0") : "";
+}
+
+async function fetchKhanaparaTertiaryPreview(
+  session: "morning" | "night",
+): Promise<{
+  ready: boolean; status: string; market: string; date?: string;
+  fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
+}> {
+  const market = session === "morning" ? KHANAPARA_MORNING_MARKET : KHANAPARA_NIGHT_MARKET;
+  const response = await fetch(KHANAPARA_TERTIARY_URL, {
+    method: "GET",
+    headers: {
+      "User-Agent": "TeerOnlineResultSync/1.0 (+independent result listing)",
+      "Accept": "text/html,application/xhtml+xml",
+      "Cache-Control": "no-cache",
+    },
+  });
+  if (!response.ok) throw new Error("Third source returned HTTP " + response.status);
+  const html = await response.text();
+  if (!html || html.length < 1000) throw new Error("Third source page was empty or incomplete");
+  const plain = htmlToPlainText(html);
+
+  const heading = session === "morning"
+    ? "Khanapara Morning Teer Result Today"
+    : "Khanapara Night Teer Result Today";
+  const nextHeading = session === "morning"
+    ? "Khanapara Night Teer Result Today"
+    : "Khanapara Night Teer Common";
+  const start = plain.toLowerCase().indexOf(heading.toLowerCase());
+  if (start < 0) {
+    return { ready: false, status: "section_missing", market, source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL };
+  }
+  const endCandidate = plain.toLowerCase().indexOf(nextHeading.toLowerCase(), start + heading.length);
+  const section = plain.slice(start, endCandidate >= 0 ? endCandidate : Math.min(plain.length, start + 2500));
+
+  const dateMatches = Array.from(section.matchAll(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/gi));
+  const dateParts = dateMatches[0];
+  const date = dateParts
+    ? String(dateParts[1]).padStart(2, "0") + "/" + monthNameToNumber(dateParts[2]) + "/" + dateParts[3]
+    : "";
+
+  const frMatch = session === "morning"
+    ? section.match(/FR\s+10:30\s*AM\s+(\d{2})/i)
+    : section.match(/FR\s+10:30\s*PM\s+(\d{2})/i);
+  const srMatch = session === "morning"
+    ? section.match(/SR\s+11:30\s*AM\s+(\d{2})/i)
+    : section.match(/SR\s+11:30\s*PM\s+(\d{2})/i);
+  const fr = frMatch?.[1] ?? "";
+  const sr = srMatch?.[1] ?? "";
+  const today = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
+  }).format(new Date());
+
+  if (!date || (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr))) {
+    return { ready: false, status: "result_values_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL };
+  }
+  if (dateDmyToIso(date) > dateDmyToIso(today)) {
+    return { ready: false, status: "future_date_rejected", market, date, source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL };
+  }
+  return {
+    ready: true, status: "verified", market, date,
+    ...( /^\d{2}$/.test(fr) ? { fr } : {}),
+    ...( /^\d{2}$/.test(sr) ? { sr } : {}),
+    source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL,
+  };
+}
+
+// Shillong Night is a separate 8:30 PM / 9:30 PM market.
+// Read only its dedicated result card; never mix it with the late 11:10 PM Night Teer.
+const SHILLONG_NIGHT_SOURCE_URL = "https://shillongnightteer.me/shillong-night-teer-result";
+
+async function fetchShillongNightSourcePreview(): Promise<{
+  ready: boolean; status: string; market: string; date?: string;
+  fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
+}> {
+  const market = "Shillong Night Teer";
+  const response = await fetch(SHILLONG_NIGHT_SOURCE_URL, {
+    method: "GET",
+    headers: {
+      "User-Agent": "TeerOnlineResultSync/1.0 (+Shillong Night result verification)",
+      "Accept": "text/html,application/xhtml+xml",
+      "Cache-Control": "no-cache",
+    },
+  });
+  if (!response.ok) throw new Error("Shillong Night source returned HTTP " + response.status);
+  const html = await response.text();
+  if (!html || html.length < 1000) throw new Error("Shillong Night source page was empty or incomplete");
+  const plain = htmlToPlainText(html);
+  const heading = "Shillong Night (8:30)";
+  const start = plain.toLowerCase().indexOf(heading.toLowerCase());
+  if (start < 0) {
+    return { ready: false, status: "section_missing", market, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
+  }
+  const nextHeading = plain.toLowerCase().indexOf("night teer result", start + heading.length);
+  const section = plain.slice(start, nextHeading >= 0 ? nextHeading : Math.min(plain.length, start + 1400));
+  const dateMatch = section.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  const date = dateMatch ? dateMatch[1] + "/" + dateMatch[2] + "/" + dateMatch[3] : "";
+  const frMatch = section.match(/F\/R\s*\(08:30\s*PM\)\s*(\d{2})/i);
+  const srMatch = section.match(/S\/R\s*\(09:30\s*PM\)\s*(\d{2})/i);
+  const fr = frMatch?.[1] ?? "";
+  const sr = srMatch?.[1] ?? "";
+  const today = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
+  }).format(new Date());
+  if (date !== today) {
+    return { ready: false, status: date ? "date_not_current" : "date_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
+  }
+  if (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr)) {
+    return { ready: false, status: "awaiting", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
+  }
+  return {
+    ready: true, status: "verified", market, date,
+    ...( /^\d{2}$/.test(fr) ? { fr } : {}),
+    ...( /^\d{2}$/.test(sr) ? { sr } : {}),
+    source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL,
+  };
+}
+
+async function syncShillongNightIfDue(force = false) {
+  const market = "Shillong Night Teer";
+  try {
+    const { data: syncState, error: stateError } = await supabase.from("result_source_sync")
+      .select("last_checked_at").eq("market", market).maybeSingle();
+    if (stateError) throw stateError;
+    const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
+    if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
+    const { error: markError } = await supabase.from("result_source_sync")
+      .upsert({ market, last_checked_at: new Date().toISOString() }, { onConflict: "market" });
+    if (markError) throw markError;
+    const preview = await fetchShillongNightSourcePreview();
+    if (!preview.ready) return preview;
+    const applied = await applyVerifiedRoundResults({
+      market, date: preview.date!,
+      ...(preview.fr ? { fr: preview.fr } : {}),
+      ...(preview.sr ? { sr: preview.sr } : {}),
+      source_updated_at: preview.source_updated_at,
+    });
+    return { ...preview, applied };
+  } catch (error) {
+    console.error("Shillong Night source sync failed:", error instanceof Error ? error.message : error);
+    return { ready: false, status: "source_error", market };
+  }
 }
 
 // Shillong Teer source verification. The source page's current result is accepted
@@ -463,7 +968,7 @@ let shillongCheckPromise: Promise<unknown> | null = null;
 
 type ShillongSourcePreview =
   | { ready: false; status: string; market: string; page_date?: string; source_update_date?: string; previous_date?: string; previous_fr?: string; previous_sr?: string; source_updated_at: string | null; source_url: string }
-  | { ready: true; status: "verified"; market: string; fr: string; sr: string; date: string; source_updated_at: string | null; source_url: string };
+  | { ready: true; status: "verified"; market: string; fr?: string; sr?: string; date: string; source_updated_at: string | null; source_url: string };
 
 async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
   const response = await fetch(SHILLONG_SOURCE_URL, {
@@ -504,28 +1009,23 @@ async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
       ? parsedTimestamp.toISOString()
       : null;
 
-  if (awaiting) {
+  const hasFr = /^[0-9]{2}$/.test(frResult);
+  const hasSr = /^[0-9]{2}$/.test(srResult);
+  const dateVerified = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(updatedIso) && pageDate === dateIsoToDmy(updatedIso);
+  const archiveIsToday = Boolean(archiveRow && archiveRow[1] === dateIsoToDmy(updatedIso));
+  if (!dateVerified || (!hasFr && !hasSr) || (awaiting && !archiveIsToday) ||
+      (archiveIsToday && ((hasFr && archiveRow?.[2] !== frResult) || (hasSr && archiveRow?.[3] !== srResult)))) {
     return {
-      ready: false, status: "awaiting", market: SHILLONG_MARKET,
-      page_date: pageDate, source_update_date: updatedIso,
-      previous_date: archiveRow?.[1] ?? "", previous_fr: archiveRow?.[2] ?? "", previous_sr: archiveRow?.[3] ?? "",
+      ready: false, status: awaiting && !hasFr && !hasSr ? "awaiting" : "not_verified",
+      market: SHILLONG_MARKET, page_date: pageDate, source_update_date: updatedIso,
       source_updated_at: sourceUpdatedAt, source_url: SHILLONG_SOURCE_URL,
     };
   }
-
-  if (!/^\d{2}$/.test(frResult) || !/^\d{2}$/.test(srResult) ||
-      !updatedIso || !archiveRow || archiveRow[1] !== dateIsoToDmy(updatedIso) ||
-      archiveRow[2] !== frResult || archiveRow[3] !== srResult) {
-    return {
-      ready: false, status: "not_verified", market: SHILLONG_MARKET,
-      page_date: pageDate, source_update_date: updatedIso,
-      source_updated_at: sourceUpdatedAt, source_url: SHILLONG_SOURCE_URL,
-    };
-  }
-
   return {
     ready: true, status: "verified", market: SHILLONG_MARKET,
-    fr: frResult, sr: srResult, date: dateIsoToDmy(updatedIso),
+    ...(hasFr ? { fr: frResult } : {}),
+    ...(hasSr ? { sr: srResult } : {}),
+    date: dateIsoToDmy(updatedIso),
     source_updated_at: sourceUpdatedAt, source_url: SHILLONG_SOURCE_URL,
   };
 }
@@ -538,7 +1038,7 @@ async function syncShillongSourceIfDue(force = false) {
         .select("last_checked_at").eq("market", SHILLONG_MARKET).maybeSingle();
       if (stateError) throw stateError;
       const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-      if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
+      if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
 
       const checkedAt = new Date().toISOString();
       const { error: markError } = await supabase.from("result_source_sync")
@@ -579,32 +1079,13 @@ async function syncShillongSourceIfDue(force = false) {
         return preview;
       }
 
-      const { data: current, error: currentError } = await supabase.from("teer_results")
-        .select("market,fr,sr,result_date,updated_by")
-        .eq("market", SHILLONG_MARKET).maybeSingle();
-      if (currentError) throw currentError;
-
-      if (current?.updated_by && current.result_date === preview.date) {
-        return { ...preview, applied: false, reason: "admin_correction_locked" };
-      }
-      if (current?.result_date === preview.date &&
-          current.fr === preview.fr && current.sr === preview.sr) {
-        return { ...preview, applied: false, reason: "already_current" };
-      }
-
-      const { error: saveError } = await supabase.from("teer_results").upsert({
-        market: SHILLONG_MARKET,
-        fr: preview.fr,
-        sr: preview.sr,
-        result_date: preview.date,
-        updated_at: new Date().toISOString(),
-        updated_by: null,
+      const applied = await applyVerifiedRoundResults({
+        market: SHILLONG_MARKET, date: preview.date,
+        ...(preview.fr ? { fr: preview.fr } : {}),
+        ...(preview.sr ? { sr: preview.sr } : {}),
         source_updated_at: preview.source_updated_at,
-      }, { onConflict: "market" });
-      if (saveError) throw saveError;
-      const history = await saveVerifiedResultHistory(SHILLONG_MARKET, preview.date, preview.fr, preview.sr, "source");
-      const notification = await queueResultPushNotification(SHILLONG_MARKET, preview.date, preview.fr, preview.sr);
-      return { ...preview, applied: true, history, notification };
+      });
+      return { ...preview, ...applied };
     } catch (error) {
       console.error("Shillong source sync failed:", error instanceof Error ? error.message : error);
       return { ready: false, status: "source_error" };
@@ -631,10 +1112,14 @@ Deno.serve(async (req) => {
     // persistent result_source_sync row, so repeated public calls cannot
     // cause repeated source fetches inside the five-minute window.
     if (action === "scheduled_result_sync") {
+      const marketOffNotifications = await queueMarketOffPushNotifications();
       const sync = await syncKhanaparaSourceIfDue(false);
+      const khanaparaMorningSync = await syncKhanaparaSessionIfDue("morning");
+      const khanaparaNightSync = await syncKhanaparaSessionIfDue("night");
+      const shillongNightSync = await syncShillongNightIfDue(false);
       const shillongSync = await syncShillongSourceIfDue(false);
       const notifications = await flushResultPushNotifications();
-      return json({ success: true, sync, shillongSync, notifications }, 200, origin);
+      return json({ success: true, marketOffNotifications, sync, khanaparaMorningSync, khanaparaNightSync, shillongNightSync, shillongSync, notifications }, 200, origin);
     }
 
     if (action === "register") {
@@ -792,6 +1277,42 @@ Deno.serve(async (req) => {
       return json({ success: true, result }, 200, origin);
     }
 
+
+    if (action === "my_referrals") {
+      const user = await getSession(req);
+      if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
+      const { data: referred, error: referredError } = await supabase.from("app_users")
+        .select("id,uid,name,phone,created_at")
+        .eq("referred_by_user_id", user.id)
+        .order("created_at", { ascending: false }).limit(500);
+      if (referredError) throw referredError;
+      const referredIds = (referred ?? []).map((row: Record<string, unknown>) => String(row.id));
+      let rewards: Record<string, unknown>[] = [];
+      if (referredIds.length) {
+        const { data, error } = await supabase.from("referral_rewards")
+          .select("referred_user_id,reward_type,amount,created_at")
+          .eq("referrer_user_id", user.id).in("referred_user_id", referredIds);
+        if (error) throw error;
+        rewards = (data ?? []) as Record<string, unknown>[];
+      }
+      const friends = (referred ?? []).map((friend: Record<string, unknown>) => {
+        const earned = rewards.filter(reward => reward.referred_user_id === friend.id);
+        const depositReward = earned.find(reward => reward.reward_type === "deposit_100");
+        const betReward = earned.find(reward => reward.reward_type === "bets_1000");
+        const phone = cleanPhone(friend.phone);
+        return {
+          uid: friend.uid,
+          name: friend.name,
+          maskedPhone: phone.length === 10 ? phone.slice(0, 2) + "••••" + phone.slice(-4) : "—",
+          created_at: friend.created_at,
+          depositReward: depositReward ? Number(depositReward.amount) : 0,
+          betReward: betReward ? Number(betReward.amount) : 0,
+        };
+      });
+      const totalEarned = rewards.reduce((sum, reward) => sum + Number(reward.amount || 0), 0);
+      return json({ success: true, referral_code: user.uid ?? "", total_referrals: friends.length, total_earned: totalEarned, friends }, 200, origin);
+    }
+
     if (action === "my_bets" || action === "my_transactions" ||
         action === "my_deposit_requests" || action === "my_withdrawal_requests") {
       const user = await getSession(req);
@@ -874,35 +1395,66 @@ Deno.serve(async (req) => {
 
     if (action === "public_result_history") {
       const market = String(body.market ?? "").trim();
-      if (![KHANAPARA_MARKET, SHILLONG_MARKET].includes(market)) {
+      if (![KHANAPARA_MARKET, SHILLONG_MARKET, "Shilong Morning Teer", "Khanapara Morning Teer", "Shillong Night Teer", "Khanapara Night Teer"].includes(market)) {
         return json({ error: "Unknown result market" }, 400, origin);
       }
-      const page = Math.max(0, Math.min(9, Number.isInteger(Number(body.page)) ? Number(body.page) : 0));
+      const page = Math.max(0, Math.min(49, Number.isInteger(Number(body.page)) ? Number(body.page) : 0));
       const pageSize = 100;
       const { data, error } = await supabase.from("teer_result_history")
-        .select("id,market,result_date,fr,sr,source,created_at")
+        .select("id,market,result_date,fr,sr,source,created_at,source_updated_at")
         .eq("market", market).order("result_date", { ascending: false })
-        .range(page * pageSize, page * pageSize + pageSize);
+        .range(page * pageSize, page * pageSize + pageSize - 1);
       if (error) throw error;
       const items = data ?? [];
-      const hasMore = items.length > pageSize;
+      const hasMore = items.length === pageSize;
       return json({ success: true, history: items.slice(0, pageSize), has_more: hasMore, page }, 200, origin);
     }
 
     if (action === "public_app_data") {
       await Promise.all([syncKhanaparaSourceIfDue(false), syncShillongSourceIfDue(false)]);
 
-      const [{ data: results, error: resultsError }, { data: settings, error: settingsError }, { data: rounds, error: roundsError }] = await Promise.all([
+      const indiaParts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric" }).formatToParts(new Date());
+      const part = (type: string) => indiaParts.find((item) => item.type === type)?.value ?? "";
+      const todayIso = part("year") + "-" + part("month") + "-" + part("day");
+      const date = part("day") + "/" + part("month") + "/" + part("year");
+      const marketNames = ["Shillong Morning Teer","Khanapara Morning Teer","Shillong Teer (Evening)","Khanapara Teer (Evening)","Shillong Night Teer","Khanapara Night Teer"];
+      const offKeys = marketNames.flatMap((market) => [
+        "market_off:" + market + ":" + todayIso,
+        "market_round_off:" + market + ":" + todayIso + ":FR",
+        "market_round_off:" + market + ":" + todayIso + ":SR",
+      ]);
+      const [{ data: results, error: resultsError }, { data: settings, error: settingsError }, { data: rounds, error: roundsError }, { data: offRows, error: offError }] = await Promise.all([
         supabase.from("teer_results").select("market,fr,sr,result_date,updated_at,source_updated_at"),
         supabase.from("app_settings").select("helpline,deposit_upi,deposit_qr_image,marquee_text,market_schedules").eq("id", 1).maybeSingle(),
         supabase.from("teer_minute_rounds").select("id,result_type,starts_at,ends_at,result_number,result_source,status,published_at").order("starts_at", { ascending: false }).limit(100),
+        supabase.from("broadcast_notifications").select("event_key").in("event_key", offKeys),
       ]);
       if (resultsError) throw resultsError;
       if (settingsError) throw settingsError;
       if (roundsError) throw roundsError;
+      if (offError) throw offError;
       const resultMap: Record<string, unknown> = {};
       for (const row of results ?? []) resultMap[row.market] = { fr: row.fr ?? "**", sr: row.sr ?? "**", date: row.result_date ?? "", updated_at: row.updated_at ?? null, source_updated_at: row.source_updated_at ?? null };
-      return json({ success: true, results: resultMap, settings: settings ?? {}, rounds: rounds ?? [] }, 200, origin);
+      const marketOff: Record<string, boolean> = {};
+      const marketRoundOff: Record<string, { FR?: boolean; SR?: boolean }> = {};
+      for (const row of offRows ?? []) {
+        const key = String(row.event_key ?? "");
+        for (const market of marketNames) {
+          if (key === "market_off:" + market + ":" + todayIso) marketOff[market] = true;
+          for (const round of ["FR", "SR"] as const) {
+            if (key === "market_round_off:" + market + ":" + todayIso + ":" + round) {
+              marketRoundOff[market] = marketRoundOff[market] ?? {};
+              marketRoundOff[market][round] = true;
+            }
+          }
+        }
+      }
+      const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", weekday: "short" }).format(new Date());
+      if (weekday === "Sun") {
+        marketOff["Shillong Teer (Evening)"] = true;
+        marketOff["Khanapara Teer (Evening)"] = true;
+      }
+      return json({ success: true, date, results: resultMap, market_off: marketOff, market_round_off: marketRoundOff, settings: settings ?? {}, rounds: rounds ?? [] }, 200, origin);
     }
 
     if (["admin_dashboard", "admin_save_result", "admin_reset_result", "admin_save_settings", "admin_fetch_source_result"].includes(action)) {
