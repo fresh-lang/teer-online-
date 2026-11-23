@@ -614,9 +614,6 @@
               <button onclick="toggleBlockUser('${u.phone}', ${u.isBlocked || false})" class="px-2 py-1 rounded-lg text-[11px] font-bold ${u.isBlocked ? 'bg-emerald-500 text-black' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'}">
                 ${u.isBlocked ? 'Unblock' : 'Block'}
               </button>
-              <button onclick="adminResetUserPassword('${u.phone}')" class="px-2 py-1 bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/40 rounded-lg text-[11px]">
-                Reset PIN
-              </button>
               <button onclick="openUserModal('${u.phone}')" class="px-2.5 py-1 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/30 rounded-lg text-xs font-bold transition">
                 <i class="fa-solid fa-wallet mr-1"></i> Balance
               </button>
@@ -1150,7 +1147,6 @@
       catch (e) { alert('Reject failed: ' + e.message); }
     }
     function toggleBlockUser() { alert('User blocking is not currently available in the Supabase schema/API. Direct database writes are disabled.'); }
-    function adminResetUserPassword() { alert('Password reset still needs a secure server-side RPC. Password changes from the browser are disabled.'); }
     async function adjustUserBalance(action) {
       const user = activeModalUserPhone ? allUsersCache[activeModalUserPhone] : null;
       if (!user || !user.id) return alert('Please select a valid user.');
