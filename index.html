@@ -2987,15 +2987,10 @@
           refCode = memoryStore.getItem('teer_captured_ref');
         }
 
-        // If the user is already logged in, open the dashboard instead of the registration screen.
-        if (state.user) {
-          return;
-        }
-
-        // Referral visitors first see a clear APK download prompt, with their code preserved.
-        if (refCode && !state.user) {
+        // Referral visitors see the APK download prompt even if this browser already has a logged-in session.
+        if (refCode) {
           const showReferralDownloadPrompt = () => {
-            if (state.user || document.getElementById('teerReferralDownloadOverlay')) return;
+            if (document.getElementById('teerReferralDownloadOverlay')) return;
             const overlay = document.createElement('div');
             overlay.id = 'teerReferralDownloadOverlay';
             overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:20px;font-family:Arial,sans-serif;';
