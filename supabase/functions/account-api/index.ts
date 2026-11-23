@@ -273,7 +273,8 @@ async function queueMarketOffPushNotifications() {
       const monthShort = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", month: "short" }).format(now);
       const dateLong = part("day") + " " + monthLong + " " + part("year");
       const dateShort = part("day") + " " + monthShort + " " + part("year");
-      const dateDot = part("day") + "." + part("month") + "." + part("year");\n      const datePattern = [dateIso, dateDash, date, dateDot, dateLong, dateShort];
+      const dateDot = part("day") + "." + part("month") + "." + part("year");
+      const datePattern = [dateIso, dateDash, date, dateDot, dateLong, dateShort];
       const lowerSection = section.toLowerCase();
       const hasCurrentDate = datePattern.some(value => lowerSection.includes(value.toLowerCase()));
       const explicitOff = /\b(?:off\s+today|today\s+(?:is\s+)?(?:off|a\s+holiday)|holiday\s+today|no\s+game\s+today|market\s+(?:is\s+)?closed\s+today|game\s+is\s+off\s+today|no\s+teer\s+today)\b/i.test(section);
