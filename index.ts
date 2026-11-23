@@ -1711,9 +1711,17 @@ Deno.serve(async (req) => {
       for (const row of offRows ?? []) {
         const key = String(row.event_key ?? "");
         for (const market of marketNames) {
-          if (key === "market_off:" + market + ":" + todayIso) marketOff[market] = true;
+          const current = resultMap[market] as { fr?: string; sr?: string; date?: string } | undefined;
+          const currentDate = String(current?.date ?? "").replaceAll("-", "/");
+          const resultIsToday = currentDate === date;
+          const frPublished = resultIsToday && /^\\d{2}$/.test(String(current?.fr ?? ""));
+          const srPublished = resultIsToday && /^\\d{2}$/.test(String(current?.sr ?? ""));
+          if (key === "market_off:" + market + ":" + todayIso && !frPublished && !srPublished) {
+            marketOff[market] = true;
+          }
           for (const round of ["FR", "SR"] as const) {
-            if (key === "market_round_off:" + market + ":" + todayIso + ":" + round) {
+            const roundHasResult = round === "FR" ? frPublished : srPublished;
+            if (key === "market_round_off:" + market + ":" + todayIso + ":" + round && !roundHasResult) {
               marketRoundOff[market] = marketRoundOff[market] ?? {};
               marketRoundOff[market][round] = true;
             }
