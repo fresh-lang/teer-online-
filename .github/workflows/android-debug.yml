@@ -440,3 +440,25 @@ jobs:
           name: Teer Online APK build ${{ github.run_number }}
           files: teer-online.apk
           make_latest: true
+
+      - name: Post APK update to Telegram channel
+        if: steps.freshness.outputs.publish == 'true' && env.TELEGRAM_BOT_TOKEN != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/apk-${GITHUB_RUN_NUMBER}/teer-online.apk"
+          MESSAGE="📢 TEER ONLINE – NEW UPDATE AVAILABLE!
+
+          Version: 1.0.${GITHUB_RUN_NUMBER}
+
+          ⬇️ Download the latest official APK:
+          ${APK_URL}
+
+          Please install the latest version.
+
+          TEER ONLINE OFFICIAL"
+          curl --fail --silent --show-error --retry 3 \
+            --request POST \
+            --data-urlencode "chat_id=@teerofficiall" \
+            --data-urlencode "text=${MESSAGE}" \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"
