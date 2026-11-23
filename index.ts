@@ -179,6 +179,12 @@ function dateDmyToIso(value: string): string {
   return m ? m[3] + "-" + m[2] + "-" + m[1] : "";
 }
 
+function normalizeResultDateIso(value: string): string {
+  const raw = String(value ?? "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  return dateDmyToIso(raw.replaceAll("-", "/").replaceAll(".", "/"));
+}
+
 async function saveVerifiedResultHistory(market: string, date: string, fr: string, sr: string, source: string, sourceUpdatedAt: string | null = null) {
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date) || !/^\d{2}$/.test(fr) || !/^\d{2}$/.test(sr)) {
     throw new Error("Only complete dated FR/SR pairs can be archived");
@@ -395,11 +401,11 @@ async function syncKhanaparaSourceIfDue(force = false) {
         .eq("market", KHANAPARA_MARKET).maybeSingle();
       if (currentError) throw currentError;
 
-      if (current?.updated_by && current.result_date === preview.date) {
+      const currentDateIso = current?.result_date ? normalizeResultDateIso(String(current.result_date)) : "";
+      const previewDateIso = normalizeResultDateIso(preview.date);
+      if (current?.updated_by && currentDateIso === previewDateIso) {
         return { ...preview, applied: false, reason: "admin_correction_locked" };
       }
-      const currentDateIso = current?.result_date ? dateDmyToIso(String(current.result_date).replaceAll("-", "/")) : "";
-      const previewDateIso = dateDmyToIso(preview.date);
       if (currentDateIso && previewDateIso && currentDateIso > previewDateIso) {
         return { ...preview, applied: false, reason: "older_source_result_ignored" };
       }
