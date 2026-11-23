@@ -1957,6 +1957,9 @@
         let sourceUpdatedLabel = '';
         let detectedAtLabel = '';
         const marketOffToday = !!(window.supabaseMarketOff || {})[m.name];
+        const roundOffToday = (window.supabaseMarketRoundOff || {})[m.name] || {};
+        const frOffToday = marketOffToday || !!roundOffToday.FR;
+        const srOffToday = marketOffToday || !!roundOffToday.SR;
         const storedResult = savedResults[m.name];
         const storedDate = String(storedResult?.date || '').replaceAll('-', '/');
         const resultIsToday = storedDate === dynamicDate;
@@ -1976,6 +1979,10 @@
           };
           sourceUpdatedLabel = formatResultTimestamp(storedResult.source_updated_at);
           detectedAtLabel = formatResultTimestamp(storedResult.updated_at);
+        }
+        if (!marketOffToday) {
+          if (frOffToday) liveFr = 'OFF';
+          if (srOffToday) liveSr = 'OFF';
         }
         const live = { fr: liveFr, sr: liveSr };
         const card = document.createElement('div');
@@ -2026,8 +2033,8 @@
           `;
         }
 
-        const frStatusTag = marketOffToday ? '<span class="text-[9px] bg-rose-100 text-rose-700 px-1 rounded ml-1 font-sans font-bold">OFF</span>' : (frOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>');
-        const srStatusTag = marketOffToday ? '<span class="text-[9px] bg-rose-100 text-rose-700 px-1 rounded ml-1 font-sans font-bold">OFF</span>' : (srOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>');
+        const frStatusTag = frOffToday ? '<span class="text-[9px] bg-rose-100 text-rose-700 px-1 rounded ml-1 font-sans font-bold">OFF</span>' : (frOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>');
+        const srStatusTag = srOffToday ? '<span class="text-[9px] bg-rose-100 text-rose-700 px-1 rounded ml-1 font-sans font-bold">OFF</span>' : (srOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>');
 
         card.innerHTML = `
           <div class="flex justify-between items-center">
@@ -3714,6 +3721,7 @@
         const data = await accountApi('public_app_data', {}, false);
         window.supabaseResults = data.results || {};
         window.supabaseMarketOff = data.market_off || {};
+        window.supabaseMarketRoundOff = data.market_round_off || {};
         window.teerResultHistory = Array.isArray(data.history) ? data.history : [];
         state.teerPlayRounds = Array.isArray(data.rounds) ? data.rounds : [];
         renderTeerPlayRoundIds();
