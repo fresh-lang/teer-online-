@@ -4086,29 +4086,6 @@
       </div>
     </div>
 
-  <script>
-    // The biometric bridge is also native-only; website visitors should not
-    // execute the raw source file containing package imports.
-    window.__teerBiometricBridgeReady = Promise.resolve(false);
-    const isTeerNativeBiometricHost = (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) || window.location.hostname === 'localhost' || window.location.protocol === 'capacitor:';
-    if (isTeerNativeBiometricHost) {
-      window.__teerBiometricBridgeReady = new Promise((resolve) => {
-        const script = document.createElement('script');
-        // biometric-bridge.js is built as an IIFE bundle, so load it as a
-        // classic script. This is more reliable in Android WebView than module scripts.
-        script.src = new URL('biometric-bridge.js', document.baseURI).href;
-        script.onload = () => {
-          const bridgeReady = !!(window.TeerBiometricBridge && typeof window.TeerBiometricBridge.authenticateDeviceCredential === 'function' && typeof window.TeerBiometricBridge.authenticate === 'function');
-          if (!bridgeReady) console.error('Biometric bridge loaded but required unlock methods are missing:', script.src);
-          resolve(bridgeReady);
-        };
-        script.onerror = (error) => {
-          console.error('Biometric bridge failed to load:', script.src, error);
-          resolve(false);
-        };
-        document.head.appendChild(script);
-      });
-    }
-  </script>
+  
 </body>
 </html>
