@@ -293,24 +293,8 @@ jobs:
                       return;
                   }
 
-                  // Prefer Android's dedicated device-credential screen. This opens
-                  // the configured Pattern/PIN/Password directly, without asking
-                  // for a fingerprint first.
-                  try {
-                      Intent credentialIntent = keyguard.createConfirmDeviceCredentialIntent(
-                          "Unlock Teer Online",
-                          "Enter your phone Pattern, PIN or Password"
-                      );
-                      if (credentialIntent != null) {
-                          startActivityForResult(call, credentialIntent, "deviceCredentialResult");
-                          return;
-                      }
-                  } catch (Exception e) {
-                      android.util.Log.w("TeerDeviceCredential", "Direct device credential screen unavailable; trying BiometricPrompt", e);
-                  }
-
-                  // Android 11+ fallback for devices where Keyguard does not
-                  // provide a confirmation intent.
+                  // Android 11+ must use BiometricPrompt with DEVICE_CREDENTIAL.
+                  // Avoid the deprecated Keyguard confirmation intent on Android 11–15.
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                       try {
                           BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
@@ -342,7 +326,20 @@ jobs:
                       return;
                   }
 
-                  call.reject("Android could not open the phone screen-lock prompt. Check that Pattern, PIN or Password is enabled.");
+                  // Android 5–10: use the system's dedicated Pattern/PIN/Password screen.
+                  try {
+                      Intent credentialIntent = keyguard.createConfirmDeviceCredentialIntent(
+                          "Unlock Teer Online",
+                          "Enter your phone Pattern, PIN or Password"
+                      );
+                      if (credentialIntent != null) {
+                          startActivityForResult(call, credentialIntent, "deviceCredentialResult");
+                      } else {
+                          call.reject("Android did not provide the phone screen-lock prompt. Check that Pattern, PIN or Password is enabled.");
+                      }
+                  } catch (Exception e) {
+                      call.reject("Could not open the phone Pattern / PIN / Password screen: " + e.getMessage(), e);
+                  }
               }
 
               @ActivityCallback
