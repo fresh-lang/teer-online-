@@ -1134,7 +1134,8 @@
     // Native-only bridges are bundled by the Android build. Do not load their
     // unbundled ES-module source files on the public website.
     window.__teerNativeBridgesReady = Promise.resolve(false);
-    if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
+    const isTeerNativeBridgeHost = (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) || window.location.hostname === 'localhost' || window.location.protocol === 'capacitor:';
+    if (isTeerNativeBridgeHost) {
       window.__teerNativeBridgesReady = new Promise((resolve) => {
         const files = ['./onesignal-bridge.js', './update-bridge.js', './native-back-bridge.js'];
         let index = 0;
@@ -4216,7 +4217,8 @@
     // The biometric bridge is also native-only; website visitors should not
     // execute the raw source file containing package imports.
     window.__teerBiometricBridgeReady = Promise.resolve(false);
-    if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
+    const isTeerNativeBiometricHost = (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) || window.location.hostname === 'localhost' || window.location.protocol === 'capacitor:';
+    if (isTeerNativeBiometricHost) {
       window.__teerBiometricBridgeReady = new Promise((resolve) => {
         const script = document.createElement('script');
         script.src = './biometric-bridge.js';
