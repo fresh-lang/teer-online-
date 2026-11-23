@@ -707,7 +707,7 @@
     function viewFullReceipt(depId) {
       const d = allDepositsCache[depId];
       if (!d || !d.screenshot) return;
-      document.getElementById('receiptUserMeta').innerText = `User: ${d.name} (${d.phone}) | Amount: ₹${d.amount} | UTR: ${escapeHtml(d.utr)}`;
+      document.getElementById('receiptUserMeta').innerText = `User: ${d.name} (${d.phone}) | Amount: ₹${d.amount} | UTR: ${d.utr}`;
       document.getElementById('fullReceiptImg').src = d.screenshot;
       document.getElementById('receiptViewerModal').classList.remove('hidden');
     }
@@ -747,7 +747,7 @@
             <td class="p-2.5 font-black text-amber-300 text-sm">₹${d.amount}</td>
             <td class="p-2.5">
               <div class="font-mono text-xs font-bold text-teal-200 bg-black/40 px-2 py-1 rounded-lg border border-teal-800/50 inline-block">
-                ${d.utr}
+                ${escapeHtml(d.utr)}
               </div>
               <div class="text-[9px] ${utrValid ? 'text-emerald-400' : 'text-rose-400'} mt-0.5">
                 ${utrValid ? '● UTR Valid (12-Digit)' : '⚠️ Check UTR Length'}
