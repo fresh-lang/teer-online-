@@ -362,6 +362,7 @@ async function flushResultPushNotifications() {
 
   let sent = 0;
   let failed = 0;
+  let suppressed = 0;
   for (const item of pending ?? []) {
     const { data: claimed, error: claimError } = await supabase.from("broadcast_notifications")
       .update({ status: "sending", error_message: null })
@@ -374,6 +375,35 @@ async function flushResultPushNotifications() {
       continue;
     }
     if (!claimed) continue;
+
+    // Revalidate pending OFF alerts immediately before delivery. A result may
+    // have arrived after the OFF item was queued in an earlier cron cycle.
+    const eventKey = String(item.event_key ?? "");
+    const fullOffMatch = eventKey.match(/^market_off:(.+):(\\d{4}-\\d{2}-\\d{2})$/);
+    const roundOffMatch = eventKey.match(/^market_round_off:(.+):(\\d{4}-\\d{2}-\\d{2}):(FR|SR)$/);
+    if (fullOffMatch || roundOffMatch) {
+      const market = fullOffMatch?.[1] ?? roundOffMatch?.[1] ?? "";
+      const eventDate = fullOffMatch?.[2] ?? roundOffMatch?.[2] ?? "";
+      const { data: currentResult, error: resultError } = await supabase.from("teer_results")
+        .select("fr,sr,result_date").eq("market", market).maybeSingle();
+      if (resultError) throw resultError;
+      const savedDate = String(currentResult?.result_date ?? "");
+      const savedDateIso = savedDate.includes("/") ? dateDmyToIso(savedDate) : savedDate;
+      const sameDate = savedDateIso === eventDate;
+      const frPublished = sameDate && /^\\d{2}$/.test(String(currentResult?.fr ?? ""));
+      const srPublished = sameDate && /^\\d{2}$/.test(String(currentResult?.sr ?? ""));
+      const staleOff = fullOffMatch
+        ? frPublished || srPublished
+        : roundOffMatch?.[3] === "FR" ? frPublished : srPublished;
+      if (staleOff) {
+        await supabase.from("broadcast_notifications").update({
+          status: "failed",
+          error_message: "Suppressed before delivery: a result for this market and date is already published.",
+        }).eq("id", item.id).eq("status", "sending");
+        suppressed++;
+        continue;
+      }
+    }
 
     try {
       const response = await fetch("https://api.onesignal.com/notifications", {
@@ -427,7 +457,7 @@ async function flushResultPushNotifications() {
       failed++;
     }
   }
-  return { configured: true, sent, failed, remaining: Math.max(0, (pending?.length ?? 0) - sent - failed) };
+  return { configured: true, sent, failed, suppressed, remaining: Math.max(0, (pending?.length ?? 0) - sent - failed - suppressed) };
 }
 
 async function saveVerifiedResultHistory(market: string, date: string, fr: string, sr: string, source: "source" | "admin", sourceUpdatedAt: string | null = null) {
