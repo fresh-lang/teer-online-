@@ -230,6 +230,7 @@ jobs:
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   registerPlugin(TeerAppUpdaterPlugin.class);
+                  registerPlugin(TeerDeviceCredentialPlugin.class);
                   super.onCreate(savedInstanceState);
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                       final String channelId = "teer_results_sound_v6";
@@ -256,6 +257,59 @@ jobs:
               }
           }
           JAVA
+          cat > android/app/src/main/java/com/freshlang/teeronline/TeerDeviceCredentialPlugin.java <<'JAVA'
+          package com.freshlang.teeronline;
+
+          import androidx.biometric.BiometricManager;
+          import androidx.biometric.BiometricPrompt;
+          import androidx.core.content.ContextCompat;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+
+          @CapacitorPlugin(name = "TeerDeviceCredential")
+          public class TeerDeviceCredentialPlugin extends Plugin {
+              @PluginMethod
+              public void authenticate(PluginCall call) {
+                  int authenticators = BiometricManager.Authenticators.DEVICE_CREDENTIAL;
+                  int availability = BiometricManager.from(getContext()).canAuthenticate(authenticators);
+                  if (availability != BiometricManager.BIOMETRIC_SUCCESS) {
+                      call.reject("Phone screen lock is not available. Set a Pattern, PIN or Password in Android Settings.");
+                      return;
+                  }
+                  getActivity().runOnUiThread(() -> {
+                      BiometricPrompt prompt = new BiometricPrompt(
+                          getActivity(),
+                          ContextCompat.getMainExecutor(getContext()),
+                          new BiometricPrompt.AuthenticationCallback() {
+                              @Override
+                              public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
+                                  call.resolve();
+                              }
+                              @Override
+                              public void onAuthenticationError(int errorCode, CharSequence errString) {
+                                  call.reject(errString == null ? "Device credential authentication cancelled." : errString.toString());
+                              }
+                          }
+                      );
+                      BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
+                          .setTitle("Unlock Teer Online")
+                          .setSubtitle("Enter your phone Pattern, PIN or Password")
+                          .setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                          .build();
+                      prompt.authenticate(info);
+                  });
+              }
+          }
+          JAVA
+          cat >> android/app/build.gradle <<'GRADLE'
+
+          dependencies {
+              implementation 'androidx.biometric:biometric:1.1.0'
+          }
+          GRADLE
+
           cat >> android/app/build.gradle <<'GRADLE'
 
           // Use the verified persistent keystore for every debug APK build.
