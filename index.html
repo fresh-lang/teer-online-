@@ -1650,17 +1650,16 @@
       if (document.getElementById('teerBiometricLockScreen')) return;
       const bridge = window.TeerBiometricBridge;
       if (!bridge) { localStorage.removeItem('teer_biometric_enabled'); return; }
-      // Do not require enrolled biometrics here: Android device credentials
-      // may still be available through allowDeviceCredential in the native prompt.
+      // Use Android's system prompt: enrolled biometrics first, with the
+      // device PIN/pattern/password available as the system fallback.
       const overlay = document.createElement('div');
       overlay.id = 'teerBiometricLockScreen';
       overlay.style.cssText = 'position:fixed;inset:0;z-index:200000;background:#004347;display:flex;align-items:center;justify-content:center;padding:28px;color:white;font-family:Arial,sans-serif;';
       overlay.innerHTML = `
         <div style="width:100%;max-width:430px;text-align:center">
           <img src="./logo.png" alt="Teer Online" style="display:block;width:100%;max-width:300px;max-height:210px;object-fit:contain;margin:0 auto 22px">
-          <div style="font-size:17px;color:#d7f4f0;margin-bottom:52px">Unlock with fingerprint or face</div>
-          <button id="teerBiometricUnlock" style="width:100%;padding:20px 14px;border:0;border-radius:25px;background:#fff;color:#06484b;font-size:20px;font-weight:800;margin-bottom:18px">👆 Unlock now</button>
-          <button id="teerPasswordFallback" style="width:100%;padding:20px 14px;border:0;border-radius:25px;background:#386e72;color:#fff;font-size:17px;font-weight:700">Use Phone PIN / Pattern / Password</button>
+          <div style="font-size:17px;color:#d7f4f0;margin-bottom:52px">Unlock with fingerprint, face or phone screen lock</div>
+          <button id="teerBiometricUnlock" style="width:100%;padding:20px 14px;border:0;border-radius:25px;background:#fff;color:#06484b;font-size:20px;font-weight:800">🔓 Unlock now</button>
           <div id="teerBiometricError" style="font-size:13px;color:#ffd8a8;margin-top:14px;min-height:18px"></div>
         </div>`;
       document.body.appendChild(overlay);
@@ -1668,17 +1667,13 @@
       unlock.addEventListener('click', async () => {
         unlock.disabled = true;
         unlock.textContent = 'Please wait…';
-        try { await bridge.authenticate(); overlay.remove(); }
-        catch (error) {
-          overlay.querySelector('#teerBiometricError').textContent = 'Unlock cancelled or not recognized. Try again or use password.';
-          unlock.textContent = '👆 Unlock now';
+        try {
+          await bridge.authenticate();
+          overlay.remove();
+        } catch (error) {
+          overlay.querySelector('#teerBiometricError').textContent = 'Unlock cancelled. Try again.';
+          unlock.textContent = '🔓 Unlock now';
           unlock.disabled = false;
-        }
-      });
-      overlay.querySelector('#teerPasswordFallback').addEventListener('click', async () => {
-        try { await bridge.authenticate(); overlay.remove(); }
-        catch (error) {
-          overlay.querySelector('#teerBiometricError').textContent = 'Phone PIN/Pattern/Password was cancelled. Try again.';
         }
       });
       unlock.click();
