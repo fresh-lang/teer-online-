@@ -1647,6 +1647,7 @@
     }
 
     async function showTeerBiometricLock() {
+      if (document.getElementById('teerBiometricLockScreen')) return;
       const bridge = window.TeerBiometricBridge;
       if (!bridge) { localStorage.removeItem('teer_biometric_enabled'); return; }
       const info = await bridge.check().catch(() => ({ isAvailable: false }));
@@ -1696,6 +1697,22 @@
         } else {
           await offerTeerBiometricSetup();
         }
+      }
+      // Re-lock whenever the Android app returns from the background.
+      let teerWasBackgrounded = false;
+      if (isNativeTeerApp && window.TeerBiometricBridge && window.TeerBiometricBridge.onAppStateChange) {
+        window.TeerBiometricBridge.onAppStateChange(async (isActive) => {
+          if (!isActive) {
+            teerWasBackgrounded = true;
+            return;
+          }
+          if (teerWasBackgrounded) {
+            teerWasBackgrounded = false;
+            if (state.user && localStorage.getItem('teer_biometric_enabled') === '1') {
+              await showTeerBiometricLock();
+            }
+          }
+        });
       }
       // Restore the active server session after a page refresh.
       // Paint market cards immediately; restore account data without blocking the first screen.
