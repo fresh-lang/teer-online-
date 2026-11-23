@@ -173,6 +173,30 @@ function dateIsoToDmy(value: string): string {
   return m ? m[3] + "/" + m[2] + "/" + m[1] : "";
 }
 
+function dateDmyToIso(value: string): string {
+  const m = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? m[3] + "-" + m[2] + "-" + m[1] : "";
+}
+
+async function saveVerifiedResultHistory(market: string, date: string, fr: string, sr: string, source: "source" | "admin") {
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date) || !/^\d{2}$/.test(fr) || !/^\d{2}$/.test(sr)) {
+    throw new Error("Only complete dated FR/SR pairs can be archived");
+  }
+  const resultDate = dateDmyToIso(date);
+  const { data: existing, error: existingError } = await supabase.from("teer_result_history")
+    .select("id,fr,sr,source").eq("market", market).eq("result_date", resultDate).maybeSingle();
+  if (existingError) throw existingError;
+  if (existing?.source === "admin") return { saved: false, reason: "admin_history_locked" };
+  if (existing && /^\d{2}$/.test(String(existing.fr ?? "")) && /^\d{2}$/.test(String(existing.sr ?? ""))) {
+    return { saved: false, reason: "date_already_archived" };
+  }
+  const { error } = await supabase.from("teer_result_history").upsert({
+    market, result_date: resultDate, fr, sr, source
+  }, { onConflict: "market,result_date" });
+  if (error) throw error;
+  return { saved: true, repaired_incomplete: Boolean(existing) };
+}
+
 type KhanaparaSourcePreview =
   | { ready: false; status: string; market: string; page_date?: string; source_update_date?: string; previous_date?: string; previous_fr?: string; previous_sr?: string; source_updated_at: string | null; source_url: string }
   | { ready: true; status: "verified"; market: string; fr: string; sr: string; date: string; source_updated_at: string | null; source_url: string };
@@ -313,7 +337,8 @@ async function syncKhanaparaSourceIfDue(force = false) {
         source_updated_at: preview.source_updated_at,
       }, { onConflict: "market" });
       if (saveError) throw saveError;
-      return { ...preview, applied: true };
+      const history = await saveVerifiedResultHistory(KHANAPARA_MARKET, preview.date, preview.fr, preview.sr, "source");
+      return { ...preview, applied: true, history };
     } catch (error) {
       console.error("Khanapara source sync failed:", error instanceof Error ? error.message : error);
       return { ready: false, status: "source_error" };
@@ -471,7 +496,8 @@ async function syncShillongSourceIfDue(force = false) {
         source_updated_at: preview.source_updated_at,
       }, { onConflict: "market" });
       if (saveError) throw saveError;
-      return { ...preview, applied: true };
+      const history = await saveVerifiedResultHistory(SHILLONG_MARKET, preview.date, preview.fr, preview.sr, "source");
+      return { ...preview, applied: true, history };
     } catch (error) {
       console.error("Shillong source sync failed:", error instanceof Error ? error.message : error);
       return { ready: false, status: "source_error" };
@@ -738,6 +764,23 @@ Deno.serve(async (req) => {
       return json({ success: true, result }, 200, origin);
     }
 
+    if (action === "public_result_history") {
+      const market = String(body.market ?? "").trim();
+      if (![KHANAPARA_MARKET, SHILLONG_MARKET].includes(market)) {
+        return json({ error: "Unknown result market" }, 400, origin);
+      }
+      const page = Math.max(0, Math.min(9, Number.isInteger(Number(body.page)) ? Number(body.page) : 0));
+      const pageSize = 100;
+      const { data, error } = await supabase.from("teer_result_history")
+        .select("id,market,result_date,fr,sr,source,created_at")
+        .eq("market", market).order("result_date", { ascending: false })
+        .range(page * pageSize, page * pageSize + pageSize);
+      if (error) throw error;
+      const items = data ?? [];
+      const hasMore = items.length > pageSize;
+      return json({ success: true, history: items.slice(0, pageSize), has_more: hasMore, page }, 200, origin);
+    }
+
     if (action === "public_app_data") {
       await Promise.all([syncKhanaparaSourceIfDue(false), syncShillongSourceIfDue(false)]);
 
@@ -806,6 +849,10 @@ Deno.serve(async (req) => {
         }
         const { error } = await supabase.from("teer_results").upsert({ market, fr, sr, result_date: resultDate, updated_at: new Date().toISOString(), updated_by: admin.id, source_updated_at: null }, { onConflict: "market" });
         if (error) throw error;
+        if (action === "admin_save_result" && [KHANAPARA_MARKET, SHILLONG_MARKET].includes(market) &&
+            /^\d{2}$/.test(fr) && /^\d{2}$/.test(sr)) {
+          await saveVerifiedResultHistory(market, resultDate!, fr, sr, "admin");
+        }
         const settlements: unknown[] = [];
         if (action === "admin_save_result") {
           for (const [round, resultNumber] of [["FR", fr], ["SR", sr]] as const) {
