@@ -149,7 +149,7 @@ async function requireAdmin(user: Record<string, unknown> | null) {
 
 // Khanapara Teer source verification. The source page's current result is accepted
 // only when its FR/SR pair matches the newest archive row and the page update date.
-const KHANAPARA_SOURCE_URL = "https://teer-result.com/khanapara-teer-result/";
+const KHANAPARA_SOURCE_URL = "https://shillongteergrounds.in/";
 const KHANAPARA_MARKET = "Khanapara Teer (Evening)";
 let khanaparaLastCheckAt = 0;
 let khanaparaCheckPromise: Promise<unknown> | null = null;
@@ -232,10 +232,10 @@ async function queueMarketOffPushNotifications() {
   // Accept a non-Sunday OFF only when the exact market page explicitly says
   // OFF/holiday for today's date. Awaiting, stale dates and fetch errors are not OFF.
   const sourceChecks = [
-    { market: "Shillong Morning Teer", heading: "Shillong Morning Teer Result Today", url: "https://teer-result.com/shillong-morning-teer-result/", frTime: "10:30 AM", srTime: "11:30 AM" },
+    { market: "Shillong Morning Teer", heading: "Shillong Morning Result", url: "https://shillongteergrounds.in/", frTime: "10:30 AM", srTime: "11:30 AM", verifyTimes: true },
     { market: "Khanapara Morning Teer", heading: "Khanapara Morning Teer Result Today", url: "https://teer-result.com/khanapara-morning-teer-result/", frTime: "10:30 AM", srTime: "11:30 AM" },
-    { market: "Shillong Teer (Evening)", heading: "Shillong Teer Result Today", url: "https://teer-result.com/shillong-teer-result/", frTime: "03:15 PM", srTime: "04:15 PM" },
-    { market: "Khanapara Teer (Evening)", heading: "Khanapara Teer Result Today", url: "https://teer-result.com/khanapara-teer-result/", frTime: "04:10 PM", srTime: "04:45 PM" },
+    { market: "Shillong Teer (Evening)", heading: "Shillong Teer Result", url: "https://shillongteergrounds.in/", frTime: "03:15 PM", srTime: "04:15 PM", verifyTimes: true },
+    { market: "Khanapara Teer (Evening)", heading: "Khanapara Teer Result", url: "https://shillongteergrounds.in/", frTime: "04:10 PM", srTime: "04:45 PM", verifyTimes: true },
     { market: "Shillong Night Teer", heading: "Shillong Night Teer Result Today", url: "https://teer-result.com/shillong-night-teer-result/", frTime: "08:30 PM", srTime: "09:30 PM" },
     { market: "Khanapara Night Teer", heading: "Khanapara Night Teer Result Today", url: "https://shillongnighteer.com/khanapara-teer-result-today/", frTime: "10:30 PM", srTime: "11:30 PM", verifyTimes: true },
   ];
@@ -273,7 +273,7 @@ async function queueMarketOffPushNotifications() {
       const monthShort = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", month: "short" }).format(now);
       const dateLong = part("day") + " " + monthLong + " " + part("year");
       const dateShort = part("day") + " " + monthShort + " " + part("year");
-      const datePattern = [dateIso, dateDash, date, dateLong, dateShort];
+      const dateDot = part("day") + "." + part("month") + "." + part("year");\n      const datePattern = [dateIso, dateDash, date, dateDot, dateLong, dateShort];
       const lowerSection = section.toLowerCase();
       const hasCurrentDate = datePattern.some(value => lowerSection.includes(value.toLowerCase()));
       const explicitOff = /\b(?:off\s+today|today\s+(?:is\s+)?(?:off|a\s+holiday)|holiday\s+today|no\s+game\s+today|market\s+(?:is\s+)?closed\s+today|game\s+is\s+off\s+today|no\s+teer\s+today)\b/i.test(section);
@@ -478,64 +478,65 @@ type KhanaparaSourcePreview =
   | { ready: false; status: string; market: string; page_date?: string; source_update_date?: string; previous_date?: string; previous_fr?: string; previous_sr?: string; source_updated_at: string | null; source_url: string }
   | { ready: true; status: "verified"; market: string; fr?: string; sr?: string; date: string; source_updated_at: string | null; source_url: string };
 
-async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
-  const response = await fetch(KHANAPARA_SOURCE_URL, {
+function parseGroundsMarketCard(
+  plain: string, market: string, heading: string, frTime: string, srTime: string,
+) {
+  const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const token = "(\\d{2}|off|soon|pending|awaiting|--|xx)";
+  const pattern = new RegExp(
+    escapePattern(heading) +
+      "\\s*[-–:]\\s*(\\d{2}[.\\/-]\\d{2}[.\\/-]\\d{4})" +
+      "[\\s\\S]{0,1600}?F\\/R\\s*\\(" + escapePattern(frTime) +
+      "\\)\\s*\\|\\s*S\\/R\\s*\\(" + escapePattern(srTime) +
+      "\\)\\s*" + token + "\\s*\\|\\s*" + token,
+    "i",
+  );
+  const card = plain.match(pattern);
+  const sourceUrl = "https://shillongteergrounds.in/";
+  if (!card) {
+    return { ready: false as const, status: "live_card_not_found", market, source_updated_at: null, source_url: sourceUrl };
+  }
+  const date = parseGroundDate(card[1]);
+  const frValue = card[2].toLowerCase();
+  const srValue = card[3].toLowerCase();
+  const today = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
+  }).format(new Date());
+  if (date !== today) {
+    return { ready: false as const, status: date ? "date_not_current" : "date_missing", market, ...(date ? { page_date: date } : {}), source_updated_at: null, source_url: sourceUrl };
+  }
+  if (frValue === "off" && srValue === "off") {
+    return { ready: false as const, status: "off", market, page_date: date, source_updated_at: null, source_url: sourceUrl };
+  }
+  const fr = /^\\d{2}$/.test(frValue) ? frValue : undefined;
+  const sr = /^\\d{2}$/.test(srValue) ? srValue : undefined;
+  if (!fr && !sr) {
+    return { ready: false as const, status: "awaiting", market, page_date: date, source_updated_at: null, source_url: sourceUrl };
+  }
+  return { ready: true as const, status: "verified" as const, market, date, ...(fr ? { fr } : {}), ...(sr ? { sr } : {}), source_updated_at: null, source_url: sourceUrl };
+}
+
+async function fetchGroundsMarketPreview(
+  market: string, heading: string, frTime: string, srTime: string,
+) {
+  const response = await fetch("https://shillongteergrounds.in/", {
     method: "GET",
     headers: {
-      "User-Agent": "TeerOnlineResultSync/1.0 (+source verification)",
+      "User-Agent": "TeerOnlineResultSync/1.0 (+market result verification)",
       "Accept": "text/html,application/xhtml+xml",
       "Cache-Control": "no-cache",
     },
   });
-  if (!response.ok) throw new Error("Source website returned HTTP " + response.status);
+  if (!response.ok) throw new Error("ShillongTeerGrounds source returned HTTP " + response.status);
   const html = await response.text();
-  if (!html || html.length < 1000) throw new Error("Source page content was empty or incomplete");
+  if (!html || html.length < 1000) throw new Error("ShillongTeerGrounds source page was empty or incomplete");
+  return parseGroundsMarketCard(htmlToPlainText(html), market, heading, frTime, srTime);
+}
 
-  const plain = htmlToPlainText(html);
-  const updatedMatch = plain.match(/Updated\s+(\d{4}-\d{2}-\d{2})/i);
-  const pageDateMatch = plain.match(/Khanapara Teer Result Today\s+(\d{2}-\d{2}-\d{4})/i);
-  const updatedIso = updatedMatch?.[1] ?? "";
-  const pageDate = pageDateMatch?.[1] ?? "";
-  const awaiting = /Awaiting today's result/i.test(plain.slice(0, 6000));
-
-  const archiveStart = plain.toLowerCase().indexOf("khanapara teer previous result list");
-  const archiveText = archiveStart >= 0 ? plain.slice(archiveStart) : "";
-  const archiveRow = archiveText.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2})\s+(\d{2})/);
-  const topText = archiveStart >= 0 ? plain.slice(0, archiveStart) : plain.slice(0, 9000);
-  const frMatch = topText.match(/FR\s*[·•]?\s*4:15\s*pm\s*(\d{2})/i);
-  const srMatch = topText.match(/SR\s*[·•]?\s*5:00\s*pm\s*(\d{2})/i);
-  const frResult = frMatch?.[1] ?? "";
-  const srResult = srMatch?.[1] ?? "";
-
-  const jsonLdModified = html.match(/"dateModified"\s*:\s*"([^"]+)"/i)?.[1] ?? "";
-  const metaModified = html.match(/<meta[^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
-    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["']/i)?.[1] ?? "";
-  const candidateTimestamp = [jsonLdModified, metaModified].find((value) => /T\d{2}:\d{2}/i.test(value)) ?? "";
-  const parsedTimestamp = candidateTimestamp ? new Date(candidateTimestamp) : null;
-  const sourceUpdatedAt = parsedTimestamp && Number.isFinite(parsedTimestamp.getTime()) &&
-    parsedTimestamp.toISOString().slice(0, 10) === updatedIso
-      ? parsedTimestamp.toISOString()
-      : null;
-
-  const hasFr = /^[0-9]{2}$/.test(frResult);
-  const hasSr = /^[0-9]{2}$/.test(srResult);
-  const dateVerified = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(updatedIso) && pageDate === dateIsoToDmy(updatedIso);
-  const archiveIsToday = Boolean(archiveRow && archiveRow[1] === dateIsoToDmy(updatedIso));
-  if (!dateVerified || (!hasFr && !hasSr) || (awaiting && !archiveIsToday) ||
-      (archiveIsToday && ((hasFr && archiveRow?.[2] !== frResult) || (hasSr && archiveRow?.[3] !== srResult)))) {
-    return {
-      ready: false, status: awaiting && !hasFr && !hasSr ? "awaiting" : "not_verified",
-      market: KHANAPARA_MARKET, page_date: pageDate, source_update_date: updatedIso,
-      source_updated_at: sourceUpdatedAt, source_url: KHANAPARA_SOURCE_URL,
-    };
-  }
-  return {
-    ready: true, status: "verified", market: KHANAPARA_MARKET,
-    ...(hasFr ? { fr: frResult } : {}),
-    ...(hasSr ? { sr: srResult } : {}),
-    date: dateIsoToDmy(updatedIso),
-    source_updated_at: sourceUpdatedAt, source_url: KHANAPARA_SOURCE_URL,
-  };
+async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
+  return await fetchGroundsMarketPreview(
+    KHANAPARA_MARKET, "Khanapara Teer Result", "04:10 PM", "04:45 PM",
+  ) as KhanaparaSourcePreview;
 }
 
 async function syncKhanaparaSourceIfDue(force = false) {
@@ -912,43 +913,9 @@ async function fetchShillongMorningSourcePreview(): Promise<{
   ready: boolean; status: string; market: string; date?: string;
   fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
 }> {
-  const response = await fetch(SHILLONG_MORNING_SOURCE_URL, {
-    method: "GET",
-    headers: {
-      "User-Agent": "TeerOnlineResultSync/1.0 (+Shillong Morning result verification)",
-      "Accept": "text/html,application/xhtml+xml",
-      "Cache-Control": "no-cache",
-    },
-  });
-  if (!response.ok) throw new Error("Shillong Morning source returned HTTP " + response.status);
-  const html = await response.text();
-  if (!html || html.length < 1000) throw new Error("Shillong Morning source page was empty or incomplete");
-
-  const plain = htmlToPlainText(html);
-  // Match the date-bearing live result card itself. The page contains several
-  // other mentions of "Shillong Morning Result" before/after the live card.
-  const card = plain.match(/Shillong Morning Result\s*[-–:]\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})[\s\S]{0,5000}?F\/R\s*\(10:30\s*AM\)\s*\|\s*S\/R\s*\(11:30\s*AM\)\s*(\d{2}|soon|pending|awaiting|off|--|xx)\s*\|\s*(\d{2}|soon|pending|awaiting|off|--|xx)/i);
-  if (!card) {
-    return { ready: false, status: "live_card_not_found", market: SHILLONG_MORNING_MARKET, source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
-  }
-  const date = parseGroundDate(card[1]);
-  const fr = /^\d{2}$/.test(card[2]) ? card[2] : undefined;
-  const sr = /^\d{2}$/.test(card[3]) ? card[3] : undefined;
-  const today = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
-  }).format(new Date());
-
-  if (date !== today) {
-    return { ready: false, status: date ? "date_not_current" : "date_missing", market: SHILLONG_MORNING_MARKET, ...(date ? { date } : {}), source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
-  }
-  if (!fr && !sr) {
-    return { ready: false, status: "awaiting_or_off", market: SHILLONG_MORNING_MARKET, date, source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
-  }
-  return {
-    ready: true, status: "verified", market: SHILLONG_MORNING_MARKET, date,
-    ...(fr ? { fr } : {}), ...(sr ? { sr } : {}),
-    source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL,
-  };
+  return await fetchGroundsMarketPreview(
+    SHILLONG_MORNING_MARKET, "Shillong Morning Result", "10:30 AM", "11:30 AM",
+  );
 }
 
 async function syncShillongMorningIfDue(force = false) {
@@ -1058,7 +1025,7 @@ async function syncShillongNightIfDue(force = false) {
 
 // Shillong Teer source verification. The source page's current result is accepted
 // only when its FR/SR pair matches the newest archive row and the page update date.
-const SHILLONG_SOURCE_URL = "https://teer-result.com/shillong-teer-result/";
+const SHILLONG_SOURCE_URL = "https://shillongteergrounds.in/";
 const SHILLONG_MARKET = "Shillong Teer (Evening)";
 let shillongLastCheckAt = 0;
 let shillongCheckPromise: Promise<unknown> | null = null;
@@ -1068,63 +1035,9 @@ type ShillongSourcePreview =
   | { ready: true; status: "verified"; market: string; fr?: string; sr?: string; date: string; source_updated_at: string | null; source_url: string };
 
 async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
-  const response = await fetch(SHILLONG_SOURCE_URL, {
-    method: "GET",
-    headers: {
-      "User-Agent": "TeerOnlineResultSync/1.0 (+source verification)",
-      "Accept": "text/html,application/xhtml+xml",
-      "Cache-Control": "no-cache",
-    },
-  });
-  if (!response.ok) throw new Error("Source website returned HTTP " + response.status);
-  const html = await response.text();
-  if (!html || html.length < 1000) throw new Error("Source page content was empty or incomplete");
-
-  const plain = htmlToPlainText(html);
-  const updatedMatch = plain.match(/Updated\s+(\d{4}-\d{2}-\d{2})/i);
-  const pageDateMatch = plain.match(/Shillong Teer Result Today\s+(\d{2}-\d{2}-\d{4})/i);
-  const updatedIso = updatedMatch?.[1] ?? "";
-  const pageDate = pageDateMatch?.[1] ?? "";
-  const awaiting = /Awaiting today's result/i.test(plain.slice(0, 6000));
-
-  const archiveStart = plain.toLowerCase().indexOf("shillong teer previous result list");
-  const archiveText = archiveStart >= 0 ? plain.slice(archiveStart) : "";
-  const archiveRow = archiveText.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2})\s+(\d{2})/);
-  const topText = archiveStart >= 0 ? plain.slice(0, archiveStart) : plain.slice(0, 9000);
-  const frMatch = topText.match(/FR\s*[·•]?\s*3:45\s*pm\s*(\d{2})/i);
-  const srMatch = topText.match(/SR\s*[·•]?\s*4:45\s*pm\s*(\d{2})/i);
-  const frResult = frMatch?.[1] ?? "";
-  const srResult = srMatch?.[1] ?? "";
-
-  const jsonLdModified = html.match(/"dateModified"\s*:\s*"([^"]+)"/i)?.[1] ?? "";
-  const metaModified = html.match(/<meta[^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
-    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["']/i)?.[1] ?? "";
-  const candidateTimestamp = [jsonLdModified, metaModified].find((value) => /T\d{2}:\d{2}/i.test(value)) ?? "";
-  const parsedTimestamp = candidateTimestamp ? new Date(candidateTimestamp) : null;
-  const sourceUpdatedAt = parsedTimestamp && Number.isFinite(parsedTimestamp.getTime()) &&
-    parsedTimestamp.toISOString().slice(0, 10) === updatedIso
-      ? parsedTimestamp.toISOString()
-      : null;
-
-  const hasFr = /^[0-9]{2}$/.test(frResult);
-  const hasSr = /^[0-9]{2}$/.test(srResult);
-  const dateVerified = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(updatedIso) && pageDate === dateIsoToDmy(updatedIso);
-  const archiveIsToday = Boolean(archiveRow && archiveRow[1] === dateIsoToDmy(updatedIso));
-  if (!dateVerified || (!hasFr && !hasSr) || (awaiting && !archiveIsToday) ||
-      (archiveIsToday && ((hasFr && archiveRow?.[2] !== frResult) || (hasSr && archiveRow?.[3] !== srResult)))) {
-    return {
-      ready: false, status: awaiting && !hasFr && !hasSr ? "awaiting" : "not_verified",
-      market: SHILLONG_MARKET, page_date: pageDate, source_update_date: updatedIso,
-      source_updated_at: sourceUpdatedAt, source_url: SHILLONG_SOURCE_URL,
-    };
-  }
-  return {
-    ready: true, status: "verified", market: SHILLONG_MARKET,
-    ...(hasFr ? { fr: frResult } : {}),
-    ...(hasSr ? { sr: srResult } : {}),
-    date: dateIsoToDmy(updatedIso),
-    source_updated_at: sourceUpdatedAt, source_url: SHILLONG_SOURCE_URL,
-  };
+  return await fetchGroundsMarketPreview(
+    SHILLONG_MARKET, "Shillong Teer Result", "03:15 PM", "04:15 PM",
+  ) as ShillongSourcePreview;
 }
 
 async function syncShillongSourceIfDue(force = false) {
