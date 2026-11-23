@@ -264,7 +264,16 @@ async function queueMarketOffPushNotifications() {
       const headingIndex = plain.toLowerCase().indexOf(source.heading.toLowerCase());
       // Search a wider section after the exact market heading; source sites often
       // place date, FR and SR labels in separate cards within the same market block.
-      const section = headingIndex >= 0 ? plain.slice(headingIndex, headingIndex + 4200) : "";
+      const nextCardHeadings = [
+        "Khanapara Teer Result", "Juwai Teer Result", "Shillong Morning Result",
+        "Welcome Morning Result", "Shillong Night", "Night Teer Result",
+        "Khanapara Morning Teer Result", "Khanapara Night Result",
+      ];
+      const nextCardStarts = nextCardHeadings
+        .map((heading) => plain.toLowerCase().indexOf(heading.toLowerCase(), headingIndex + source.heading.length))
+        .filter((index) => index >= 0);
+      const sectionEnd = nextCardStarts.length ? Math.min(...nextCardStarts) : headingIndex + 1400;
+      const section = headingIndex >= 0 ? plain.slice(headingIndex, sectionEnd) : "";
       const normalizedSection = section.replace(/\s+/g, " ").toLowerCase();
       const hasMarketHeading = headingIndex >= 0;
       const hasSessionTimes = !source.verifyTimes || (normalizedSection.includes(source.frTime.toLowerCase()) &&
