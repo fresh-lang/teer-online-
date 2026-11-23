@@ -104,7 +104,7 @@
             <h3 class="font-bold text-sm text-amber-400">Declare Live Market Result</h3>
             <p class="text-[11px] text-slate-400">Winnings will be credited to all winning users' wallets as soon as the result is declared.</p>
           </div>
-          <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">Instant Winning 1:90</span>
+          <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">Direct 1:90 • House/Ending 1:9</span>
         </div>
         <div>
           <label class="text-xs text-slate-300 font-bold block mb-1">Select Market:</label>
@@ -262,7 +262,7 @@
             </h3>
             <p class="text-[11px] text-slate-400">After verifying the user's UPI payment, select "Mark as Paid" or Reject.</p>
           </div>
-          <span class="text-[10px] bg-rose-500/20 text-rose-300 font-bold px-2 py-0.5 rounded-full">Min ₹200</span>
+          <span class="text-[10px] bg-rose-500/20 text-rose-300 font-bold px-2 py-0.5 rounded-full">₹1,000–₹5,000</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs text-slate-300">
@@ -317,7 +317,7 @@
             <span id="kpiTotalPool" class="text-base font-bold text-emerald-400">₹0.00</span>
           </div>
           <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40">
-            <span class="text-[10px] text-slate-400 block">1:90 Max Liability</span>
+            <span class="text-[10px] text-slate-400 block">1:90 Max Liability (direct 1:90 / house-ending 1:9)</span>
             <span id="kpiMaxLiability" class="text-base font-bold text-rose-400">₹0.00</span>
           </div>
           <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40">
@@ -334,9 +334,9 @@
           <table class="w-full text-left text-xs text-slate-300">
             <thead class="bg-teal-950/60 text-slate-400 uppercase text-[10px] sticky top-0">
               <tr>
-                <th class="p-2">Guti (00-99)</th>
-                <th class="p-2">Total Stake</th>
-                <th class="p-2">1:90 Projected Payout</th>
+                <th class="p-2">Result (00-99)</th>
+                <th class="p-2">Winning Stake Exposure</th>
+                <th class="p-2">Projected Payout (1:90 / 1:9)</th>
                 <th class="p-2">Net House Margin</th>
                 <th class="p-2 text-right">Risk Tag</th>
               </tr>
@@ -1216,21 +1216,58 @@
       const round = document.getElementById('analyticsRoundSelect').value;
       const tbody = document.getElementById('riskTableRows');
       try {
-        const response = await adminApi('admin_list_bets', { limit: 200 });
-        const bets = (response.items || []).filter(b => b.market === market && b.round === round && ['active','pending'].includes(String(b.status).toLowerCase()));
-        const totals = Object.fromEntries(Array.from({length:100},(_,i)=>[String(i).padStart(2,'0'),0]));
-        let totalPool = 0;
-        for (const bet of bets) { const amount = Number(bet.amount || 0); const number = String(bet.bet_number ?? '').padStart(2,'0'); if (Object.prototype.hasOwnProperty.call(totals,number)) { totals[number] += amount; totalPool += amount; } }
-        const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]); const top = sorted[0] || ['--',0]; const liability = top[1] * 90;
+        const response = await adminApi('admin_list_bets', { limit: 1000 });
+        const bets = (response.items || []).filter(b =>
+          b.market === market && b.round === round &&
+          ['active','pending'].includes(String(b.status).toLowerCase())
+        );
+        const totalPool = bets.reduce((sum, bet) => sum + Number(bet.amount || 0), 0);
+        const projections = Array.from({ length: 100 }, (_, index) => {
+          const result = String(index).padStart(2, '0');
+          let directStake = 0;
+          let houseStake = 0;
+          let endingStake = 0;
+          for (const bet of bets) {
+            const amount = Number(bet.amount || 0);
+            const mode = String(bet.bet_mode || '').toLowerCase().replace(/[^a-z]/g, '');
+            const number = String(bet.bet_number ?? '').trim();
+            if (['direct', 'directguti', 'guti'].includes(mode) && number.padStart(2, '0') === result) {
+              directStake += amount;
+            } else if (mode === 'house' && number === result[0]) {
+              houseStake += amount;
+            } else if (mode === 'ending' && number === result[1]) {
+              endingStake += amount;
+            }
+          }
+          const winningStake = directStake + houseStake + endingStake;
+          const payout = directStake * 90 + (houseStake + endingStake) * 9;
+          return { result, winningStake, payout, net: totalPool - payout };
+        }).sort((a, b) => b.payout - a.payout);
+
+        const top = projections[0] || { result: '--', winningStake: 0, payout: 0, net: totalPool };
         document.getElementById('kpiTotalPool').innerText = '₹' + totalPool.toFixed(2);
-        document.getElementById('kpiMaxLiability').innerText = '₹' + liability.toFixed(2);
-        document.getElementById('kpiTopGuti').innerText = top[1] > 0 ? `${top[0]} (₹${top[1].toFixed(0)})` : '--';
-        const status = document.getElementById('kpiRiskStatus'); status.className = 'text-xs font-bold ' + (liability > totalPool && top[1] > 0 ? 'text-rose-400' : 'text-emerald-400');
-        status.innerText = liability > totalPool && top[1] > 0 ? `HIGH RISK (-₹${(liability-totalPool).toFixed(0)})` : 'Safe / Profitable';
+        document.getElementById('kpiMaxLiability').innerText = '₹' + top.payout.toFixed(2);
+        document.getElementById('kpiTopGuti').innerText = top.winningStake > 0
+          ? '${top.result} (₹${top.payout.toFixed(0)} payout)' : '--';
+        const status = document.getElementById('kpiRiskStatus');
+        status.className = 'text-xs font-bold ' + (top.net < 0 ? 'text-rose-400' : 'text-emerald-400');
+        status.innerText = top.net < 0
+          ? 'HIGH RISK (-₹' + Math.abs(top.net).toFixed(0) + ')'
+          : 'Safe / Profitable';
+
         tbody.innerHTML = '';
-        for (const [number, amount] of sorted.filter(x=>x[1]>0)) { const payout=amount*90, net=totalPool-payout, tr=document.createElement('tr'); tr.className='hover:bg-teal-950/20'; tr.innerHTML=`<td class="p-2 font-mono font-bold text-amber-300">${number}</td><td class="p-2 font-semibold">₹${amount.toFixed(2)}</td><td class="p-2 text-rose-400 font-bold">₹${payout.toFixed(2)}</td><td class="p-2 ${net>=0?'text-emerald-400':'text-rose-500'} font-bold">₹${net.toFixed(2)}</td><td class="p-2 text-right">${net<0?'CRITICAL RISK':'SAFE'}</td>`; tbody.appendChild(tr); }
-        if (!tbody.children.length) tbody.innerHTML='<tr><td colspan="5" class="p-4 text-center text-slate-500">No active bets for this market and round.</td></tr>';
-      } catch (error) { tbody.innerHTML=`<tr><td colspan="5" class="p-4 text-center text-rose-300">Analytics failed: ${String(error.message || error)}</td></tr>`; }
+        for (const row of projections.filter(item => item.winningStake > 0)) {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-teal-950/20';
+          tr.innerHTML = '<td class="p-2 font-mono font-bold text-amber-300">' + row.result + '</td><td class="p-2 font-semibold">₹' + row.winningStake.toFixed(2) + '</td><td class="p-2 text-rose-400 font-bold">₹' + row.payout.toFixed(2) + '</td><td class="p-2 ' + (row.net >= 0 ? 'text-emerald-400' : 'text-rose-500') + ' font-bold">₹' + row.net.toFixed(2) + '</td><td class="p-2 text-right">' + (row.net < 0 ? 'CRITICAL RISK' : 'SAFE') + '</td>';
+          tbody.appendChild(tr);
+        }
+        if (!tbody.children.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">No active bets for this market and round.</td></tr>';
+        }
+      } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-rose-300">Analytics failed: ' + escapeHtml(error.message || error) + '</td></tr>';
+      }
     }
 </script>
 
