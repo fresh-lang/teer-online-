@@ -1238,13 +1238,15 @@ Deno.serve(async (req) => {
     // persistent result_source_sync row, so repeated public calls cannot
     // cause repeated source fetches inside the five-minute window.
     if (action === "scheduled_result_sync") {
-      const marketOffNotifications = await queueMarketOffPushNotifications();
       const sync = await syncKhanaparaSourceIfDue(false);
       const khanaparaMorningSync = await syncKhanaparaSessionIfDue("morning");
       const khanaparaNightSync = await syncKhanaparaSessionIfDue("night");
       const shillongMorningSync = await syncShillongMorningIfDue(false);
       const shillongNightSync = await syncShillongNightIfDue(false);
       const shillongSync = await syncShillongSourceIfDue(false);
+      // Check market closures only after today's results have been synced, so
+      // the OFF check cannot queue a stale alert just before a result arrives.
+      const marketOffNotifications = await queueMarketOffPushNotifications();
       const indiaParts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
       const indiaToday = `${indiaParts.find((part) => part.type === "year")?.value}-${indiaParts.find((part) => part.type === "month")?.value}-${indiaParts.find((part) => part.type === "day")?.value}`;
       const previousIndiaDate = new Date(Date.parse(indiaToday + "T00:00:00Z") - 86400000).toISOString().slice(0, 10);
