@@ -3983,6 +3983,14 @@
     // Render the market cards immediately on first launch. Previously this only
     // happened after the first 20-second Supabase interval, leaving Main Markets blank
     // during startup and indefinitely blank if the first public API request failed.
+    // Restore the persistent login before rendering account-dependent UI.
+    // Without this startup call, IndexedDB sessions are never loaded and users
+    // appear logged out after reopening the app.
+    loadStorage().then(() => {
+      updateUI();
+      return restoreSavedAccountSession();
+    }).catch(error => console.warn('Account session startup restore failed:', error));
+
     renderMarkets();
     initSupabasePublicSync();
 
