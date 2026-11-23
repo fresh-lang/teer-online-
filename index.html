@@ -2728,7 +2728,7 @@
           d: String(r.result_date || '').split('-').reverse().join('/'),
           fr: r.fr || '**',
           sr: r.sr || '**',
-          savedAt: r.source_updated_at || r.created_at || null
+          savedAt: r.source_updated_at || (r.source && r.source !== 'source' ? r.created_at : null)
         }));
       const savedResults = window.supabaseResults || {};
       const todayStr = getTodayFormattedDate();
