@@ -44,7 +44,7 @@
       try {
         const apkUrl = await getLatestApkDownloadUrl();
         const isNative = window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform();
-        if (isNative && window.TeerAppUpdater && window.TeerAppUpdater.downloadAndInstall) {
+        if (isNative && window.TeerAppUpdater && typeof window.TeerAppUpdater.downloadAndInstall === 'function') {
           const result = await window.TeerAppUpdater.downloadAndInstall(apkUrl);
           if (result && result.needsPermission) {
             alert('Please allow Install unknown apps for Teer Online, return to the app, and tap Update again.');
@@ -90,15 +90,17 @@
       update.style.cssText += ';pointer-events:auto;touch-action:manipulation;position:relative;z-index:1';
       later.addEventListener('click', (event)=>{ event.preventDefault(); event.stopPropagation(); overlay.remove(); });
       update.onclick=async()=>{
-        if (!window.TeerAppUpdater) {
-          error.style.display='block'; error.textContent='Update service is not available in this build. Please try again.';
-          return;
-        }
         update.disabled=true; update.textContent='Opening…';
         wrap.style.display='block'; error.style.display='none';
         try {
+          const apkUrl = await getLatestApkDownloadUrl();
+          if (!window.TeerAppUpdater || typeof window.TeerAppUpdater.downloadAndInstall !== 'function') {
+            progressText.textContent='Opening official APK download…';
+            window.location.assign(apkUrl);
+            return;
+          }
           const result = await window.TeerAppUpdater.downloadAndInstall(
-            await getLatestApkDownloadUrl(),
+            apkUrl,
             (percent) => {
               progressText.textContent = 'Downloading update… ' + percent + '%';
               bar.style.width = percent + '%';
