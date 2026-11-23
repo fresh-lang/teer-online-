@@ -3918,6 +3918,12 @@
 
     function checkAndCreditWinnings() { /* Server-side api_settle_bet is authoritative; never credit in browser. */ }
 
+    // Restore the original demo ticker startup; keep its existing UI and timing.
+    if (!window.__teerFakeTickerStarted) {
+      window.__teerFakeTickerStarted = true;
+      initFakeBetsTicker();
+    }
+
     // Render the market cards immediately on first launch. Previously this only
     // happened after the first 20-second Supabase interval, leaving Main Markets blank
     // during startup and indefinitely blank if the first public API request failed.
