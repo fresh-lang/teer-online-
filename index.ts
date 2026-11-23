@@ -243,12 +243,22 @@ async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
 }
 
 async function syncKhanaparaSourceIfDue(force = false) {
-  if (!force && Date.now() - khanaparaLastCheckAt < 5 * 60 * 1000) return null;
   if (khanaparaCheckPromise) return await khanaparaCheckPromise;
   khanaparaCheckPromise = (async () => {
     try {
-      const preview = await fetchKhanaparaSourcePreview();
+      const { data: syncState, error: stateError } = await supabase.from("result_source_sync")
+        .select("last_checked_at").eq("market", KHANAPARA_MARKET).maybeSingle();
+      if (stateError) throw stateError;
+      const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
+      if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
+
+      const checkedAt = new Date().toISOString();
+      const { error: markError } = await supabase.from("result_source_sync")
+        .upsert({ market: KHANAPARA_MARKET, last_checked_at: checkedAt }, { onConflict: "market" });
+      if (markError) throw markError;
       khanaparaLastCheckAt = Date.now();
+
+      const preview = await fetchKhanaparaSourcePreview();
       if (preview.ready !== true) return preview;
 
       const { data: current, error: currentError } = await supabase.from("teer_results")
