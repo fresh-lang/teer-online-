@@ -232,7 +232,7 @@ async function queueMarketOffPushNotifications() {
   // Accept a non-Sunday OFF only when the exact market page explicitly says
   // OFF/holiday for today's date. Awaiting, stale dates and fetch errors are not OFF.
   const sourceChecks = [
-    { market: "Shillong Morning Teer", heading: "Shillong Morning Result", url: "https://shillongteergrounds.in/", frTime: "10:30 AM", srTime: "11:30 AM", verifyTimes: true },
+    { market: "Shilong Morning Teer", heading: "Shillong Morning Result", url: "https://shillongteergrounds.in/", frTime: "10:30 AM", srTime: "11:30 AM", verifyTimes: true },
     { market: "Khanapara Morning Teer", heading: "Khanapara Morning Teer Result Today", url: "https://teer-result.com/khanapara-morning-teer-result/", frTime: "10:30 AM", srTime: "11:30 AM" },
     { market: "Shillong Teer (Evening)", heading: "Shillong Teer Result", url: "https://shillongteergrounds.in/", frTime: "03:15 PM", srTime: "04:15 PM", verifyTimes: true },
     { market: "Khanapara Teer (Evening)", heading: "Khanapara Teer Result", url: "https://shillongteergrounds.in/", frTime: "04:10 PM", srTime: "04:45 PM", verifyTimes: true },
@@ -917,7 +917,7 @@ async function fetchKhanaparaTertiaryPreview(
 // Shillong Morning is a separate 10:30 AM / 11:30 AM market.
 // Read only its named card from the user's selected ShillongTeerGrounds source.
 const SHILLONG_MORNING_SOURCE_URL = "https://shillongteergrounds.in/";
-const SHILLONG_MORNING_MARKET = "Shillong Morning Teer";
+const SHILLONG_MORNING_MARKET = "Shilong Morning Teer";
 
 async function fetchShillongMorningSourcePreview(): Promise<{
   ready: boolean; status: string; market: string; date?: string;
@@ -1442,7 +1442,7 @@ Deno.serve(async (req) => {
       const part = (type: string) => indiaParts.find((item) => item.type === type)?.value ?? "";
       const todayIso = part("year") + "-" + part("month") + "-" + part("day");
       const date = part("day") + "/" + part("month") + "/" + part("year");
-      const marketNames = ["Shillong Morning Teer","Khanapara Morning Teer","Shillong Teer (Evening)","Khanapara Teer (Evening)","Shillong Night Teer","Khanapara Night Teer"];
+      const marketNames = ["Shilong Morning Teer","Khanapara Morning Teer","Shillong Teer (Evening)","Khanapara Teer (Evening)","Shillong Night Teer","Khanapara Night Teer"];
       const offKeys = marketNames.flatMap((market) => [
         "market_off:" + market + ":" + todayIso,
         "market_round_off:" + market + ":" + todayIso + ":FR",
