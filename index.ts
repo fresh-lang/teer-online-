@@ -419,6 +419,24 @@ async function saveVerifiedResultHistory(market: string, date: string, fr: strin
 }
 
 
+
+async function settleBetsForResultDate(market: string, round: "FR" | "SR", resultNumber: string, resultDate: string) {
+  if (!/^\d{2}$/.test(resultNumber)) return [];
+  const iso = dateDmyToIso(resultDate);
+  const start = iso + "T00:00:00+05:30";
+  const next = new Date(Date.parse(iso + "T00:00:00Z") + 86400000).toISOString().slice(0, 10);
+  const end = next + "T00:00:00+05:30";
+  const { data: activeBets, error } = await supabase.from("bets").select("id")
+    .eq("market", market).eq("round", round).eq("status", "active")
+    .gte("created_at", start).lt("created_at", end).limit(2000);
+  if (error) throw error;
+  const settled = [];
+  for (const bet of activeBets ?? []) {
+    settled.push(await rpc("api_settle_bet", { p_bet_id: bet.id, p_result_number: resultNumber }));
+  }
+  return settled;
+}
+
 async function applyVerifiedRoundResults(preview: {
   market: string; date: string; fr?: string; sr?: string; source_updated_at: string | null;
 }) {
@@ -447,10 +465,13 @@ async function applyVerifiedRoundResults(preview: {
   if (/^[0-9]{2}$/.test(String(nextFr)) && /^[0-9]{2}$/.test(String(nextSr))) {
     history = await saveVerifiedResultHistory(preview.market, preview.date, nextFr, nextSr, "source", preview.source_updated_at);
   }
+  const settlements: unknown[] = [];
+  if (frChanged && preview.fr) settlements.push(...await settleBetsForResultDate(preview.market, "FR", String(preview.fr), preview.date));
+  if (srChanged && preview.sr) settlements.push(...await settleBetsForResultDate(preview.market, "SR", String(preview.sr), preview.date));
   const notifications: unknown[] = [];
   if (frChanged) notifications.push(await queueResultRoundPushNotification(preview.market, preview.date, "FR", String(preview.fr)));
   if (srChanged) notifications.push(await queueResultRoundPushNotification(preview.market, preview.date, "SR", String(preview.sr)));
-  return { applied: true, fr_changed: frChanged, sr_changed: srChanged, history, notifications };
+  return { applied: true, fr_changed: frChanged, sr_changed: srChanged, settled_count: settlements.length, history, notifications };
 }
 
 type KhanaparaSourcePreview =
@@ -1118,8 +1139,12 @@ Deno.serve(async (req) => {
       const khanaparaNightSync = await syncKhanaparaSessionIfDue("night");
       const shillongNightSync = await syncShillongNightIfDue(false);
       const shillongSync = await syncShillongSourceIfDue(false);
+      const indiaParts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+      const indiaToday = `${indiaParts.find((part) => part.type === "year")?.value}-${indiaParts.find((part) => part.type === "month")?.value}-${indiaParts.find((part) => part.type === "day")?.value}`;
+      const previousIndiaDate = new Date(Date.parse(indiaToday + "T00:00:00Z") - 86400000).toISOString().slice(0, 10);
+      const expiredBetRefunds = await rpc("refund_unresolved_teer_bets", { p_before_date: previousIndiaDate });
       const notifications = await flushResultPushNotifications();
-      return json({ success: true, marketOffNotifications, sync, khanaparaMorningSync, khanaparaNightSync, shillongNightSync, shillongSync, notifications }, 200, origin);
+      return json({ success: true, marketOffNotifications, sync, khanaparaMorningSync, khanaparaNightSync, shillongNightSync, shillongSync, expiredBetRefunds, notifications }, 200, origin);
     }
 
     if (action === "register") {
@@ -1517,12 +1542,7 @@ Deno.serve(async (req) => {
         if (action === "admin_save_result") {
           for (const [round, resultNumber] of [["FR", fr], ["SR", sr]] as const) {
             if (!/^\d{1,2}$/.test(resultNumber)) continue;
-            const { data: activeBets, error: betsError } = await supabase.from("bets").select("id")
-              .eq("market", market).eq("round", round).eq("status", "active").limit(1000);
-            if (betsError) throw betsError;
-            for (const bet of activeBets ?? []) {
-              settlements.push(await rpc("api_settle_bet", { p_bet_id: bet.id, p_result_number: resultNumber }));
-            }
+            settlements.push(...await settleBetsForResultDate(market, round, resultNumber, resultDate!));
           }
         }
         return json({ success: true, market, fr, sr, result_date: resultDate, settled_count: settlements.length }, 200, origin);
