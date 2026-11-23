@@ -127,6 +127,11 @@
             </optgroup>
           </select>
         </div>
+        <div>
+          <label for="resultDate" class="text-xs text-slate-300 font-bold block mb-1">Result Date (India):</label>
+          <input type="date" id="resultDate" onchange="handleResultDateChange()" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white font-semibold outline-none focus:border-amber-400">
+          <p class="text-[10px] text-slate-500 mt-1">Select the actual draw date. Late holiday updates must use the draw date, not the upload date.</p>
+        </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-xs text-amber-300 font-bold block mb-1">FR Result (First Round):</label>
@@ -880,11 +885,24 @@
     }
 
     function getTodayFormattedDate() {
-      const now = new Date();
-      const d = String(now.getDate()).padStart(2, '0');
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const y = now.getFullYear();
-      return `${d}/${m}/${y}`;
+      const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' }).formatToParts(new Date());
+      const part = type => parts.find(p => p.type === type)?.value || '';
+      return `${part('day')}/${part('month')}/${part('year')}`;
+    }
+    function getTodayISODate() {
+      const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+      const part = type => parts.find(p => p.type === type)?.value || '';
+      return `${part('year')}-${part('month')}-${part('day')}`;
+    }
+    function formatResultDateForInput(value) {
+      const raw = String(value || '').trim();
+      if (/^\\d{4}-\\d{2}-\\d{2}$/.test(raw)) return raw;
+      const m = raw.match(/^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/);
+      return m ? `${m[3]}-${m[2]}-${m[1]}` : getTodayISODate();
+    }
+    function formatInputDateForStorage(value) {
+      const m = String(value || '').match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+      return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
     }
 
     /* Removed disabled legacy loadMarketExistingResult handler. */
@@ -972,6 +990,8 @@
       (data.withdrawals || []).forEach(w => { allWithdrawalsCache[w.id] = { ...w, date: w.created_at ? new Date(w.created_at).toLocaleDateString('en-GB') : '', time: w.created_at ? new Date(w.created_at).toLocaleTimeString() : '' }; });
       window.__adminBets = data.bets || [];
       window.__adminResults = data.results || {};
+      const resultDateInput = document.getElementById('resultDate');
+      if (resultDateInput && !resultDateInput.value) resultDateInput.value = getTodayISODate();
       window.__adminSettings = data.settings || {};
       renderUsersList(); renderDepositsList(); renderWithdrawalsList();
       loadAdminSupportList().catch(() => {});
@@ -1040,9 +1060,23 @@
       const market = document.getElementById('mkt').value;
       sourceResultPreviewDate = '';
       sourceResultPreviewMarket = '';
-      const current = (window.__adminResults || {})[market] || { fr: '', sr: '' };
-      document.getElementById('fr').value = current.fr && current.fr !== '**' ? current.fr : '';
-      document.getElementById('sr').value = current.sr && current.sr !== '**' ? current.sr : '';
+      const current = (window.__adminResults || {})[market] || {};
+      const dateInput = document.getElementById('resultDate');
+      if (dateInput && !dateInput.value) dateInput.value = getTodayISODate();
+      const selectedDate = formatInputDateForStorage(dateInput?.value || getTodayISODate());
+      const sameDate = current.date === selectedDate;
+      document.getElementById('fr').value = sameDate && current.fr && current.fr !== '**' ? current.fr : '';
+      document.getElementById('sr').value = sameDate && current.sr && current.sr !== '**' ? current.sr : '';
+    }
+    function handleResultDateChange() {
+      const market = document.getElementById('mkt').value;
+      const current = (window.__adminResults || {})[market] || {};
+      const selectedDate = formatInputDateForStorage(document.getElementById('resultDate')?.value);
+      const sameDate = current.date === selectedDate;
+      document.getElementById('fr').value = sameDate && current.fr && current.fr !== '**' ? current.fr : '';
+      document.getElementById('sr').value = sameDate && current.sr && current.sr !== '**' ? current.sr : '';
+      sourceResultPreviewDate = '';
+      sourceResultPreviewMarket = '';
     }
 
     async function fetchSourceResultForSelectedMarket() {
@@ -1061,6 +1095,8 @@
         document.getElementById('sr').value = preview.sr || (sameDayExisting && existing.sr && existing.sr !== '**' ? existing.sr : '');
         sourceResultPreviewDate = preview.date;
         sourceResultPreviewMarket = market;
+        const previewDateInput = document.getElementById('resultDate');
+        if (previewDateInput) previewDateInput.value = formatResultDateForInput(preview.date);
         alert(`Preview only — NOT published.\\nMarket: ${market}\\nDate: ${preview.date}\\nFR: ${preview.fr} | SR: ${preview.sr}\\n\\nVerify the source numbers before pressing Save & Broadcast.`);
       } catch (e) {
         alert('Could not fetch a verified same-day result: ' + (e.message || e));
@@ -1074,9 +1110,11 @@
       const enteredFR = document.getElementById('fr').value.trim();
       const enteredSR = document.getElementById('sr').value.trim();
       const current = (window.__adminResults || {})[market] || {};
+      const selectedDate = document.getElementById('resultDate')?.value || getTodayISODate();
       const resultDate = sourceResultPreviewMarket === market && sourceResultPreviewDate
         ? sourceResultPreviewDate
-        : (current.date || getTodayFormattedDate());
+        : formatInputDateForStorage(selectedDate);
+      if (!resultDate) { alert('Select the actual result date first.'); return; }
       const sameDayExisting = current.date === resultDate;
       // A one-round save preserves the other round's already-published value.
       const fr = roundOnly === 'SR' ? (sameDayExisting && current.fr && current.fr !== '**' ? current.fr : '**') : (enteredFR || '**');
