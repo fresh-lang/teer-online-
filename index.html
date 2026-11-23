@@ -85,7 +85,7 @@
         } catch(e) {
           console.error('In-app APK update failed:',e);
           error.style.display='block';
-          error.textContent='Could not open the APK download page. '+String(e?.message||e);
+          error.textContent='Update download/install failed. '+String(e?.message||e);
           update.disabled=false; update.textContent='Try Again';
         }
       };
