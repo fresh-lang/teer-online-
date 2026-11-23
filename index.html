@@ -1953,15 +1953,19 @@
         const dynamicDate = getTodayFormattedDate();
         let liveFr = '**';
         let liveSr = '**';
-        let resultDateLabel = dynamicDate;
+        const resultDateLabel = dynamicDate;
         let sourceUpdatedLabel = '';
         let detectedAtLabel = '';
-        if (savedResults[m.name]) {
-          const res = savedResults[m.name];
-          liveFr = res.fr || '**';
-          liveSr = res.sr || '**';
-          const storedDate = String(res.date || '');
-          if (storedDate) resultDateLabel = storedDate.includes('-') ? storedDate.split('-').reverse().join('/') : storedDate;
+        const marketOffToday = !!(window.supabaseMarketOff || {})[m.name];
+        const storedResult = savedResults[m.name];
+        const storedDate = String(storedResult?.date || '').replaceAll('-', '/');
+        const resultIsToday = storedDate === dynamicDate;
+        if (marketOffToday) {
+          liveFr = 'OFF';
+          liveSr = 'OFF';
+        } else if (storedResult && resultIsToday) {
+          liveFr = storedResult.fr || '**';
+          liveSr = storedResult.sr || '**';
           const formatResultTimestamp = value => {
             if (!value) return '';
             const parsed = new Date(value);
@@ -1970,8 +1974,8 @@
               hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
             }).format(parsed) : '';
           };
-          sourceUpdatedLabel = formatResultTimestamp(res.source_updated_at);
-          detectedAtLabel = formatResultTimestamp(res.updated_at);
+          sourceUpdatedLabel = formatResultTimestamp(storedResult.source_updated_at);
+          detectedAtLabel = formatResultTimestamp(storedResult.updated_at);
         }
         const live = { fr: liveFr, sr: liveSr };
         const card = document.createElement('div');
@@ -1982,13 +1986,11 @@
         const allClosed = (!frOpen && !srOpen);
 
         let bottomBarHtml = '';
-        if (isSunday && isSundayOffMarket(m.name)) {
+        if (marketOffToday || (isSunday && isSundayOffMarket(m.name))) {
           bottomBarHtml = `
             <div class="flex justify-between items-center pt-1">
-              <span class="font-decorative text-base text-rose-600 font-bold">Sunday Official Holiday</span>
-              <button class="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-600 font-decorative text-base font-bold">
-                Sunday Off
-              </button>
+              <span class="font-decorative text-base text-rose-600 font-bold">Official Market Holiday</span>
+              <span class="px-3 py-1.5 rounded-lg bg-rose-100 text-rose-700 font-decorative text-base font-bold">OFF Today</span>
             </div>
           `;
         } else if (allClosed) {
@@ -2024,8 +2026,8 @@
           `;
         }
 
-        const frStatusTag = frOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>';
-        const srStatusTag = srOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>';
+        const frStatusTag = marketOffToday ? '<span class="text-[9px] bg-rose-100 text-rose-700 px-1 rounded ml-1 font-sans font-bold">OFF</span>' : (frOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>');
+        const srStatusTag = marketOffToday ? '<span class="text-[9px] bg-rose-100 text-rose-700 px-1 rounded ml-1 font-sans font-bold">OFF</span>' : (srOpen ? '' : '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded ml-1 font-sans font-bold">Over</span>');
 
         card.innerHTML = `
           <div class="flex justify-between items-center">
@@ -3711,6 +3713,7 @@
       try {
         const data = await accountApi('public_app_data', {}, false);
         window.supabaseResults = data.results || {};
+        window.supabaseMarketOff = data.market_off || {};
         window.teerResultHistory = Array.isArray(data.history) ? data.history : [];
         state.teerPlayRounds = Array.isArray(data.rounds) ? data.rounds : [];
         renderTeerPlayRoundIds();
@@ -3938,7 +3941,7 @@
     // Safe placeholders for features without an audited server-side Supabase API.
     function initDemoAgentsSystem() {}
     function applyAgentBetTurnoverCommission() {}
-    function claimAgentCommission() { alert('Referral commission transfer is not enabled until its secure Supabase ledger API is deployed.'); }
+    function claimAgentCommission() { alert('Referral rewards are credited automatically to your wallet after each qualifying milestone. No separate transfer or claim is needed. Open My Referrals to view paid and pending rewards.'); }
     function recordTransaction(tx) {
       const list = getTransactions();
       list.unshift({ id: tx.id || ('tx_' + Date.now()), type: tx.type, title: tx.title, amount: Number(tx.amount || 0), isCredit: !!tx.isCredit, status: tx.status || 'Completed', date: tx.date || new Date().toLocaleDateString(), time: tx.time || new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}), timestamp: Date.now() });
