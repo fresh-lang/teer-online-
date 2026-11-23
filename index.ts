@@ -156,21 +156,21 @@ let khanaparaCheckPromise: Promise<unknown> | null = null;
 
 function htmlToPlainText(html: string): string {
   return html
-    .replace(/<script[\\s\\S]*?<\\/script>/gi, " ")
-    .replace(/<style[\\s\\S]*?<\\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;|&#160;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, '"')
     .replace(/&#0*39;|&apos;/gi, "'")
-    .replace(/&#(\\d+);/g, (_m, n) => String.fromCharCode(Number(n)))
-    .replace(/\\s+/g, " ")
+    .replace(/&#(\d+);/g, (_m, n) => String.fromCharCode(Number(n)))
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function dateIsoToDmy(value: string): string {
-  const m = value.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : "";
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? m[3] + "/" + m[2] + "/" + m[1] : "";
 }
 
 async function fetchKhanaparaSourcePreview() {
@@ -182,28 +182,27 @@ async function fetchKhanaparaSourcePreview() {
       "Cache-Control": "no-cache",
     },
   });
-  if (!response.ok) throw new Error(`Source website returned HTTP ${response.status}`);
+  if (!response.ok) throw new Error("Source website returned HTTP " + response.status);
   const html = await response.text();
   if (!html || html.length < 1000) throw new Error("Source page content was empty or incomplete");
 
   const plain = htmlToPlainText(html);
-  const updatedMatch = plain.match(/Updated\\s+(\\d{4}-\\d{2}-\\d{2})/i);
-  const pageDateMatch = plain.match(/Khanapara Teer Result Today\\s+(\\d{2}-\\d{2}-\\d{4})/i);
+  const updatedMatch = plain.match(/Updated\s+(\d{4}-\d{2}-\d{2})/i);
+  const pageDateMatch = plain.match(/Khanapara Teer Result Today\s+(\d{2}-\d{2}-\d{4})/i);
   const updatedIso = updatedMatch?.[1] ?? "";
   const pageDate = pageDateMatch?.[1] ?? "";
   const awaiting = /Awaiting today's result/i.test(plain.slice(0, 6000));
 
   const archiveStart = plain.toLowerCase().indexOf("khanapara teer previous result list");
   const archiveText = archiveStart >= 0 ? plain.slice(archiveStart) : "";
-  const archiveRow = archiveText.match(/(\\d{2}-\\d{2}-\\d{4})\\s+(\\d{2})\\s+(\\d{2})/);
+  const archiveRow = archiveText.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2})\s+(\d{2})/);
   const topText = archiveStart >= 0 ? plain.slice(0, archiveStart) : plain.slice(0, 9000);
-  const frMatch = topText.match(/FR\\s*[·•]?\\s*4:15\\s*pm\\s*(\\d{2})/i);
-  const srMatch = topText.match(/SR\\s*[·•]?\\s*5:00\\s*pm\\s*(\\d{2})/i);
+  const frMatch = topText.match(/FR\s*[·•]?\s*4:15\s*pm\s*(\d{2})/i);
+  const srMatch = topText.match(/SR\s*[·•]?\s*5:00\s*pm\s*(\d{2})/i);
   const frResult = frMatch?.[1] ?? "";
   const srResult = srMatch?.[1] ?? "";
 
-  // Prefer a precise page-modified timestamp; the visible "Updated" label is date-only.
-  const jsonLdModified = html.match(/"dateModified"\\s*:\\s*"([^"]+)"/i)?.[1] ?? "";
+  const jsonLdModified = html.match(/"dateModified"\s*:\s*"([^"]+)"/i)?.[1] ?? "";
   const metaModified = html.match(/<meta[^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
     html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["']/i)?.[1] ?? "";
   const candidateTimestamp = jsonLdModified || metaModified || response.headers.get("last-modified") || "";
@@ -222,8 +221,7 @@ async function fetchKhanaparaSourcePreview() {
     };
   }
 
-  // Never accept "last result" numbers or a partial FR/SR pair as today's result.
-  if (!/^(\\d{2})$/.test(frResult) || !/^(\\d{2})$/.test(srResult) ||
+  if (!/^\d{2}$/.test(frResult) || !/^\d{2}$/.test(srResult) ||
       !updatedIso || !archiveRow || archiveRow[1] !== dateIsoToDmy(updatedIso) ||
       archiveRow[2] !== frResult || archiveRow[3] !== srResult) {
     return {
@@ -254,7 +252,6 @@ async function syncKhanaparaSourceIfDue(force = false) {
         .eq("market", KHANAPARA_MARKET).maybeSingle();
       if (currentError) throw currentError;
 
-      // An admin correction for the same source date is left untouched.
       if (current?.updated_by && current.result_date === preview.date) {
         return { ...preview, applied: false, reason: "admin_correction_locked" };
       }
@@ -283,7 +280,6 @@ async function syncKhanaparaSourceIfDue(force = false) {
   })();
   return await khanaparaCheckPromise;
 }
-
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
