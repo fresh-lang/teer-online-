@@ -2664,7 +2664,7 @@
       if (headerRow) {
         const labels = mName === 'Teer Play'
           ? ['Date / Time', 'FR ID', 'FR Result', 'SR ID', 'SR Result']
-          : ['Date', 'FR Result', 'SR Result'];
+          : ['Date / Time', 'FR Result', 'SR Result'];
         headerRow.innerHTML = labels.map(label => '<th class="p-2 border border-teal-800">' + label + '</th>').join('');
       }
       if (pager) pager.classList.toggle('hidden', mName === 'Teer Play');
@@ -2724,12 +2724,17 @@
       const records = (window.teerResultHistory || [])
         .filter(r => r.market === mName)
         .sort((a,b) => String(b.result_date).localeCompare(String(a.result_date)))
-        .map(r => ({ d: String(r.result_date || '').split('-').reverse().join('/'), fr: r.fr || '**', sr: r.sr || '**' }));
+        .map(r => ({
+          d: String(r.result_date || '').split('-').reverse().join('/'),
+          fr: r.fr || '**',
+          sr: r.sr || '**',
+          savedAt: r.source_updated_at || r.created_at || null
+        }));
       const savedResults = window.supabaseResults || {};
       const todayStr = getTodayFormattedDate();
       if (savedResults[mName] && (savedResults[mName].fr !== '**' || savedResults[mName].sr !== '**')) {
         const storedDate = String(savedResults[mName].date || '');
-        const liveRec = { d: storedDate.includes('-') ? storedDate.split('-').reverse().join('/') : storedDate, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**' };
+        const liveRec = { d: storedDate.includes('-') ? storedDate.split('-').reverse().join('/') : storedDate, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**', savedAt: savedResults[mName].source_updated_at || savedResults[mName].updated_at || null };
         const idx = records.findIndex(r => r.d === liveRec.d);
         if (idx >= 0) records[idx] = liveRec;
         else records.unshift(liveRec);
@@ -2765,7 +2770,10 @@
       pageRecords.forEach(r => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 border-b';
-        [r.d, r.fr, r.sr].forEach((value,index) => {
+        const savedTime = r.savedAt
+          ? new Date(r.savedAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true })
+          : '--';
+        [r.d + ' ' + savedTime, r.fr, r.sr].forEach((value,index) => {
           const td = document.createElement('td');
           td.className = 'p-2 border border-slate-200 ' + (index === 1 ? 'text-teal-900' : index === 2 ? 'text-amber-700' : 'text-slate-600');
           td.textContent = value;
