@@ -1825,11 +1825,9 @@
     /* Removed disabled legacy checkUserBlockedStatus handler. */
 
     function getTodayFormattedDate() {
-      const now = new Date();
-      const d = String(now.getDate()).padStart(2, '0');
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const y = now.getFullYear();
-      return `${d}/${m}/${y}`;
+      const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' }).formatToParts(new Date());
+      const part = type => parts.find(p => p.type === type)?.value || '';
+      return `${part('day')}/${part('month')}/${part('year')}`;
     }
 
     function checkSundayHoliday() {
@@ -2091,7 +2089,7 @@
           if (m.name === 'Teer Play') {
             liveFr = res.fr || '**';
             liveSr = res.sr || '**';
-          } else if (res.date === dynamicDate) {
+          } else if ((String(res.date || '').includes('-') ? String(res.date).split('-').reverse().join('/') : String(res.date || '')) === dynamicDate) {
             liveFr = res.fr || '**';
             liveSr = res.sr || '**';
           }
@@ -2721,7 +2719,8 @@
       const savedResults = window.supabaseResults || {};
       const todayStr = getTodayFormattedDate();
       if (savedResults[mName] && (savedResults[mName].fr !== '**' || savedResults[mName].sr !== '**')) {
-        const liveRec = { d: savedResults[mName].date || todayStr, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**' };
+        const storedDate = String(savedResults[mName].date || '');
+        const liveRec = { d: storedDate.includes('-') ? storedDate.split('-').reverse().join('/') : storedDate, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**' };
         const idx = records.findIndex(r => r.d === liveRec.d);
         if (idx >= 0) records[idx] = liveRec;
         else records.unshift(liveRec);
