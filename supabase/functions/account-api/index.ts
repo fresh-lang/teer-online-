@@ -1522,7 +1522,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === "public_app_data") {
-      await Promise.all([syncKhanaparaSourceIfDue(false), syncShillongSourceIfDue(false), syncShillongMorningIfDue(false)]);
+      await Promise.all([
+        syncKhanaparaSourceIfDue(false),
+        syncKhanaparaSessionIfDue("morning"),
+        syncKhanaparaSessionIfDue("night"),
+        syncShillongMorningIfDue(false),
+        syncShillongNightIfDue(false),
+        syncShillongSourceIfDue(false),
+      ]);
 
       const indiaParts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric" }).formatToParts(new Date());
       const part = (type: string) => indiaParts.find((item) => item.type === type)?.value ?? "";
