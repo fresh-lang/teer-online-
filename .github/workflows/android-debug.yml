@@ -50,6 +50,148 @@ jobs:
           npm run build:onesignal
           echo "{\"build\":${GITHUB_RUN_NUMBER}}" > www/build-info.json
           npx cap add android
+          # Native updater downloads the signed APK and opens Android's package installer.
+          cat > android/app/src/main/java/com/freshlang/teeronline/TeerAppUpdaterPlugin.java <<'JAVA'
+          package com.freshlang.teeronline;
+
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.provider.Settings;
+          import androidx.core.content.FileProvider;
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+          import java.io.BufferedInputStream;
+          import java.io.File;
+          import java.io.FileOutputStream;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+          import java.util.concurrent.ExecutorService;
+          import java.util.concurrent.Executors;
+
+          @CapacitorPlugin(name = "TeerAppUpdater")
+          public class TeerAppUpdaterPlugin extends Plugin {
+              private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+              @PluginMethod
+              public void downloadAndInstall(PluginCall call) {
+                  String link = call.getString("url", "");
+                  if (link.isEmpty() || !link.startsWith("https://github.com/")) {
+                      call.reject("Only the official secure GitHub APK link is allowed.");
+                      return;
+                  }
+
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                      !getContext().getPackageManager().canRequestPackageInstalls()) {
+                      try {
+                          Intent settings = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                              Uri.parse("package:" + getContext().getPackageName()));
+                          getActivity().startActivity(settings);
+                          JSObject result = new JSObject();
+                          result.put("needsPermission", true);
+                          call.resolve(result);
+                      } catch (Exception e) {
+                          call.reject("Please allow Teer Online to install app updates.", e);
+                      }
+                      return;
+                  }
+
+                  executor.execute(() -> {
+                      HttpURLConnection connection = null;
+                      try {
+                          File folder = new File(getContext().getCacheDir(), "updates");
+                          if (!folder.exists() && !folder.mkdirs()) throw new Exception("Cannot create update folder");
+                          File apk = new File(folder, "teer-online.apk");
+                          URL target = new URL(link);
+                          connection = (HttpURLConnection) target.openConnection();
+                          connection.setInstanceFollowRedirects(true);
+                          connection.setConnectTimeout(20000);
+                          connection.setReadTimeout(60000);
+                          connection.setRequestProperty("User-Agent", "TeerOnline-Android-Updater");
+                          int status = connection.getResponseCode();
+                          if (status != HttpURLConnection.HTTP_OK) throw new Exception("Download failed (HTTP " + status + ")");
+                          String type = connection.getContentType();
+                          if (type != null && !type.toLowerCase().contains("apk") &&
+                              !type.toLowerCase().contains("octet-stream")) {
+                              throw new Exception("The server did not return an APK file");
+                          }
+                          long total = connection.getContentLengthLong();
+                          long received = 0;
+                          try (BufferedInputStream in = new BufferedInputStream(connection.getInputStream());
+                               FileOutputStream out = new FileOutputStream(apk)) {
+                              byte[] buffer = new byte[16384];
+                              int count;
+                              while ((count = in.read(buffer)) != -1) {
+                                  out.write(buffer, 0, count);
+                                  received += count;
+                                  if (total > 0) {
+                                      JSObject progress = new JSObject();
+                                      progress.put("percent", Math.min(99, (int) (received * 100 / total)));
+                                      notifyListeners("downloadProgress", progress);
+                                  }
+                              }
+                              out.flush();
+                          }
+                          if (!apk.isFile() || apk.length() < 100000) throw new Exception("Downloaded APK is incomplete");
+                          Uri contentUri = FileProvider.getUriForFile(getContext(),
+                              getContext().getPackageName() + ".fileprovider", apk);
+                          Intent install = new Intent(Intent.ACTION_VIEW);
+                          install.setDataAndType(contentUri, "application/vnd.android.package-archive");
+                          install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                          getActivity().runOnUiThread(() -> {
+                              try {
+                                  getActivity().startActivity(install);
+                                  JSObject result = new JSObject();
+                                  result.put("downloaded", true);
+                                  call.resolve(result);
+                              } catch (Exception e) {
+                                  call.reject("Could not open Android installer.", e);
+                              }
+                          });
+                      } catch (Exception e) {
+                          call.reject("Update download/install failed: " + e.getMessage(), e);
+                      } finally {
+                          if (connection != null) connection.disconnect();
+                      }
+                  });
+              }
+          }
+          JAVA
+          mkdir -p android/app/src/main/res/xml
+          cat > android/app/src/main/res/xml/teer_file_paths.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <paths xmlns:android="http://schemas.android.com/apk/res/android">
+              <cache-path name="apk_updates" path="updates/" />
+          </paths>
+          XML
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          p='android/app/src/main/AndroidManifest.xml'
+          ET.register_namespace('android', 'http://schemas.android.com/apk/res/android')
+          tree=ET.parse(p)
+          root=tree.getroot()
+          ns='{http://schemas.android.com/apk/res/android}'
+          permission='android.permission.REQUEST_INSTALL_PACKAGES'
+          if not any(x.get(ns+'name') == permission for x in root.findall('uses-permission')):
+              ET.SubElement(root, 'uses-permission', {ns+'name': permission})
+          app=root.find('application')
+          provider_name='androidx.core.content.FileProvider'
+          provider=next((x for x in app.findall('provider') if x.get(ns+'name') == provider_name), None)
+          if provider is None:
+              provider=ET.SubElement(app, 'provider')
+          provider.set(ns+'name', provider_name)
+          provider.set(ns+'authorities', '${applicationId}.fileprovider')
+          provider.set(ns+'exported', 'false')
+          provider.set(ns+'grantUriPermissions', 'true')
+          meta=next((x for x in provider.findall('meta-data') if x.get(ns+'name') == 'android.support.FILE_PROVIDER_PATHS'), None)
+          if meta is None: meta=ET.SubElement(provider, 'meta-data')
+          meta.set(ns+'name', 'android.support.FILE_PROVIDER_PATHS')
+          meta.set(ns+'resource', '@xml/teer_file_paths')
+          tree.write(p, encoding='utf-8', xml_declaration=True)
+          PY
           # Bundle a dedicated alert tone so Android does not depend on the
           # device's possibly silent/default notification ringtone.
           mkdir -p android/app/src/main/res/raw
@@ -87,6 +229,7 @@ jobs:
           public class MainActivity extends BridgeActivity {
               @Override
               public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(TeerAppUpdaterPlugin.class);
                   super.onCreate(savedInstanceState);
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                       final String channelId = "teer_results_sound_v6";
@@ -145,10 +288,12 @@ jobs:
       - name: Build debug APK
         run: |
           npx cap sync android
-          if grep -R -q 'android.permission.REQUEST_INSTALL_PACKAGES' android/app/src/main/AndroidManifest.xml android/app/build/intermediates/merged_manifest 2>/dev/null; then
-            echo '::error::APK installer permission must not be present in Teer Online.'
+          if ! grep -R -q 'android.permission.REQUEST_INSTALL_PACKAGES' android/app/src/main/AndroidManifest.xml android/app/build/intermediates/merged_manifest 2>/dev/null; then
+            echo '::error::APK installer permission is missing.'
             exit 1
           fi
+          grep -q 'TeerAppUpdaterPlugin' android/app/src/main/java/com/freshlang/teeronline/TeerAppUpdaterPlugin.java
+          grep -q 'teer_file_paths' android/app/src/main/AndroidManifest.xml
           cd android
           ./gradlew assembleDebug
           cd ..
