@@ -1704,7 +1704,8 @@
           await bridge.authenticateDeviceCredential();
           overlay.remove();
         } catch (error) {
-          errorBox.textContent = 'Pattern / PIN cancelled. You can now use Fingerprint.';
+          const detail = String(error && (error.message || error.code) || error || 'Unknown error');
+          errorBox.textContent = 'Pattern / PIN did not open: ' + detail + '. You can retry or use Fingerprint.';
           fingerprintUnlock.style.display = 'block';
           credentialUnlock.textContent = '🔐 Try Pattern / PIN / Password again';
           credentialUnlock.disabled = false;
