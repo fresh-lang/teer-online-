@@ -1181,7 +1181,6 @@
         // 3. NIGHT TEER DRAWS — keep each night session separate
         { name: 'Shillong Night Teer', frTime: '08:30 PM', srTime: '09:30 PM', defaultFr: '**', defaultSr: '**' },
         { name: 'Khanapara Night Teer', frTime: '10:30 PM', srTime: '11:30 PM', defaultFr: '**', defaultSr: '**' },
-        { name: 'Generic Night', frTime: '11:10 PM', srTime: '12:10 AM', defaultFr: '**', defaultSr: '**' },
 
         // 4. INSTANT AUTO DRAW (At the end)
         { name: 'Teer Play', frTime: '1 Min', srTime: '1 Min', defaultFr: '**', defaultSr: '**', isFast: true }
@@ -1897,10 +1896,6 @@
       const nowMinutes = getPart('hour') * 60 + getPart('minute');
       let drawMinutes = h * 60 + m;
 
-      // Generic Night SR is at 12:10 AM after its 11:10 PM FR.
-      if (marketName === 'Generic Night' && h === 0 && m === 10 && nowMinutes >= (23 * 60 + 10)) {
-        drawMinutes += 24 * 60;
-      }
       return drawMinutes - nowMinutes;
     }
 
