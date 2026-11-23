@@ -2944,13 +2944,11 @@
     }
 
     function getBaseShareUrl() {
-      // Official app landing page: the APK button always resolves the latest published APK.
-      if (window.location.hostname.includes('teeronline.fun')) {
-        return window.location.origin + '/';
-      } else if (window.location.hostname.includes('github.io')) {
+      // Always share the verified GitHub Pages landing page, never the unrelated teeronline.fun domain.
+      if (window.location.hostname.includes('github.io')) {
         return window.location.origin + window.location.pathname;
       }
-      return 'https://app.teeronline.fun/';
+      return 'https://fresh-lang.github.io/teer-online-/';
     }
 
     function getMyReferralCode() { return state.user && state.user.uid ? String(state.user.uid) : ''; }
