@@ -187,7 +187,8 @@ async function saveVerifiedResultHistory(market: string, date: string, fr: strin
     .select("id,fr,sr,source").eq("market", market).eq("result_date", resultDate).maybeSingle();
   if (existingError) throw existingError;
   if (existing?.source === "admin") return { saved: false, reason: "admin_history_locked" };
-  if (existing && /^\d{2}$/.test(String(existing.fr ?? "")) && /^\d{2}$/.test(String(existing.sr ?? ""))) {
+  if (existing && source !== "admin" &&
+      /^\d{2}$/.test(String(existing.fr ?? "")) && /^\d{2}$/.test(String(existing.sr ?? ""))) {
     return { saved: false, reason: "date_already_archived" };
   }
   const { error } = await supabase.from("teer_result_history").upsert({
@@ -308,7 +309,8 @@ async function syncKhanaparaSourceIfDue(force = false) {
               source_updated_at: null,
             }, { onConflict: "market" });
             if (restoreError) throw restoreError;
-            return { ...preview, applied: true, restored_previous: true };
+            const history = await saveVerifiedResultHistory(KHANAPARA_MARKET, preview.previous_date.replaceAll("-", "/"), preview.previous_fr, preview.previous_sr, "source");
+            return { ...preview, applied: true, restored_previous: true, history };
           }
         }
         return preview;
@@ -467,7 +469,8 @@ async function syncShillongSourceIfDue(force = false) {
               source_updated_at: null,
             }, { onConflict: "market" });
             if (restoreError) throw restoreError;
-            return { ...preview, applied: true, restored_previous: true };
+            const history = await saveVerifiedResultHistory(SHILLONG_MARKET, preview.previous_date.replaceAll("-", "/"), preview.previous_fr, preview.previous_sr, "source");
+            return { ...preview, applied: true, restored_previous: true, history };
           }
         }
         return preview;
