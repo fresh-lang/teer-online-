@@ -927,7 +927,7 @@ async function fetchShillongMorningSourcePreview(): Promise<{
   const plain = htmlToPlainText(html);
   // Match the date-bearing live result card itself. The page contains several
   // other mentions of "Shillong Morning Result" before/after the live card.
-  const card = plain.match(/Shillong Morning Result\s*[-–:]\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})[\s\S]{0,700}?F\/R\s*\(10:30\s*AM\)\s*\|\s*S\/R\s*\(11:30\s*AM\)\s*(\d{2}|soon|pending|awaiting|off|--|xx)\s*\|\s*(\d{2}|soon|pending|awaiting|off|--|xx)/i);
+  const card = plain.match(/Shillong Morning Result\s*[-–:]\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})[\s\S]{0,5000}?F\/R\s*\(10:30\s*AM\)\s*\|\s*S\/R\s*\(11:30\s*AM\)\s*(\d{2}|soon|pending|awaiting|off|--|xx)\s*\|\s*(\d{2}|soon|pending|awaiting|off|--|xx)/i);
   if (!card) {
     return { ready: false, status: "live_card_not_found", market: SHILLONG_MORNING_MARKET, source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
   }
