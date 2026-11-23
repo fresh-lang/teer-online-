@@ -118,7 +118,7 @@ jobs:
                               !type.toLowerCase().contains("octet-stream")) {
                               throw new Exception("The server did not return an APK file");
                           }
-                          long total = connection.getContentLengthLong();
+                          long total = connection.getContentLength();
                           long received = 0;
                           try (BufferedInputStream in = new BufferedInputStream(connection.getInputStream());
                                FileOutputStream out = new FileOutputStream(apk)) {
