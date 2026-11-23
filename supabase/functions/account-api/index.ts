@@ -535,8 +535,8 @@ function parseGroundsMarketCard(
   if (frValue === "off" && srValue === "off") {
     return { ready: false as const, status: "off", market, page_date: date, source_updated_at: null, source_url: sourceUrl };
   }
-  const fr = /^\\d{2}$/.test(frValue) ? frValue : undefined;
-  const sr = /^\\d{2}$/.test(srValue) ? srValue : undefined;
+  const fr = /^\d{2}$/.test(frValue) ? frValue : undefined;
+  const sr = /^\d{2}$/.test(srValue) ? srValue : undefined;
   if (!fr && !sr) {
     return { ready: false as const, status: "awaiting", market, page_date: date, source_updated_at: null, source_url: sourceUrl };
   }
