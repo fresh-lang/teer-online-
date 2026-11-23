@@ -5,9 +5,52 @@ const APP_ID = '5c602eb8-04b1-4007-8edf-936fd353fcc1';
 let initialization = null;
 let permissionRequest = null;
 let permissionPromptVisible = false;
+let pushStateListenerRegistered = false;
 
 function isNativeApp() {
   return Capacitor.isNativePlatform();
+}
+
+function registerPushStateListener() {
+  if (pushStateListenerRegistered) return;
+  try {
+    OneSignal.User.pushSubscription.addEventListener('change', (event) => {
+      const current = event && event.current ? event.current : {};
+      console.info('OneSignal push subscription changed:', {
+        hasSubscriptionId: Boolean(current.id),
+        hasPushToken: Boolean(current.token),
+        optedIn: Boolean(current.optedIn)
+      });
+    });
+    pushStateListenerRegistered = true;
+  } catch (error) {
+    console.warn('OneSignal push subscription listener could not be registered:', error);
+  }
+}
+
+async function readPushRegistrationStatus() {
+  try {
+    const subscription = OneSignal.User.pushSubscription;
+    const [id, token, optedIn] = await Promise.all([
+      subscription.getIdAsync(),
+      subscription.getTokenAsync(),
+      subscription.getOptedInAsync()
+    ]);
+    return { hasSubscriptionId: Boolean(id), hasPushToken: Boolean(token), optedIn: Boolean(optedIn) };
+  } catch (error) {
+    console.warn('OneSignal push registration status could not be read:', error);
+    return { hasSubscriptionId: false, hasPushToken: false, optedIn: false };
+  }
+}
+
+async function waitForPushRegistration(timeoutMs = 12000) {
+  const deadline = Date.now() + timeoutMs;
+  let status = await readPushRegistrationStatus();
+  while ((!status.hasSubscriptionId || !status.hasPushToken || !status.optedIn) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    status = await readPushRegistrationStatus();
+  }
+  return status;
 }
 
 async function showInAppPermissionPrompt() {
@@ -16,7 +59,11 @@ async function showInAppPermissionPrompt() {
 
   try {
     if (await OneSignal.Notifications.hasPermission()) {
-      try { await OneSignal.User.pushSubscription.optIn(); } catch (error) {
+      try {
+        await OneSignal.User.pushSubscription.optIn();
+        const status = await waitForPushRegistration();
+        console.info('OneSignal startup push registration:', status);
+      } catch (error) {
         console.warn('OneSignal opt-in failed:', error);
       }
       document.getElementById('teerNotificationPermissionPrompt')?.remove();
@@ -57,33 +104,45 @@ async function showInAppPermissionPrompt() {
     later.disabled = true;
     allow.textContent = 'Please wait…';
     try {
-      const canPrompt = await OneSignal.Notifications.canRequestPermission();
-      if (canPrompt) {
-        const granted = await OneSignal.Notifications.requestPermission(false);
-        if (granted) {
-          await OneSignal.User.pushSubscription.optIn();
-          close();
+      let granted = await OneSignal.Notifications.hasPermission();
+      if (!granted) {
+        const canPrompt = await OneSignal.Notifications.canRequestPermission();
+        if (!canPrompt) {
+          message.textContent = 'Notifications ON karne ke liye Phone Settings > Apps > Teer Online > Notifications kholen.';
+          allow.disabled = false;
+          later.disabled = false;
+          allow.textContent = 'Open Settings';
+          allow.onclick = close;
           return;
         }
+        granted = await OneSignal.Notifications.requestPermission(false);
+      }
+      if (!granted) {
+        message.textContent = 'Notification permission abhi allow nahi hui. Phone Settings mein Teer Online notifications ON karein.';
+        allow.disabled = false;
+        later.disabled = false;
+        allow.textContent = 'Try Again';
+        return;
+      }
+
+      await OneSignal.User.pushSubscription.optIn();
+      const status = await waitForPushRegistration();
+      console.info('OneSignal permission and push registration result:', status);
+      if (status.hasSubscriptionId && status.hasPushToken && status.optedIn) {
         close();
         return;
       }
-      message.textContent = 'Notifications ON karne ke liye Phone Settings > Apps > Teer Online > Notifications kholen.';
-      const closeButton = allow.cloneNode(true);
-      closeButton.textContent = 'Got it';
-      closeButton.disabled = false;
-      allow.replaceWith(closeButton);
+
+      message.textContent = 'Permission ON hai, lekin OneSignal push token abhi register nahi hua. Internet check karein; agar phir bhi na ho to Firebase FCM / OneSignal credentials verify karne honge.';
+      allow.disabled = false;
       later.disabled = false;
-      closeButton.addEventListener('click', close);
+      allow.textContent = 'Retry Registration';
     } catch (error) {
       console.warn('Notification permission action failed:', error);
-      message.textContent = 'Notifications ON karne ke liye Phone Settings > Apps > Teer Online > Notifications kholen.';
-      const closeButton = allow.cloneNode(true);
-      closeButton.textContent = 'Close';
-      closeButton.disabled = false;
-      allow.replaceWith(closeButton);
+      message.textContent = 'Notification setup complete nahi hua. Phone Settings > Apps > Teer Online > Notifications check karein aur dobara try karein.';
+      allow.disabled = false;
       later.disabled = false;
-      closeButton.addEventListener('click', close);
+      allow.textContent = 'Try Again';
     }
   });
   return false;
@@ -92,7 +151,10 @@ async function showInAppPermissionPrompt() {
 async function initialize() {
   if (!Capacitor.isNativePlatform()) return false;
   if (!initialization) {
-    initialization = OneSignal.initialize(APP_ID).then(() => true).catch((error) => {
+    initialization = OneSignal.initialize(APP_ID).then(() => {
+      registerPushStateListener();
+      return true;
+    }).catch((error) => {
       initialization = null;
       console.warn('OneSignal initialization failed:', error);
       return false;
