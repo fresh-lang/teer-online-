@@ -1178,9 +1178,10 @@
         { name: 'Shillong Teer (Evening)', frTime: '03:15 PM', srTime: '04:15 PM', defaultFr: '**', defaultSr: '**' },
         { name: 'Khanapara Teer (Evening)', frTime: '04:10 PM', srTime: '04:45 PM', defaultFr: '**', defaultSr: '**' },
 
-        // 3. NIGHT TEER DRAWS
+        // 3. NIGHT TEER DRAWS — keep each night session separate
         { name: 'Shillong Night Teer', frTime: '08:30 PM', srTime: '09:30 PM', defaultFr: '**', defaultSr: '**' },
         { name: 'Khanapara Night Teer', frTime: '10:30 PM', srTime: '11:30 PM', defaultFr: '**', defaultSr: '**' },
+        { name: 'Generic Night', frTime: '11:10 PM', srTime: '12:10 AM', defaultFr: '**', defaultSr: '**' },
 
         // 4. INSTANT AUTO DRAW (At the end)
         { name: 'Teer Play', frTime: '1 Min', srTime: '1 Min', defaultFr: '**', defaultSr: '**', isFast: true }
@@ -3917,7 +3918,13 @@
 
     function checkAndCreditWinnings() { /* Server-side api_settle_bet is authoritative; never credit in browser. */ }
 
-    // Refresh public results/settings periodically from Supabase, not Supabase or browser storage.
+    // Render the market cards immediately on first launch. Previously this only
+    // happened after the first 20-second Supabase interval, leaving Main Markets blank
+    // during startup and indefinitely blank if the first public API request failed.
+    renderMarkets();
+    initSupabasePublicSync();
+
+    // Refresh public results/settings periodically from Supabase, not browser storage.
     if (!window.__supabasePublicRefresh) {
       window.__supabasePublicRefresh = setInterval(() => { initSupabasePublicSync(); syncUserRequestNotifications(false); }, 20000);
     }
