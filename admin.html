@@ -552,6 +552,10 @@
       } catch (error) { alert(error.message || 'Reply could not be sent.'); }
     }
 
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>\"']/g, character => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' }[character]));
+    }
+
     let allUsersCache = {};
     let allDepositsCache = {};
     let allWithdrawalsCache = {};
@@ -601,15 +605,15 @@
           <tr onclick="openUserModal('${u.phone}')" class="hover:bg-teal-950/30 transition cursor-pointer" title="Click to view/edit user wallet">
             <td class="p-2.5">
               <div class="font-bold text-white flex items-center gap-1.5">
-                ${u.name || 'User'}
-                <span class="bg-amber-400/20 text-amber-300 font-mono text-[9px] px-1.5 py-0.5 rounded border border-amber-400/30">${u.uid || ('UID_' + (1001 + index))}</span>
+                ${escapeHtml(u.name || 'User')}
+                <span class="bg-amber-400/20 text-amber-300 font-mono text-[9px] px-1.5 py-0.5 rounded border border-amber-400/30">${escapeHtml(u.uid || ('UID_' + (1001 + index)))}</span>
               </div>
-              <div class="text-[10px] text-slate-400">Reg: ${u.createdAt || 'Recent'}</div>
-              <div class="text-[10px] text-teal-300">Agent: ${u.agent_number || 'Not assigned'}</div>
+              <div class="text-[10px] text-slate-400">Reg: ${escapeHtml(u.createdAt || 'Recent')}</div>
+              <div class="text-[10px] text-teal-300">Agent: ${escapeHtml(u.agent_number || 'Not assigned')}</div>
             </td>
-            <td class="p-2.5 font-mono text-amber-300 font-semibold">+91 ${u.phone}</td>
+            <td class="p-2.5 font-mono text-amber-300 font-semibold">+91 ${escapeHtml(u.phone)}</td>
             <td class="p-2.5 font-black text-emerald-400 underline">₹${bal} (Edit)</td>
-            <td class="p-2.5 text-slate-400">${u.referredBy ? u.referredBy : 'Direct'}</td>
+            <td class="p-2.5 text-slate-400">${escapeHtml(u.referredBy ? u.referredBy : 'Direct')}</td>
             <td class="p-2.5 text-right flex justify-end gap-1.5 items-center" onclick="event.stopPropagation()">
               <button onclick="toggleBlockUser('${u.phone}', ${u.isBlocked || false})" class="px-2 py-1 rounded-lg text-[11px] font-bold ${u.isBlocked ? 'bg-emerald-500 text-black' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'}">
                 ${u.isBlocked ? 'Unblock' : 'Block'}
@@ -703,7 +707,7 @@
     function viewFullReceipt(depId) {
       const d = allDepositsCache[depId];
       if (!d || !d.screenshot) return;
-      document.getElementById('receiptUserMeta').innerText = `User: ${d.name} (${d.phone}) | Amount: ₹${d.amount} | UTR: ${d.utr}`;
+      document.getElementById('receiptUserMeta').innerText = `User: ${d.name} (${d.phone}) | Amount: ₹${d.amount} | UTR: ${escapeHtml(d.utr)}`;
       document.getElementById('fullReceiptImg').src = d.screenshot;
       document.getElementById('receiptViewerModal').classList.remove('hidden');
     }
@@ -737,8 +741,8 @@
           <tr class="hover:bg-teal-950/30 transition">
             <td class="p-2.5 text-[11px] text-slate-400">${d.date || ''} ${d.time || ''}</td>
             <td class="p-2.5">
-              <div class="font-bold text-white">${d.name || 'User'}</div>
-              <div class="text-[10px] text-amber-300 font-mono">+91 ${d.phone}</div>
+              <div class="font-bold text-white">${escapeHtml(d.name || 'User')}</div>
+              <div class="text-[10px] text-amber-300 font-mono">+91 ${escapeHtml(d.phone)}</div>
             </td>
             <td class="p-2.5 font-black text-amber-300 text-sm">₹${d.amount}</td>
             <td class="p-2.5">
@@ -752,7 +756,7 @@
             <td class="p-2.5">
               ${hasSlip ? `
                 <div class="flex items-center gap-1.5">
-                  <img src="${d.screenshot}" onclick="viewFullReceipt('${id}')" class="w-12 h-12 object-cover rounded-lg border border-teal-600 cursor-pointer hover:border-amber-400 hover:scale-105 transition shadow" title="Click to view full screenshot">
+                  <img src="${escapeHtml(d.screenshot)}" onclick="viewFullReceipt('${id}')" class="w-12 h-12 object-cover rounded-lg border border-teal-600 cursor-pointer hover:border-amber-400 hover:scale-105 transition shadow" title="Click to view full screenshot">
                   <button onclick="viewFullReceipt('${id}')" class="text-[10px] bg-teal-900/60 hover:bg-teal-800 text-teal-200 px-2 py-1 rounded-lg border border-teal-700/50">
                     <i class="fa-solid fa-expand"></i> View
                   </button>
@@ -763,7 +767,7 @@
             </td>
             <td class="p-2.5">
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : (isPending ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-rose-500/20 text-rose-300')}">
-                ${d.status.toUpperCase()}
+                ${escapeHtml(d.status.toUpperCase())}
               </span>
             </td>
             <td class="p-2.5 text-right space-x-1 whitespace-nowrap">
@@ -810,28 +814,28 @@
           <tr class="hover:bg-teal-950/30 transition">
             <td class="p-2.5 text-[11px] text-slate-400">${w.date || ''} ${w.time || ''}</td>
             <td class="p-2.5">
-              <div class="font-bold text-white">${w.name || 'User'}</div>
-              <div class="text-[10px] text-amber-300 font-mono">${w.phone}</div>
+              <div class="font-bold text-white">${escapeHtml(w.name || 'User')}</div>
+              <div class="text-[10px] text-amber-300 font-mono">${escapeHtml(w.phone)}</div>
             </td>
             <td class="p-2.5 font-black text-rose-400 text-sm">₹${w.amount}</td>
             <td class="p-2.5 text-xs font-bold text-amber-300">
               ${w.payoutType === 'bank' && w.bankDetails ? `
                 <div class="space-y-0.5 font-sans">
-                  <div class="text-white text-[11px] font-bold"><i class="fa-solid fa-building-columns mr-1 text-teal-400"></i>${w.bankDetails.holderName}</div>
-                  <div class="font-mono text-[11px] text-amber-300">A/C: ${w.bankDetails.accountNumber}</div>
-                  <div class="font-mono text-[10px] text-slate-300">IFSC: ${w.bankDetails.ifsc} ${w.bankDetails.bankName ? '(' + w.bankDetails.bankName + ')' : ''}</div>
-                  <button onclick="navigator.clipboard.writeText('${w.bankDetails.accountNumber}'); alert('Account Number Copied: ${w.bankDetails.accountNumber}');" class="mt-0.5 text-[9px] bg-teal-900/60 px-1.5 py-0.5 rounded text-teal-200">Copy A/C</button>
+                  <div class="text-white text-[11px] font-bold"><i class="fa-solid fa-building-columns mr-1 text-teal-400"></i>${escapeHtml(w.bankDetails.holderName)}</div>
+                  <div class="font-mono text-[11px] text-amber-300">A/C: ${escapeHtml(w.bankDetails.accountNumber)}</div>
+                  <div class="font-mono text-[10px] text-slate-300">IFSC: ${escapeHtml(w.bankDetails.ifsc)} ${w.bankDetails.bankName ? '(' + escapeHtml(w.bankDetails.bankName) + ')' : ''}</div>
+                  <button type="button" data-copy="${escapeHtml(w.bankDetails.accountNumber)}" class="mt-0.5 text-[9px] bg-teal-900/60 px-1.5 py-0.5 rounded text-teal-200">Copy A/C</button>
                 </div>
               ` : `
                 <div class="font-mono">
-                  ${w.upi}
-                  <button onclick="navigator.clipboard.writeText('${w.upi}'); alert('UPI ID Copied: ${w.upi}');" class="ml-1 text-[10px] bg-teal-900/40 px-1.5 py-0.5 rounded text-teal-300 hover:text-white">Copy</button>
+                  ${escapeHtml(w.upi)}
+                  <button type="button" data-copy="${escapeHtml(w.upi)}" class="ml-1 text-[10px] bg-teal-900/40 px-1.5 py-0.5 rounded text-teal-300 hover:text-white">Copy</button>
                 </div>
               `}
             </td>
             <td class="p-2.5">
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : (isPending ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-slate-500/20 text-slate-300')}">
-                ${w.status.toUpperCase()}
+                ${escapeHtml(w.status.toUpperCase())}
               </span>
             </td>
             <td class="p-2.5 text-right space-x-1">
@@ -849,6 +853,16 @@
           </tr>
         `;
       }).join('');
+      tbody.querySelectorAll('[data-copy]').forEach(button => {
+        button.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(button.getAttribute('data-copy') || '');
+            alert('Copied successfully.');
+          } catch (_) {
+            alert('Copy is unavailable in this browser. Please copy the detail manually.');
+          }
+        });
+      });
     }
 
     /* Removed disabled legacy approveWithdrawal handler. */
