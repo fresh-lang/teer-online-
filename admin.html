@@ -984,7 +984,7 @@
       if (st.deposit_qr_image && qrPreview) { qrPreview.src = st.deposit_qr_image; qrPreview.classList.remove('hidden'); }
       loadMarketExistingResult();
       renderScheduleCards();
-      renderAgentEarnings({});
+      renderAgentEarnings(data.agent_earnings || {});
     }
 
     async function loadTeerRoundIds() {
