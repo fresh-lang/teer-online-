@@ -384,6 +384,14 @@
             </div>
           </div>
           <div id="marketCardsContainer" class="space-y-3 pb-6"></div>
+          <div id="previousResultsPanel" class="bg-white rounded-2xl border border-teal-200 shadow-sm p-3 space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <div><h3 class="font-bold text-teal-950 text-base">Previous Results</h3><p class="text-[10px] text-slate-500">Latest saved FR / SR results by market</p></div>
+              <button onclick="loadHomePreviousResults(true)" class="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2"><i class="fa-solid fa-rotate"></i> Refresh</button>
+            </div>
+            <div id="homePreviousResultsList" class="space-y-2"><p class="text-xs text-slate-500">Tap Refresh to load saved results.</p></div>
+          </div>
+
         </div>
       </section>
 
@@ -2062,6 +2070,7 @@
         `;
         cont.appendChild(card);
       });
+      loadHomePreviousResults(false);
     }
 
     function renderGutiGrid() {
@@ -2479,6 +2488,38 @@
         select.appendChild(opt);
       });
       renderSelectedMarketChart();
+    }
+
+
+    // Main-screen previous results: load the newest saved history row for each real market.
+    async function loadHomePreviousResults(force) {
+      const box = document.getElementById('homePreviousResultsList');
+      if (!box) return;
+      if (!force && window.__homePreviousResultsLoaded) return;
+      box.innerHTML = '<p class="text-xs text-slate-500">Loading previous results…</p>';
+      const markets = [
+        { key: 'Shilong Morning Teer', label: 'Shillong Morning' },
+        { key: 'Khanapara Morning Teer', label: 'Khanapara Morning' },
+        { key: 'Shillong Teer (Evening)', label: 'Shillong Evening' },
+        { key: 'Khanapara Teer (Evening)', label: 'Khanapara Evening' },
+        { key: 'Shillong Night Teer', label: 'Shillong Night' },
+        { key: 'Khanapara Night Teer', label: 'Khanapara Night' }
+      ];
+      try {
+        const results = await Promise.all(markets.map(async market => {
+          const response = await accountApi('public_result_history', { market: market.key, page: 0 }, false);
+          return { ...market, rows: Array.isArray(response.history) ? response.history.slice(0, 5) : [] };
+        }));
+        const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+        box.innerHTML = results.map(item => {
+          const rows = item.rows.length ? item.rows.map(row => '<div class="flex items-center justify-between gap-2 py-1 border-t border-slate-100 text-[11px]"><span class="text-slate-500">'+escapeHtml(row.result_date || '—')+'</span><span class="font-mono font-bold text-teal-900">FR '+escapeHtml(row.fr || '**')+' / SR '+escapeHtml(row.sr || '**')+'</span></div>').join('') : '<p class="text-[10px] text-slate-400 py-1">No dated history saved yet.</p>';
+          return '<div class="rounded-xl border border-slate-200 px-2.5 py-2"><div class="font-bold text-xs text-slate-800">'+escapeHtml(item.label)+'</div>'+rows+'</div>';
+        }).join('');
+        window.__homePreviousResultsLoaded = true;
+      } catch (error) {
+        box.innerHTML = '<p class="text-xs text-red-600">Previous results could not load. Please refresh.</p>';
+        console.error('Previous results load failed:', error);
+      }
     }
 
     async function loadMarketResultHistory(market) {
