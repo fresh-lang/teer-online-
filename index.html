@@ -2664,7 +2664,7 @@
       if (headerRow) {
         const labels = mName === 'Teer Play'
           ? ['Date / Time', 'FR ID', 'FR Result', 'SR ID', 'SR Result']
-          : ['Date / Time', 'FR Result', 'SR Result'];
+          : ['Date', 'FR Result', 'SR Result'];
         headerRow.innerHTML = labels.map(label => '<th class="p-2 border border-teal-800">' + label + '</th>').join('');
       }
       if (pager) pager.classList.toggle('hidden', mName === 'Teer Play');
@@ -2724,22 +2724,15 @@
       const records = (window.teerResultHistory || [])
         .filter(r => r.market === mName)
         .sort((a,b) => String(b.result_date).localeCompare(String(a.result_date)))
-        .map(r => ({
-          d: String(r.result_date || '').split('-').reverse().join('/'),
-          fr: r.fr || '**',
-          sr: r.sr || '**',
-          savedAt: r.source_updated_at || (r.source && r.source !== 'source' ? r.created_at : null)
-        }));
+        .map(r => ({ d: String(r.result_date || '').split('-').reverse().join('/'), fr: r.fr || '**', sr: r.sr || '**' }));
       const savedResults = window.supabaseResults || {};
       const todayStr = getTodayFormattedDate();
       if (savedResults[mName] && (savedResults[mName].fr !== '**' || savedResults[mName].sr !== '**')) {
         const storedDate = String(savedResults[mName].date || '');
-        const liveRec = { d: storedDate.includes('-') ? storedDate.split('-').reverse().join('/') : storedDate, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**', savedAt: savedResults[mName].source_updated_at || null };
+        const liveRec = { d: storedDate.includes('-') ? storedDate.split('-').reverse().join('/') : storedDate, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**' };
         const idx = records.findIndex(r => r.d === liveRec.d);
-        if (idx >= 0) {
-          liveRec.savedAt = liveRec.savedAt || records[idx].savedAt || null;
-          records[idx] = liveRec;
-        } else records.unshift(liveRec);
+        if (idx >= 0) records[idx] = liveRec;
+        else records.unshift(liveRec);
       }
       if (!records.length) {
         const tr = document.createElement('tr');
@@ -2772,10 +2765,7 @@
       pageRecords.forEach(r => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 border-b';
-        const savedTime = r.savedAt
-          ? new Date(r.savedAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true })
-          : '--';
-        [r.d + ' ' + savedTime, r.fr, r.sr].forEach((value,index) => {
+        [r.d, r.fr, r.sr].forEach((value,index) => {
           const td = document.createElement('td');
           td.className = 'p-2 border border-slate-200 ' + (index === 1 ? 'text-teal-900' : index === 2 ? 'text-amber-700' : 'text-slate-600');
           td.textContent = value;
@@ -4254,14 +4244,28 @@
     </div>
 
   <script>
-    // The native bridge loader above already loads biometric-bridge.js exactly once.
-    // Reuse that promise instead of injecting a second copy of the plugin bundle.
-    window.__teerBiometricBridgeReady = Promise.resolve(window.__teerNativeBridgesReady)
-      .then(() => !!(
-        window.TeerBiometricBridge &&
-        typeof window.TeerBiometricBridge.authenticateDeviceCredential === 'function' &&
-        typeof window.TeerBiometricBridge.authenticate === 'function'
-      ));
+    // The biometric bridge is also native-only; website visitors should not
+    // execute the raw source file containing package imports.
+    window.__teerBiometricBridgeReady = Promise.resolve(false);
+    const isTeerNativeBiometricHost = (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) || window.location.hostname === 'localhost' || window.location.protocol === 'capacitor:';
+    if (isTeerNativeBiometricHost) {
+      window.__teerBiometricBridgeReady = new Promise((resolve) => {
+        const script = document.createElement('script');
+        // biometric-bridge.js is built as an IIFE bundle, so load it as a
+        // classic script. This is more reliable in Android WebView than module scripts.
+        script.src = new URL('biometric-bridge.js', document.baseURI).href;
+        script.onload = () => {
+          const bridgeReady = !!(window.TeerBiometricBridge && typeof window.TeerBiometricBridge.authenticateDeviceCredential === 'function' && typeof window.TeerBiometricBridge.authenticate === 'function');
+          if (!bridgeReady) console.error('Biometric bridge loaded but required unlock methods are missing:', script.src);
+          resolve(bridgeReady);
+        };
+        script.onerror = (error) => {
+          console.error('Biometric bridge failed to load:', script.src, error);
+          resolve(false);
+        };
+        document.head.appendChild(script);
+      });
+    }
   </script>
 </body>
 </html>
