@@ -52,6 +52,9 @@ jobs:
       - name: Prepare and add Android project
         run: |
           npm run build:onesignal
+          test -s www/biometric-bridge.js
+          grep -q 'TeerDeviceCredential' www/biometric-bridge.js
+          grep -q 'authenticateDeviceCredential' www/biometric-bridge.js
           echo "{\"build\":${GITHUB_RUN_NUMBER}}" > www/build-info.json
           npx cap add android
           # Native updater downloads the signed APK and opens Android's package installer.
