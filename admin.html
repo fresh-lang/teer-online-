@@ -1097,7 +1097,7 @@
         sourceResultPreviewMarket = market;
         const previewDateInput = document.getElementById('resultDate');
         if (previewDateInput) previewDateInput.value = formatResultDateForInput(preview.date);
-        alert(`Preview only — NOT published.\\nMarket: ${market}\\nDate: ${preview.date}\\nFR: ${preview.fr} | SR: ${preview.sr}\\n\\nVerify the source numbers before pressing Save & Broadcast.`);
+        alert(`Preview only — NOT published.\nMarket: ${market}\nDate: ${preview.date}\nFR: ${preview.fr} | SR: ${preview.sr}\n\nVerify the source numbers before pressing Save & Broadcast.`);
       } catch (e) {
         alert('Could not fetch a verified same-day result: ' + (e.message || e));
       } finally {
