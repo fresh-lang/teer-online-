@@ -497,6 +497,10 @@
           <button id="profileAuthBtn" onclick="openAuthModal()" class="text-xs bg-amber-400 text-teal-950 font-bold px-3 py-1.5 rounded-lg shadow">Login</button>
         </div>
 
+        <div class="bg-white border border-teal-100 rounded-2xl p-3 shadow-sm">
+          <div class="flex items-center justify-between gap-2"><div><p class="text-sm font-bold text-teal-950"><i class="fa-solid fa-building-columns text-teal-700 mr-1"></i> Bank &amp; UPI Details</p><p class="text-[10px] text-slate-500 mt-1">View and edit your saved withdrawal account details</p></div><button onclick="openPayoutProfileModal()" class="px-3 py-2 rounded-xl bg-teal-900 text-amber-300 text-xs font-bold">View / Edit</button></div>
+        </div>
+
         <!-- Referral information: only currently implemented features -->
         <div class="bg-white border border-slate-200 rounded-2xl p-4 text-slate-800 space-y-2.5">
           <div class="flex items-center gap-2 text-teal-950 font-black text-sm">
@@ -662,6 +666,7 @@
           <span class="flex items-center gap-3"><i class="fa-solid fa-gift w-4 text-teal-800"></i> Welcome Bonus &amp; Referral Info</span>
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
         </a>
+        <a onclick="openPayoutProfileModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer"><span class="flex items-center gap-3"><i class="fa-solid fa-building-columns w-4 text-teal-800"></i> Bank / UPI Details</span><i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i></a>
         <a onclick="openNotificationModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
           <span class="flex items-center gap-3"><i class="fa-solid fa-bell w-4 text-teal-800"></i> Notifications</span>
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
@@ -1679,17 +1684,28 @@
           credentialUnlock.disabled = false;
         }
       });
+      let biometricUnlockBusy = false;
       unlock.addEventListener('click', async () => {
+        if (biometricUnlockBusy) return;
+        biometricUnlockBusy = true;
         unlock.disabled = true;
         unlock.textContent = 'Please wait…';
         try {
           await bridge.authenticate();
           overlay.remove();
         } catch (error) {
-          overlay.querySelector('#teerBiometricError').textContent = 'Unlock cancelled. Try again.';
+          const message = String(error && (error.message || error.code) || error);
+          const lockedOut = /lockout|locked out|too many|permanently locked/i.test(message);
+          if (lockedOut && bridge.authenticateDeviceCredential) {
+            overlay.querySelector('#teerBiometricError').textContent = 'Fingerprint is temporarily locked. Opening phone Pattern / PIN / Password…';
+            try { await bridge.authenticateDeviceCredential(); overlay.remove(); return; }
+            catch (_) { overlay.querySelector('#teerBiometricError').textContent = 'Fingerprint locked. Tap “Use Pattern / PIN / Password” to unlock.'; }
+          } else {
+            overlay.querySelector('#teerBiometricError').textContent = 'Fingerprint did not unlock. Use Pattern / PIN / Password or try again.';
+          }
           unlock.textContent = '🔓 Unlock now';
           unlock.disabled = false;
-        }
+        } finally { biometricUnlockBusy = false; }
       });
       unlock.click();
     }
@@ -2414,6 +2430,70 @@
       }
     }
 
+
+    function applyPayoutProfileToWithdrawForm(profile) {
+      const p = profile || {};
+      const fields = {
+        withdrawUpiInput: p.upi_id || p.upi || '',
+        bankHolderInput: p.bank_holder_name || p.bank?.holderName || '',
+        bankAccountInput: p.bank_account_number || p.bank?.accountNumber || '',
+        bankIfscInput: p.bank_ifsc || p.bank?.ifsc || '',
+        bankNameInput: p.bank_name || p.bank?.bankName || ''
+      };
+      Object.entries(fields).forEach(([id,value]) => { const el=document.getElementById(id); if(el) el.value=value; });
+      const ub=document.getElementById('savedUpiBadge'), bb=document.getElementById('savedBankBadge');
+      if(ub) ub.classList.toggle('hidden',!fields.withdrawUpiInput);
+      if(bb) bb.classList.toggle('hidden',!fields.bankAccountInput);
+    }
+    async function loadPayoutProfileIntoWithdrawForm() {
+      try {
+        const result=await accountApi('get_payout_profile');
+        if(result.profile){ applyPayoutProfileToWithdrawForm(result.profile); return; }
+      } catch(error){ console.warn('Payout profile load failed:',error); }
+      const legacy=JSON.parse(memoryStore.getItem('teer_saved_payout_details_'+state.user.phone)||'{}');
+      applyPayoutProfileToWithdrawForm(legacy);
+    }
+    async function openPayoutProfileModal() {
+      if(!state.user || accountIsDemo){ alert('Please login with your account to view or edit Bank / UPI details.'); if(!state.user) openAuthModal(); return; }
+      const modal=document.getElementById('payoutProfileModal'); modal.classList.remove('hidden');
+      const status=document.getElementById('payoutProfileStatus'); status.textContent='Loading saved details…';
+      try {
+        const result=await accountApi('get_payout_profile'); const p=result.profile||{};
+        document.getElementById('profilePayoutUpi').value=p.upi_id||'';
+        document.getElementById('profileBankHolder').value=p.bank_holder_name||'';
+        document.getElementById('profileBankAccount').value=p.bank_account_number||'';
+        document.getElementById('profileBankIfsc').value=p.bank_ifsc||'';
+        document.getElementById('profileBankName').value=p.bank_name||'';
+        if(!result.profile){
+          const old=JSON.parse(memoryStore.getItem('teer_saved_payout_details_'+state.user.phone)||'{}');
+          document.getElementById('profilePayoutUpi').value=old.upi||'';
+          document.getElementById('profileBankHolder').value=old.bank?.holderName||'';
+          document.getElementById('profileBankAccount').value=old.bank?.accountNumber||'';
+          document.getElementById('profileBankIfsc').value=old.bank?.ifsc||'';
+          document.getElementById('profileBankName').value=old.bank?.bankName||'';
+        }
+        status.textContent=result.profile?'Your saved account details':'No server-saved details yet. Add and save below.';
+      } catch(error){ status.textContent='Could not load saved details: '+(error.message||error); }
+    }
+    function closePayoutProfileModal(){ document.getElementById('payoutProfileModal').classList.add('hidden'); }
+    async function savePayoutProfile() {
+      const btn=document.getElementById('savePayoutProfileBtn'), status=document.getElementById('payoutProfileStatus');
+      const payload={
+        upi_id:document.getElementById('profilePayoutUpi').value.trim(),
+        bank_holder_name:document.getElementById('profileBankHolder').value.trim(),
+        bank_account_number:document.getElementById('profileBankAccount').value.trim(),
+        bank_ifsc:document.getElementById('profileBankIfsc').value.trim().toUpperCase(),
+        bank_name:document.getElementById('profileBankName').value.trim()
+      };
+      btn.disabled=true; btn.textContent='Saving…'; status.textContent='Saving securely to your account…';
+      try {
+        const result=await accountApi('save_payout_profile',payload); applyPayoutProfileToWithdrawForm(result.profile);
+        memoryStore.setItem('teer_saved_payout_details_'+state.user.phone,JSON.stringify({upi:result.profile.upi_id||'',bank:result.profile.bank_account_number?{holderName:result.profile.bank_holder_name,accountNumber:result.profile.bank_account_number,ifsc:result.profile.bank_ifsc,bankName:result.profile.bank_name||''}:null}));
+        status.textContent='Saved successfully. Only your account can view these details.'; showAppToast('Bank / UPI details saved.');
+      } catch(error){ status.textContent=error.message||'Could not save details.'; }
+      finally { btn.disabled=false; btn.textContent='Save Details'; }
+    }
+
     function openWithdrawModal() {
       if (!state.user) {
         alert('Please login or register to withdraw funds!');
@@ -2421,34 +2501,9 @@
         return;
       }
 
-      // Load saved UPI and Bank Details for this user
       const userPhone = state.user.phone;
-      const savedAccounts = JSON.parse(memoryStore.getItem('teer_saved_payout_details_' + userPhone) || '{}');
-
-      const upiInput = document.getElementById('withdrawUpiInput');
-      const savedUpiBadge = document.getElementById('savedUpiBadge');
-      if (savedAccounts.upi) {
-        upiInput.value = savedAccounts.upi;
-        if (savedUpiBadge) savedUpiBadge.classList.remove('hidden');
-      } else {
-        if (savedUpiBadge) savedUpiBadge.classList.add('hidden');
-      }
-
-      const holderInput = document.getElementById('bankHolderInput');
-      const accInput = document.getElementById('bankAccountInput');
-      const ifscInput = document.getElementById('bankIfscInput');
-      const bankNameInput = document.getElementById('bankNameInput');
-      const savedBankBadge = document.getElementById('savedBankBadge');
-
-      if (savedAccounts.bank && savedAccounts.bank.accountNumber) {
-        holderInput.value = savedAccounts.bank.holderName || '';
-        accInput.value = savedAccounts.bank.accountNumber || '';
-        ifscInput.value = savedAccounts.bank.ifsc || '';
-        bankNameInput.value = savedAccounts.bank.bankName || '';
-        if (savedBankBadge) savedBankBadge.classList.remove('hidden');
-      } else {
-        if (savedBankBadge) savedBankBadge.classList.add('hidden');
-      }
+      applyPayoutProfileToWithdrawForm({});
+      loadPayoutProfileIntoWithdrawForm();
 
       // Check daily withdrawal count and total
       const todayStr = getTodayFormattedDate();
@@ -4098,6 +4153,18 @@
             Exit
           </button>
         </div>
+      </div>
+    </div>
+
+
+    <div id="payoutProfileModal" class="fixed inset-0 bg-black/75 z-[100] hidden flex items-center justify-center p-3">
+      <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl space-y-3 max-h-[88vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b pb-2"><div><h3 class="font-bold text-base text-teal-950">Bank &amp; UPI Details</h3><p class="text-[10px] text-slate-500">One UPI ID and one bank account per user</p></div><button onclick="closePayoutProfileModal()" class="text-slate-400 p-1"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+        <p id="payoutProfileStatus" class="text-[11px] text-teal-800">Loading saved details…</p>
+        <div class="rounded-xl border border-teal-100 bg-teal-50 p-3 space-y-2"><p class="text-xs font-bold text-teal-950">UPI ID</p><input id="profilePayoutUpi" type="text" maxlength="100" placeholder="name@upi" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-mono"></div>
+        <div class="rounded-xl border border-slate-200 p-3 space-y-2"><p class="text-xs font-bold text-teal-950">Bank Account</p><input id="profileBankHolder" type="text" maxlength="100" placeholder="Account holder name" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm"><input id="profileBankAccount" type="text" inputmode="numeric" maxlength="20" placeholder="Bank account number" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-mono"><div class="grid grid-cols-2 gap-2"><input id="profileBankIfsc" type="text" maxlength="11" placeholder="IFSC code" class="w-full border border-slate-300 rounded-xl p-2.5 text-xs font-mono uppercase"><input id="profileBankName" type="text" maxlength="100" placeholder="Bank name (optional)" class="w-full border border-slate-300 rounded-xl p-2.5 text-xs"></div></div>
+        <p class="text-[10px] text-slate-500">Your details are saved to your account. One UPI ID and one bank account are allowed per user. Never share your OTP or password.</p>
+        <button id="savePayoutProfileBtn" onclick="savePayoutProfile()" class="w-full py-3 rounded-xl bg-teal-900 text-amber-300 font-bold text-sm">Save Details</button><button onclick="closePayoutProfileModal()" class="w-full py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">Close</button>
       </div>
     </div>
 
