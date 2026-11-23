@@ -1,8 +1,10 @@
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 window.TeerBiometricBridge = {
   isNative: () => Capacitor.isNativePlatform(),
+  onAppStateChange: (callback) => App.addListener('appStateChange', ({ isActive }) => callback(isActive)),
   check: () => BiometricAuth.checkBiometry(),
   authenticate: () => BiometricAuth.authenticate({
     reason: 'Unlock Teer Online',
