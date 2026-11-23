@@ -1660,7 +1660,7 @@
           <img src="./logo.png" alt="Teer Online" style="display:block;width:100%;max-width:300px;max-height:210px;object-fit:contain;margin:0 auto 22px">
           <div style="font-size:17px;color:#d7f4f0;margin-bottom:52px">Unlock with fingerprint or face</div>
           <button id="teerBiometricUnlock" style="width:100%;padding:20px 14px;border:0;border-radius:25px;background:#fff;color:#06484b;font-size:20px;font-weight:800;margin-bottom:18px">👆 Unlock now</button>
-          <button id="teerPasswordFallback" style="width:100%;padding:20px 14px;border:0;border-radius:25px;background:#386e72;color:#fff;font-size:17px;font-weight:700">Use Password Login Instead</button>
+          <button id="teerPasswordFallback" style="width:100%;padding:20px 14px;border:0;border-radius:25px;background:#386e72;color:#fff;font-size:17px;font-weight:700">Use Phone PIN / Pattern / Password</button>
           <div id="teerBiometricError" style="font-size:13px;color:#ffd8a8;margin-top:14px;min-height:18px"></div>
         </div>`;
       document.body.appendChild(overlay);
@@ -1676,26 +1676,26 @@
         }
       });
       overlay.querySelector('#teerPasswordFallback').addEventListener('click', async () => {
-        await clearAccountSession();
-        accountSessionToken = null; accountIsDemo = false;
-        state.user = null; state.balance = 0; state.bids = [];
-        localStorage.removeItem('teer_biometric_enabled');
-        overlay.remove(); updateUI(); openAuthModal();
+        try { await bridge.authenticate(); overlay.remove(); }
+        catch (error) {
+          overlay.querySelector('#teerBiometricError').textContent = 'Phone PIN/Pattern/Password was cancelled. Try again.';
+        }
       });
       unlock.click();
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
       await loadStorage();
-      // On Android, enforce the biometric gate on every launch after enrollment.
-      // If the user is already signed in but has not enrolled yet, offer setup now;
-      // previously setup was offered only after a fresh login/registration.
+      // App-level lock is checked before showing app content, independent of login state.
+      // Login and registration must never trigger a separate lock prompt.
       const isNativeTeerApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-      if (state.user && isNativeTeerApp) {
+      if (isNativeTeerApp) {
         if (localStorage.getItem('teer_biometric_enabled') === '1') {
           await showTeerBiometricLock();
         } else {
-          await offerTeerBiometricSetup();
+            if (localStorage.getItem('teer_biometric_enabled') === '1') {
+            await showTeerBiometricLock();
+          }
         }
       }
       // Re-lock whenever the Android app returns from the background.
@@ -1708,7 +1708,7 @@
           }
           if (teerWasBackgrounded) {
             teerWasBackgrounded = false;
-            if (state.user && localStorage.getItem('teer_biometric_enabled') === '1') {
+            if (localStorage.getItem('teer_biometric_enabled') === '1') {
               await showTeerBiometricLock();
             }
           }
@@ -3750,7 +3750,6 @@
         try { await refreshAccountBalance(); }
         catch (balanceError) { console.warn('Initial balance refresh failed:', balanceError); state.balance = 0; }
         updateUI(); closeAuthModal();
-        await offerTeerBiometricSetup();
         showAppToast('Registration successful! ₹10 welcome bonus added to your wallet.');
       } catch (err) { alert(err.message || 'Registration failed.'); }
     }
@@ -3765,7 +3764,6 @@
         state.user = { ...demo }; state.balance = Number(demo.balance || 0); state.bids = [];
         await syncUserRequestNotifications(true);
         updateUI(); closeAuthModal();
-        await offerTeerBiometricSetup();
         showAppToast('Login successful. Welcome back!'); return;
       }
       try {
@@ -3779,7 +3777,6 @@
         const bets = await accountApi('my_bets', { limit: 100 });
         state.bids = (bets.items || []).map(b => ({ refId:b.client_ref || b.id, market:b.market, round:b.round, roundId:b.round_id, mode:b.bet_mode, number:b.bet_number, amount:Number(b.amount), status:(String(b.status).toLowerCase()==='active'?'Active':String(b.status).toUpperCase()), payout:Number(b.payout || 0), date:b.created_at, time:'' }));
         updateUI(); closeAuthModal();
-        await offerTeerBiometricSetup();
         showAppToast('Login successful. Welcome back!');
       } catch (err) { alert(err.message || 'Login failed.'); }
     }
