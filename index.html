@@ -1654,10 +1654,6 @@
     async function showTeerBiometricLock() {
       if (document.getElementById('teerBiometricLockScreen')) return;
       const bridge = window.TeerBiometricBridge;
-      if (!bridge || !bridge.authenticateDeviceCredential || !bridge.authenticate) {
-        console.error('Phone lock authentication is not available.');
-        return;
-      }
       const overlay = document.createElement('div');
       overlay.id = 'teerBiometricLockScreen';
       overlay.style.cssText = 'position:fixed;inset:0;z-index:200000;background:#004347;display:flex;align-items:center;justify-content:center;padding:28px;color:white;font-family:Arial,sans-serif;';
@@ -1676,6 +1672,10 @@
       let busy = false;
       credentialUnlock.addEventListener('click', async () => {
         if (busy) return;
+        if (!bridge || !bridge.authenticateDeviceCredential) {
+          errorBox.textContent = 'Unlock service is unavailable. Please install the latest app update.';
+          return;
+        }
         busy = true;
         credentialUnlock.disabled = true;
         credentialUnlock.textContent = 'Opening phone screen lock…';
@@ -1683,7 +1683,6 @@
           await bridge.authenticateDeviceCredential();
           overlay.remove();
         } catch (error) {
-          const message = String(error && (error.message || error.code) || error);
           errorBox.textContent = 'Pattern / PIN cancelled. You can now use Fingerprint.';
           fingerprintUnlock.style.display = 'block';
           credentialUnlock.textContent = '🔐 Try Pattern / PIN / Password again';
@@ -1694,6 +1693,10 @@
       });
       fingerprintUnlock.addEventListener('click', async () => {
         if (busy) return;
+        if (!bridge || !bridge.authenticate) {
+          errorBox.textContent = 'Fingerprint service is unavailable. Please install the latest app update.';
+          return;
+        }
         busy = true;
         fingerprintUnlock.disabled = true;
         fingerprintUnlock.textContent = 'Checking fingerprint…';
@@ -1712,14 +1715,25 @@
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
-      await loadStorage();
-      // App-level lock is checked before showing app content, independent of login state.
-      // Login and registration must never trigger a separate lock prompt.
-      const isNativeTeerApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-      if (isNativeTeerApp) {
-        // Lock on every cold app launch, even for users who never enabled
-        // the old optional biometric flag.
-        await showTeerBiometricLock();
+      // Detect the installed Capacitor app and show its lock before storage/session work.
+      const bridge = window.TeerBiometricBridge;
+      let isNativeTeerApp = false;
+      try {
+        isNativeTeerApp = !!(
+          (bridge && bridge.isNative && bridge.isNative()) ||
+          (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
+          window.location.protocol === 'capacitor:' ||
+          window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1'
+        );
+      } catch (error) {
+        console.warn('Could not detect native app environment:', error);
+      }
+      if (isNativeTeerApp) await showTeerBiometricLock();
+      try {
+        await loadStorage();
+      } catch (error) {
+        console.error('App storage initialization failed:', error);
       }
       // Re-lock whenever the Android app returns from the background.
       let teerWasBackgrounded = false;
