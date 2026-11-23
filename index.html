@@ -19,11 +19,43 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    // Keep the update inside the app: show download progress, then hand the APK
-    // to Android's package installer (Android always requires user confirmation).
-    function triggerInstallAction() {
+    // Resolve the actual APK asset from the latest published release.
+    // This avoids stale /latest/download redirects and gives users the exact asset URL.
+    async function getLatestApkDownloadUrl() {
+      const response = await fetch('https://api.github.com/repos/fresh-lang/teer-online-/releases/latest', {
+        cache: 'no-store',
+        headers: { 'Accept': 'application/vnd.github+json' }
+      });
+      if (!response.ok) throw new Error('Latest APK release could not be found (HTTP ' + response.status + ').');
+      const release = await response.json();
+      const asset = (release.assets || []).find(item => item.name === 'teer-online.apk' && item.state === 'uploaded');
+      if (!asset || !asset.browser_download_url) throw new Error('APK file is not attached to the latest release yet.');
+      const url = new URL(asset.browser_download_url);
+      if (url.hostname !== 'github.com' || !url.pathname.includes('/releases/download/')) {
+        throw new Error('The published APK link is not valid.');
+      }
+      return url.href;
+    }
+
+    // Website visitors download the APK; native app users use the in-app installer.
+    async function triggerInstallAction(event) {
+      if (event) event.preventDefault();
       if (navigator.vibrate) navigator.vibrate(50);
-      window.location.href = 'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk';
+      try {
+        const apkUrl = await getLatestApkDownloadUrl();
+        const isNative = window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform();
+        if (isNative && window.TeerAppUpdater && window.TeerAppUpdater.downloadAndInstall) {
+          const result = await window.TeerAppUpdater.downloadAndInstall(apkUrl);
+          if (result && result.needsPermission) {
+            alert('Please allow Install unknown apps for Teer Online, return to the app, and tap Update again.');
+          }
+          return;
+        }
+        window.location.assign(apkUrl);
+      } catch (error) {
+        console.error('APK download link error:', error);
+        alert('APK download link error: ' + (error.message || error));
+      }
     }
 
     function showAppUpdatePrompt(buildNumber) {
@@ -66,7 +98,7 @@
         wrap.style.display='block'; error.style.display='none';
         try {
           const result = await window.TeerAppUpdater.downloadAndInstall(
-            'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk',
+            await getLatestApkDownloadUrl(),
             (percent) => {
               progressText.textContent = 'Downloading update… ' + percent + '%';
               bar.style.width = percent + '%';
@@ -206,7 +238,7 @@
     </div>
 
     <!-- Direct Android APK download banner -->
-    <a id="pwaBanner" href="https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk" download="teer-online.apk" class="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-teal-950 px-3.5 py-2.5 flex items-center justify-between text-xs font-bold shadow-md cursor-pointer select-none z-20 relative no-underline">
+    <a id="pwaBanner" href="https://github.com/fresh-lang/teer-online-/releases/latest" onclick="triggerInstallAction(event)" class="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-teal-950 px-3.5 py-2.5 flex items-center justify-between text-xs font-bold shadow-md cursor-pointer select-none z-20 relative no-underline">
       <div class="flex items-center gap-2">
         <div class="w-6 h-6 rounded-full bg-teal-950 text-amber-300 flex items-center justify-center text-xs shadow-inner">
           <i class="fa-solid fa-download animate-bounce"></i>
