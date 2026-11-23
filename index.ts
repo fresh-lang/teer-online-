@@ -259,7 +259,36 @@ async function syncKhanaparaSourceIfDue(force = false) {
       khanaparaLastCheckAt = Date.now();
 
       const preview = await fetchKhanaparaSourcePreview();
-      if (preview.ready !== true) return preview;
+      if (preview.ready !== true) {
+        // If the source says today's result is still pending/holiday, preserve
+        // the last verified archive row. Only repair an empty placeholder row;
+        // never overwrite a real result or an admin correction.
+        if (preview.status === "awaiting" &&
+            /^\\d{2}-\\d{2}-\\d{4}$/.test(preview.previous_date ?? "") &&
+            /^\\d{2}$/.test(preview.previous_fr ?? "") &&
+            /^\\d{2}$/.test(preview.previous_sr ?? "")) {
+          const { data: waitingCurrent, error: waitingError } = await supabase.from("teer_results")
+            .select("market,fr,sr,result_date,updated_by")
+            .eq("market", KHANAPARA_MARKET).maybeSingle();
+          if (waitingError) throw waitingError;
+          const isPlaceholder = !waitingCurrent ||
+            (waitingCurrent.fr === "**" && waitingCurrent.sr === "**");
+          if (isPlaceholder && !waitingCurrent?.updated_by) {
+            const { error: restoreError } = await supabase.from("teer_results").upsert({
+              market: KHANAPARA_MARKET,
+              fr: preview.previous_fr,
+              sr: preview.previous_sr,
+              result_date: preview.previous_date.replaceAll("-", "/"),
+              updated_at: new Date().toISOString(),
+              updated_by: null,
+              source_updated_at: null,
+            }, { onConflict: "market" });
+            if (restoreError) throw restoreError;
+            return { ...preview, applied: true, restored_previous: true };
+          }
+        }
+        return preview;
+      }
 
       const { data: current, error: currentError } = await supabase.from("teer_results")
         .select("market,fr,sr,result_date,updated_by")
