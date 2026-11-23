@@ -1048,7 +1048,18 @@ async function syncShillongMorningIfDue(force = false) {
       .upsert({ market, last_checked_at: new Date().toISOString() }, { onConflict: "market" });
     if (markError) throw markError;
 
-    const preview = await fetchShillongMorningSourcePreview();
+    let preview = await fetchShillongMorningSourcePreview();
+    if (!preview.ready) {
+      try {
+        const fallback = await fetchShillongFallbackPreview(
+          market, "Shillong Morning Result", "10:30 AM", "11:30 AM",
+          ["Welcome Morning Result", "Shillong Night (8:30)", "Night Teer Result"],
+        );
+        if (fallback.ready) preview = fallback;
+      } catch (error) {
+        console.error("Shillong Morning fallback failed:", error instanceof Error ? error.message : error);
+      }
+    }
     if (!preview.ready) return preview;
     const applied = await applyVerifiedRoundResults({
       market, date: preview.date!,
@@ -1125,7 +1136,18 @@ async function syncShillongNightIfDue(force = false) {
     const { error: markError } = await supabase.from("result_source_sync")
       .upsert({ market, last_checked_at: new Date().toISOString() }, { onConflict: "market" });
     if (markError) throw markError;
-    const preview = await fetchShillongNightSourcePreview();
+    let preview = await fetchShillongNightSourcePreview();
+    if (!preview.ready) {
+      try {
+        const fallback = await fetchShillongFallbackPreview(
+          market, "Shillong Night (8:30)", "08:30 PM", "09:30 PM",
+          ["Night Teer Result"],
+        );
+        if (fallback.ready) preview = fallback;
+      } catch (error) {
+        console.error("Shillong Night fallback failed:", error instanceof Error ? error.message : error);
+      }
+    }
     if (!preview.ready) return preview;
     const applied = await applyVerifiedRoundResults({
       market, date: preview.date!,
@@ -1157,6 +1179,58 @@ async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
   ) as ShillongSourcePreview;
 }
 
+ 
+// Independent Shillong fallback cards. Each card must match the exact market
+// heading, both configured round times, and today's India date before use.
+const SHILLONG_FALLBACK_URL = "https://shillongnightteer.me/";
+
+async function fetchShillongFallbackPreview(
+  market: string, heading: string, frTime: string, srTime: string, nextHeadings: string[],
+) {
+  const response = await fetch(SHILLONG_FALLBACK_URL, {
+    method: "GET",
+    headers: {
+      "User-Agent": "TeerOnlineResultSync/1.0 (+independent Shillong fallback verification)",
+      "Accept": "text/html,application/xhtml+xml",
+      "Cache-Control": "no-cache",
+    },
+  });
+  if (!response.ok) throw new Error("Shillong fallback returned HTTP " + response.status);
+  const html = await response.text();
+  if (!html || html.length < 1000) throw new Error("Shillong fallback page was empty or incomplete");
+  const plain = htmlToPlainText(html);
+  const start = plain.toLowerCase().indexOf(heading.toLowerCase());
+  if (start < 0) {
+    return { ready: false as const, status: "section_missing", market, source_updated_at: null, source_url: SHILLONG_FALLBACK_URL };
+  }
+  const ends = nextHeadings
+    .map((value) => plain.toLowerCase().indexOf(value.toLowerCase(), start + heading.length))
+    .filter((value) => value >= 0);
+  const section = plain.slice(start, ends.length ? Math.min(...ends) : Math.min(plain.length, start + 1200));
+  const dateMatch = section.match(/(\\d{2})\\.(\\d{2})\\.(\\d{4})/);
+  const date = dateMatch ? dateMatch[1] + "/" + dateMatch[2] + "/" + dateMatch[3] : "";
+  const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
+  return await fetchGroundsMarketPreview(
+    SHILLONG_MARKET, "Shillong Teer Result", "03:15 PM", "04:15 PM",
+  ) as ShillongSourcePreview;
+}
+");
+  const frMatch = section.match(new RegExp("F\\\\/R\\\\s*\\\\(\\\\s*" + escapePattern(frTime) + "\\\\s*\\\\)\\\\s*(\\\\d{2})", "i"));
+  const srMatch = section.match(new RegExp("S\\\\/R\\\\s*\\\\(\\\\s*" + escapePattern(srTime) + "\\\\s*\\\\)\\\\s*(\\\\d{2})", "i"));
+  const fr = frMatch?.[1] ?? "";
+  const sr = srMatch?.[1] ?? "";
+  const today = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
+  }).format(new Date());
+  if (date !== today) {
+    return { ready: false as const, status: date ? "date_not_current" : "date_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: SHILLONG_FALLBACK_URL };
+  }
+  if (!/^\\d{2}$/.test(fr) && !/^\\d{2}$/.test(sr)) {
+    return { ready: false as const, status: "awaiting", market, date, source_updated_at: null, source_url: SHILLONG_FALLBACK_URL };
+  }
+  return { ready: true as const, status: "verified" as const, market, date, ...(fr ? { fr } : {}), ...(sr ? { sr } : {}), source_updated_at: null, source_url: SHILLONG_FALLBACK_URL };
+}
+
 async function syncShillongSourceIfDue(force = false) {
   if (shillongCheckPromise) return await shillongCheckPromise;
   shillongCheckPromise = (async () => {
@@ -1173,7 +1247,18 @@ async function syncShillongSourceIfDue(force = false) {
       if (markError) throw markError;
       shillongLastCheckAt = Date.now();
 
-      const preview = await fetchShillongSourcePreview();
+      let preview = await fetchShillongSourcePreview();
+      if (preview.ready !== true) {
+        try {
+          const fallback = await fetchShillongFallbackPreview(
+            SHILLONG_MARKET, "Shillong Teer Result", "03:15 PM", "04:15 PM",
+            ["Shillong Morning Result", "Welcome Morning Result", "Shillong Night (8:30)", "Night Teer Result"],
+          );
+          if (fallback.ready) preview = fallback as ShillongSourcePreview;
+        } catch (error) {
+          console.error("Shillong Evening fallback failed:", error instanceof Error ? error.message : error);
+        }
+      }
       if (preview.ready !== true) {
         // If the source says today's result is still pending/holiday, preserve
         // the last verified archive row. Only repair an empty placeholder row;
