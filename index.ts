@@ -323,6 +323,164 @@ async function syncKhanaparaSourceIfDue(force = false) {
   })();
   return await khanaparaCheckPromise;
 }
+
+// Shillong Teer source verification. The source page's current result is accepted
+// only when its FR/SR pair matches the newest archive row and the page update date.
+const SHILLONG_SOURCE_URL = "https://teer-result.com/shillong-teer-result/";
+const SHILLONG_MARKET = "Shillong Teer (Evening)";
+let shillongLastCheckAt = 0;
+let shillongCheckPromise: Promise<unknown> | null = null;
+
+type ShillongSourcePreview =
+  | { ready: false; status: string; market: string; page_date?: string; source_update_date?: string; previous_date?: string; previous_fr?: string; previous_sr?: string; source_updated_at: string | null; source_url: string }
+  | { ready: true; status: "verified"; market: string; fr: string; sr: string; date: string; source_updated_at: string | null; source_url: string };
+
+async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
+  const response = await fetch(SHILLONG_SOURCE_URL, {
+    method: "GET",
+    headers: {
+      "User-Agent": "TeerOnlineResultSync/1.0 (+source verification)",
+      "Accept": "text/html,application/xhtml+xml",
+      "Cache-Control": "no-cache",
+    },
+  });
+  if (!response.ok) throw new Error("Source website returned HTTP " + response.status);
+  const html = await response.text();
+  if (!html || html.length < 1000) throw new Error("Source page content was empty or incomplete");
+
+  const plain = htmlToPlainText(html);
+  const updatedMatch = plain.match(/Updated\s+(\d{4}-\d{2}-\d{2})/i);
+  const pageDateMatch = plain.match(/Shillong Teer Result Today\s+(\d{2}-\d{2}-\d{4})/i);
+  const updatedIso = updatedMatch?.[1] ?? "";
+  const pageDate = pageDateMatch?.[1] ?? "";
+  const awaiting = /Awaiting today's result/i.test(plain.slice(0, 6000));
+
+  const archiveStart = plain.toLowerCase().indexOf("shillong teer previous result list");
+  const archiveText = archiveStart >= 0 ? plain.slice(archiveStart) : "";
+  const archiveRow = archiveText.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2})\s+(\d{2})/);
+  const topText = archiveStart >= 0 ? plain.slice(0, archiveStart) : plain.slice(0, 9000);
+  const frMatch = topText.match(/FR\s*[·•]?\s*3:45\s*pm\s*(\d{2})/i);
+  const srMatch = topText.match(/SR\s*[·•]?\s*4:45\s*pm\s*(\d{2})/i);
+  const frResult = frMatch?.[1] ?? "";
+  const srResult = srMatch?.[1] ?? "";
+
+  const jsonLdModified = html.match(/"dateModified"\s*:\s*"([^"]+)"/i)?.[1] ?? "";
+  const metaModified = html.match(/<meta[^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["']/i)?.[1] ?? "";
+  const candidateTimestamp = [jsonLdModified, metaModified].find((value) => /T\d{2}:\d{2}/i.test(value)) ?? "";
+  const parsedTimestamp = candidateTimestamp ? new Date(candidateTimestamp) : null;
+  const sourceUpdatedAt = parsedTimestamp && Number.isFinite(parsedTimestamp.getTime()) &&
+    parsedTimestamp.toISOString().slice(0, 10) === updatedIso
+      ? parsedTimestamp.toISOString()
+      : null;
+
+  if (awaiting) {
+    return {
+      ready: false, status: "awaiting", market: SHILLONG_MARKET,
+      page_date: pageDate, source_update_date: updatedIso,
+      previous_date: archiveRow?.[1] ?? "", previous_fr: archiveRow?.[2] ?? "", previous_sr: archiveRow?.[3] ?? "",
+      source_updated_at: sourceUpdatedAt, source_url: SHILLONG_SOURCE_URL,
+    };
+  }
+
+  if (!/^\d{2}$/.test(frResult) || !/^\d{2}$/.test(srResult) ||
+      !updatedIso || !archiveRow || archiveRow[1] !== dateIsoToDmy(updatedIso) ||
+      archiveRow[2] !== frResult || archiveRow[3] !== srResult) {
+    return {
+      ready: false, status: "not_verified", market: SHILLONG_MARKET,
+      page_date: pageDate, source_update_date: updatedIso,
+      source_updated_at: sourceUpdatedAt, source_url: SHILLONG_SOURCE_URL,
+    };
+  }
+
+  return {
+    ready: true, status: "verified", market: SHILLONG_MARKET,
+    fr: frResult, sr: srResult, date: dateIsoToDmy(updatedIso),
+    source_updated_at: sourceUpdatedAt, source_url: SHILLONG_SOURCE_URL,
+  };
+}
+
+async function syncShillongSourceIfDue(force = false) {
+  if (shillongCheckPromise) return await shillongCheckPromise;
+  shillongCheckPromise = (async () => {
+    try {
+      const { data: syncState, error: stateError } = await supabase.from("result_source_sync")
+        .select("last_checked_at").eq("market", SHILLONG_MARKET).maybeSingle();
+      if (stateError) throw stateError;
+      const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
+      if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
+
+      const checkedAt = new Date().toISOString();
+      const { error: markError } = await supabase.from("result_source_sync")
+        .upsert({ market: SHILLONG_MARKET, last_checked_at: checkedAt }, { onConflict: "market" });
+      if (markError) throw markError;
+      shillongLastCheckAt = Date.now();
+
+      const preview = await fetchShillongSourcePreview();
+      if (preview.ready !== true) {
+        // If the source says today's result is still pending/holiday, preserve
+        // the last verified archive row. Only repair an empty placeholder row;
+        // never overwrite a real result or an admin correction.
+        if (preview.status === "awaiting" &&
+            /^\d{2}-\d{2}-\d{4}$/.test(preview.previous_date ?? "") &&
+            /^\d{2}$/.test(preview.previous_fr ?? "") &&
+            /^\d{2}$/.test(preview.previous_sr ?? "")) {
+          const { data: waitingCurrent, error: waitingError } = await supabase.from("teer_results")
+            .select("market,fr,sr,result_date,updated_by")
+            .eq("market", SHILLONG_MARKET).maybeSingle();
+          if (waitingError) throw waitingError;
+          const isPlaceholder = !waitingCurrent ||
+            (waitingCurrent.fr === "**" && waitingCurrent.sr === "**");
+          if (isPlaceholder && !waitingCurrent?.updated_by) {
+            const { error: restoreError } = await supabase.from("teer_results").upsert({
+              market: SHILLONG_MARKET,
+              fr: preview.previous_fr,
+              sr: preview.previous_sr,
+              result_date: preview.previous_date.replaceAll("-", "/"),
+              updated_at: new Date().toISOString(),
+              updated_by: null,
+              source_updated_at: null,
+            }, { onConflict: "market" });
+            if (restoreError) throw restoreError;
+            return { ...preview, applied: true, restored_previous: true };
+          }
+        }
+        return preview;
+      }
+
+      const { data: current, error: currentError } = await supabase.from("teer_results")
+        .select("market,fr,sr,result_date,updated_by")
+        .eq("market", SHILLONG_MARKET).maybeSingle();
+      if (currentError) throw currentError;
+
+      if (current?.updated_by && current.result_date === preview.date) {
+        return { ...preview, applied: false, reason: "admin_correction_locked" };
+      }
+      if (current?.result_date === preview.date &&
+          current.fr === preview.fr && current.sr === preview.sr) {
+        return { ...preview, applied: false, reason: "already_current" };
+      }
+
+      const { error: saveError } = await supabase.from("teer_results").upsert({
+        market: SHILLONG_MARKET,
+        fr: preview.fr,
+        sr: preview.sr,
+        result_date: preview.date,
+        updated_at: new Date().toISOString(),
+        updated_by: null,
+        source_updated_at: preview.source_updated_at,
+      }, { onConflict: "market" });
+      if (saveError) throw saveError;
+      return { ...preview, applied: true };
+    } catch (error) {
+      console.error("Shillong source sync failed:", error instanceof Error ? error.message : error);
+      return { ready: false, status: "source_error" };
+    } finally {
+      shillongCheckPromise = null;
+    }
+  })();
+  return await shillongCheckPromise;
+}
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
@@ -341,7 +499,8 @@ Deno.serve(async (req) => {
     // cause repeated source fetches inside the five-minute window.
     if (action === "scheduled_result_sync") {
       const sync = await syncKhanaparaSourceIfDue(false);
-      return json({ success: true, sync }, 200, origin);
+      const shillongSync = await syncShillongSourceIfDue(false);
+      return json({ success: true, sync, shillongSync }, 200, origin);
     }
 
     if (action === "register") {
@@ -580,7 +739,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "public_app_data") {
-      await syncKhanaparaSourceIfDue(false);
+      await Promise.all([syncKhanaparaSourceIfDue(false), syncShillongSourceIfDue(false)]);
 
       const [{ data: results, error: resultsError }, { data: settings, error: settingsError }, { data: rounds, error: roundsError }] = await Promise.all([
         supabase.from("teer_results").select("market,fr,sr,result_date,updated_at,source_updated_at"),
