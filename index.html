@@ -65,12 +65,23 @@
         update.disabled=true; update.textContent='Opening…';
         wrap.style.display='block'; error.style.display='none';
         try {
-          await window.TeerAppUpdater.openDownloadPage(
-            'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk'
+          const result = await window.TeerAppUpdater.downloadAndInstall(
+            'https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk',
+            (percent) => {
+              progressText.textContent = 'Downloading update… ' + percent + '%';
+              bar.style.width = percent + '%';
+            }
           );
-          progressText.textContent='Browser opened. Download the APK, then tap the downloaded file to install it.';
-          bar.parentElement.style.display='none';
-          update.textContent='Browser opened';
+          if (result && result.needsPermission) {
+            progressText.textContent = 'Allow “Install unknown apps” for Teer Online, return to the app, then tap Update again.';
+            bar.parentElement.style.display='none';
+            update.disabled=false;
+            update.textContent='Try Update Again';
+            return;
+          }
+          progressText.textContent='Download complete. Android installer is opening…';
+          bar.style.width='100%';
+          update.textContent='Installer opened';
         } catch(e) {
           console.error('In-app APK update failed:',e);
           error.style.display='block';
