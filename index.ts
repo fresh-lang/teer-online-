@@ -150,7 +150,6 @@ async function requireAdmin(user: Record<string, unknown> | null) {
 // Khanapara Teer source verification. The source page's current result is accepted
 // only when its FR/SR pair matches the newest archive row and the page update date.
 const KHANAPARA_SOURCE_URL = "https://teer-result.com/khanapara-teer-result/";
-const KHANAPARA_GROUNDS_SOURCE_URL = "https://shillongteergrounds.in/khanapara-teer-result-today/";
 const KHANAPARA_MARKET = "Khanapara Teer (Evening)";
 let khanaparaLastCheckAt = 0;
 let khanaparaCheckPromise: Promise<unknown> | null = null;
@@ -179,13 +178,7 @@ function dateDmyToIso(value: string): string {
   return m ? m[3] + "-" + m[2] + "-" + m[1] : "";
 }
 
-function normalizeResultDateIso(value: string): string {
-  const raw = String(value ?? "").trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  return dateDmyToIso(raw.replaceAll("-", "/").replaceAll(".", "/"));
-}
-
-async function saveVerifiedResultHistory(market: string, date: string, fr: string, sr: string, source: string, sourceUpdatedAt: string | null = null) {
+async function saveVerifiedResultHistory(market: string, date: string, fr: string, sr: string, source: "source" | "admin") {
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date) || !/^\d{2}$/.test(fr) || !/^\d{2}$/.test(sr)) {
     throw new Error("Only complete dated FR/SR pairs can be archived");
   }
@@ -199,83 +192,10 @@ async function saveVerifiedResultHistory(market: string, date: string, fr: strin
     return { saved: false, reason: "date_already_archived" };
   }
   const { error } = await supabase.from("teer_result_history").upsert({
-    market, result_date: resultDate, fr, sr, source, source_updated_at: sourceUpdatedAt
+    market, result_date: resultDate, fr, sr, source
   }, { onConflict: "market,result_date" });
   if (error) throw error;
   return { saved: true, repaired_incomplete: Boolean(existing) };
-}
-
-
-function extractGroundsModifiedAt(html: string, resultDateIso: string): string | null {
-  const jsonLd = html.match(/"dateModified"\s*:\s*"([^"]+)"/i)?.[1] ?? "";
-  const meta = html.match(/<meta[^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
-    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["']/i)?.[1] ?? "";
-  const raw = [jsonLd, meta].find(v => /T\d{2}:\d{2}/i.test(v)) ?? "";
-  if (!raw) return null;
-  const parsed = new Date(raw);
-  if (!Number.isFinite(parsed.getTime())) return null;
-  const localDate = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit"
-  }).format(parsed);
-  return localDate === resultDateIso ? parsed.toISOString() : null;
-}
-async function fetchGroundsMarketPreview(market: string, url: string, headingName: "Shillong" | "Khanapara") {
-  const response = await fetch(url, { method: "GET", headers: {
-    "User-Agent": "TeerOnlineResultSync/1.0 (+source verification)",
-    "Accept": "text/html,application/xhtml+xml", "Cache-Control": "no-cache"
-  }});
-  if (!response.ok) throw new Error("Source website returned HTTP " + response.status);
-  const html = await response.text();
-  if (!html || html.length < 1000) throw new Error("Source page content was empty or incomplete");
-  const plain = htmlToPlainText(html);
-  const heading = new RegExp(headingName + "\\s+Teer\\s+Result\\s*[-–:]?\\s*(\\d{2}[./-]\\d{2}[./-]\\d{4})", "i");
-  const headingMatch = plain.match(heading);
-  const pageDateRaw = headingMatch?.[1] ?? "";
-  const pageDate = pageDateRaw.replaceAll(".", "/").replaceAll("-", "/");
-  const dateParts = pageDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  const resultDateIso = dateParts ? dateParts[3] + "-" + dateParts[2] + "-" + dateParts[1] : "";
-  const sectionStart = plain.toLowerCase().indexOf((headingName + " Teer Result").toLowerCase());
-  const section = sectionStart >= 0 ? plain.slice(sectionStart, sectionStart + 900) : "";
-  const rounds = section.match(/F\/R\s*\([^)]*\)\s*\|\s*S\/R\s*\([^)]*\)\s+(\d{2})\s*\|\s*(\d{2})/i);
-  const fr = rounds?.[1] ?? "";
-  const sr = rounds?.[2] ?? "";
-  const sourceUpdatedAt = resultDateIso ? extractGroundsModifiedAt(html, resultDateIso) : null;
-  const awaiting = /awaiting today's result|result is not yet declared|awaiting result/i.test(section);
-  if (awaiting) return { ready: false, status: "awaiting", market, page_date: pageDate, source_updated_at: sourceUpdatedAt, source_url: url };
-  if (!resultDateIso || !/^\d{2}$/.test(fr) || !/^\d{2}$/.test(sr)) {
-    return { ready: false, status: "not_verified", market, page_date: pageDate, source_updated_at: sourceUpdatedAt, source_url: url };
-  }
-  return { ready: true, status: "verified", market, fr, sr, date: pageDate, source_updated_at: sourceUpdatedAt, source_url: url };
-}
-async function fetchShillongGroundsPreview() {
-  return await fetchGroundsMarketPreview(SHILLONG_MARKET, SHILLONG_GROUNDS_SOURCE_URL, "Shillong");
-}
-async function fetchKhanaparaGroundsPreview() {
-  return await fetchGroundsMarketPreview(KHANAPARA_MARKET, KHANAPARA_GROUNDS_SOURCE_URL, "Khanapara");
-}
-async function chooseFirstVerifiedPreview<T extends { ready: boolean; status: string; source_updated_at: string | null; source_url: string; date?: string }>(
-  fetchers: Array<() => Promise<T>>
-): Promise<T> {
-  const attempts = await Promise.all(fetchers.map(async fetcher => {
-    try {
-      const preview = await fetcher();
-      return { ...preview, observed_at: new Date().toISOString() };
-    } catch (error) {
-      return { ready: false, status: "source_error", source_updated_at: null, source_url: "",
-        observed_at: new Date().toISOString(), error: error instanceof Error ? error.message : String(error) } as T;
-    }
-  }));
-  const verified = attempts.filter(item => item.ready);
-  if (verified.length) {
-    verified.sort((a, b) => {
-      const dateA = a.date ? dateDmyToIso(a.date) : "";
-      const dateB = b.date ? dateDmyToIso(b.date) : "";
-      if (dateA !== dateB) return dateB.localeCompare(dateA);
-      return Date.parse(a.source_updated_at || a.observed_at) - Date.parse(b.source_updated_at || b.observed_at);
-    });
-    return verified[0];
-  }
-  return (attempts.find(item => item.status === "awaiting") || attempts.find(item => item.status !== "source_error") || attempts[0]) as T;
 }
 
 type KhanaparaSourcePreview =
@@ -355,7 +275,7 @@ async function syncKhanaparaSourceIfDue(force = false) {
         .select("last_checked_at").eq("market", KHANAPARA_MARKET).maybeSingle();
       if (stateError) throw stateError;
       const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-      if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
+      if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
 
       const checkedAt = new Date().toISOString();
       const { error: markError } = await supabase.from("result_source_sync")
@@ -363,7 +283,7 @@ async function syncKhanaparaSourceIfDue(force = false) {
       if (markError) throw markError;
       khanaparaLastCheckAt = Date.now();
 
-      const preview = await chooseFirstVerifiedPreview([fetchKhanaparaGroundsPreview, fetchKhanaparaSourcePreview]);
+      const preview = await fetchKhanaparaSourcePreview();
       if (preview.ready !== true) {
         // If the source says today's result is still pending/holiday, preserve
         // the last verified archive row. Only repair an empty placeholder row;
@@ -401,17 +321,12 @@ async function syncKhanaparaSourceIfDue(force = false) {
         .eq("market", KHANAPARA_MARKET).maybeSingle();
       if (currentError) throw currentError;
 
-      const currentDateIso = current?.result_date ? normalizeResultDateIso(String(current.result_date)) : "";
-      const previewDateIso = normalizeResultDateIso(preview.date);
-      if (current?.updated_by && currentDateIso === previewDateIso) {
+      if (current?.updated_by && current.result_date === preview.date) {
         return { ...preview, applied: false, reason: "admin_correction_locked" };
       }
-      if (currentDateIso && previewDateIso && currentDateIso > previewDateIso) {
-        return { ...preview, applied: false, reason: "older_source_result_ignored" };
-      }
-      if (currentDateIso === previewDateIso &&
-          /^\d{2}$/.test(String(current?.fr ?? "")) && /^\d{2}$/.test(String(current?.sr ?? ""))) {
-        return { ...preview, applied: false, reason: "first_verified_result_locked_for_date" };
+      if (current?.result_date === preview.date &&
+          current.fr === preview.fr && current.sr === preview.sr) {
+        return { ...preview, applied: false, reason: "already_current" };
       }
 
       const { error: saveError } = await supabase.from("teer_results").upsert({
@@ -424,7 +339,7 @@ async function syncKhanaparaSourceIfDue(force = false) {
         source_updated_at: preview.source_updated_at,
       }, { onConflict: "market" });
       if (saveError) throw saveError;
-      const history = await saveVerifiedResultHistory(KHANAPARA_MARKET, preview.date, preview.fr, preview.sr, new URL(preview.source_url).hostname, preview.source_updated_at);
+      const history = await saveVerifiedResultHistory(KHANAPARA_MARKET, preview.date, preview.fr, preview.sr, "source");
       return { ...preview, applied: true, history };
     } catch (error) {
       console.error("Khanapara source sync failed:", error instanceof Error ? error.message : error);
@@ -439,7 +354,6 @@ async function syncKhanaparaSourceIfDue(force = false) {
 // Shillong Teer source verification. The source page's current result is accepted
 // only when its FR/SR pair matches the newest archive row and the page update date.
 const SHILLONG_SOURCE_URL = "https://teer-result.com/shillong-teer-result/";
-const SHILLONG_GROUNDS_SOURCE_URL = "https://shillongteergrounds.in/";
 const SHILLONG_MARKET = "Shillong Teer (Evening)";
 let shillongLastCheckAt = 0;
 let shillongCheckPromise: Promise<unknown> | null = null;
@@ -521,7 +435,7 @@ async function syncShillongSourceIfDue(force = false) {
         .select("last_checked_at").eq("market", SHILLONG_MARKET).maybeSingle();
       if (stateError) throw stateError;
       const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-      if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
+      if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
 
       const checkedAt = new Date().toISOString();
       const { error: markError } = await supabase.from("result_source_sync")
@@ -529,7 +443,7 @@ async function syncShillongSourceIfDue(force = false) {
       if (markError) throw markError;
       shillongLastCheckAt = Date.now();
 
-      const preview = await chooseFirstVerifiedPreview([fetchShillongGroundsPreview, fetchShillongSourcePreview]);
+      const preview = await fetchShillongSourcePreview();
       if (preview.ready !== true) {
         // If the source says today's result is still pending/holiday, preserve
         // the last verified archive row. Only repair an empty placeholder row;
@@ -570,14 +484,9 @@ async function syncShillongSourceIfDue(force = false) {
       if (current?.updated_by && current.result_date === preview.date) {
         return { ...preview, applied: false, reason: "admin_correction_locked" };
       }
-      const currentDateIso = current?.result_date ? dateDmyToIso(String(current.result_date).replaceAll("-", "/")) : "";
-      const previewDateIso = dateDmyToIso(preview.date);
-      if (currentDateIso && previewDateIso && currentDateIso > previewDateIso) {
-        return { ...preview, applied: false, reason: "older_source_result_ignored" };
-      }
-      if (currentDateIso === previewDateIso &&
-          /^\d{2}$/.test(String(current?.fr ?? "")) && /^\d{2}$/.test(String(current?.sr ?? ""))) {
-        return { ...preview, applied: false, reason: "first_verified_result_locked_for_date" };
+      if (current?.result_date === preview.date &&
+          current.fr === preview.fr && current.sr === preview.sr) {
+        return { ...preview, applied: false, reason: "already_current" };
       }
 
       const { error: saveError } = await supabase.from("teer_results").upsert({
@@ -590,7 +499,7 @@ async function syncShillongSourceIfDue(force = false) {
         source_updated_at: preview.source_updated_at,
       }, { onConflict: "market" });
       if (saveError) throw saveError;
-      const history = await saveVerifiedResultHistory(SHILLONG_MARKET, preview.date, preview.fr, preview.sr, new URL(preview.source_url).hostname, preview.source_updated_at);
+      const history = await saveVerifiedResultHistory(SHILLONG_MARKET, preview.date, preview.fr, preview.sr, "source");
       return { ...preview, applied: true, history };
     } catch (error) {
       console.error("Shillong source sync failed:", error instanceof Error ? error.message : error);
@@ -614,7 +523,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const action = String(body?.action ?? "");
 
-    // Server-side one-minute poller. The request is rate-limited by the
+    // Server-side five-minute poller. The request is rate-limited by the
     // persistent result_source_sync row, so repeated public calls cannot
     // cause repeated source fetches inside the five-minute window.
     if (action === "scheduled_result_sync") {
@@ -866,9 +775,8 @@ Deno.serve(async (req) => {
       const page = Math.max(0, Math.min(9, Number.isInteger(Number(body.page)) ? Number(body.page) : 0));
       const pageSize = 100;
       const { data, error } = await supabase.from("teer_result_history")
-        .select("id,market,result_date,fr,sr,source,created_at,source_updated_at")
-        .eq("market", market).not("fr", "is", null).not("sr", "is", null).neq("fr", "**").neq("sr", "**")
-        .order("result_date", { ascending: false })
+        .select("id,market,result_date,fr,sr,source,created_at")
+        .eq("market", market).order("result_date", { ascending: false })
         .range(page * pageSize, page * pageSize + pageSize);
       if (error) throw error;
       const items = data ?? [];
@@ -898,7 +806,7 @@ Deno.serve(async (req) => {
       if (!(await requireAdmin(admin))) return json({ error: "Admin access denied" }, 403, origin);
 
       if (action === "admin_fetch_source_result") {
-        const preview = await chooseFirstVerifiedPreview([fetchKhanaparaGroundsPreview, fetchKhanaparaSourcePreview]);
+        const preview = await fetchKhanaparaSourcePreview();
         if (!preview.ready) {
           return json({ error: preview.status === "awaiting"
             ? "Website has not published today's complete FR and SR yet. Existing result will be kept."
