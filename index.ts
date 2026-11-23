@@ -379,8 +379,8 @@ async function flushResultPushNotifications() {
     // Revalidate pending OFF alerts immediately before delivery. A result may
     // have arrived after the OFF item was queued in an earlier cron cycle.
     const eventKey = String(item.event_key ?? "");
-    const fullOffMatch = eventKey.match(/^market_off:(.+):(\\d{4}-\\d{2}-\\d{2})$/);
-    const roundOffMatch = eventKey.match(/^market_round_off:(.+):(\\d{4}-\\d{2}-\\d{2}):(FR|SR)$/);
+    const fullOffMatch = eventKey.match(/^market_off:(.+):(\d{4}-\d{2}-\d{2})$/);
+    const roundOffMatch = eventKey.match(/^market_round_off:(.+):(\d{4}-\d{2}-\d{2}):(FR|SR)$/);
     if (fullOffMatch || roundOffMatch) {
       const market = fullOffMatch?.[1] ?? roundOffMatch?.[1] ?? "";
       const eventDate = fullOffMatch?.[2] ?? roundOffMatch?.[2] ?? "";
@@ -390,8 +390,8 @@ async function flushResultPushNotifications() {
       const savedDate = String(currentResult?.result_date ?? "");
       const savedDateIso = savedDate.includes("/") ? dateDmyToIso(savedDate) : savedDate;
       const sameDate = savedDateIso === eventDate;
-      const frPublished = sameDate && /^\\d{2}$/.test(String(currentResult?.fr ?? ""));
-      const srPublished = sameDate && /^\\d{2}$/.test(String(currentResult?.sr ?? ""));
+      const frPublished = sameDate && /^\d{2}$/.test(String(currentResult?.fr ?? ""));
+      const srPublished = sameDate && /^\d{2}$/.test(String(currentResult?.sr ?? ""));
       const staleOff = fullOffMatch
         ? frPublished || srPublished
         : roundOffMatch?.[3] === "FR" ? frPublished : srPublished;
