@@ -1207,9 +1207,25 @@ async function fetchShillongFallbackPreview(
     .map((value) => plain.toLowerCase().indexOf(value.toLowerCase(), start + heading.length))
     .filter((value) => value >= 0);
   const section = plain.slice(start, ends.length ? Math.min(...ends) : Math.min(plain.length, start + 1200));
-  const dateMatch = section.match(/(\\d{2})\\.(\\d{2})\\.(\\d{4})/);
+  const dateMatch = section.match(/(\d{2})\.(\d{2})\.(\d{4})/);
   const date = dateMatch ? dateMatch[1] + "/" + dateMatch[2] + "/" + dateMatch[3] : "";
-  const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
+  const frMatch = section.match(/F\/R\s*\(\s*(\d{2}:\d{2}\s*[AP]M)\s*\)\s*(\d{2})/i);
+  const srMatch = section.match(/S\/R\s*\(\s*(\d{2}:\d{2}\s*[AP]M)\s*\)\s*(\d{2})/i);
+  const fr = frMatch && frMatch[1].replace(/\s+/g, " ").toUpperCase() === frTime.toUpperCase() ? frMatch[2] : "";
+  const sr = srMatch && srMatch[1].replace(/\s+/g, " ").toUpperCase() === srTime.toUpperCase() ? srMatch[2] : "";
+  const today = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
+  }).format(new Date());
+  if (date !== today) {
+    return { ready: false as const, status: date ? "date_not_current" : "date_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: SHILLONG_FALLBACK_URL };
+  }
+  if (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr)) {
+    return { ready: false as const, status: "awaiting", market, date, source_updated_at: null, source_url: SHILLONG_FALLBACK_URL };
+  }
+  return { ready: true as const, status: "verified" as const, market, date, ...(fr ? { fr } : {}), ...(sr ? { sr } : {}), source_updated_at: null, source_url: SHILLONG_FALLBACK_URL };
+}
+
+async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
   return await fetchGroundsMarketPreview(
     SHILLONG_MARKET, "Shillong Teer Result", "03:15 PM", "04:15 PM",
   ) as ShillongSourcePreview;
