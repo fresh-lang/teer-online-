@@ -321,7 +321,7 @@
             <span id="kpiMaxLiability" class="text-base font-bold text-rose-400">₹0.00</span>
           </div>
           <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40">
-            <span class="text-[10px] text-slate-400 block">Heaviest Wagered Guti</span>
+            <span class="text-[10px] text-slate-400 block">Highest Payout Result</span>
             <span id="kpiTopGuti" class="text-base font-bold text-amber-400">--</span>
           </div>
           <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40">
@@ -1216,18 +1216,30 @@
       const round = document.getElementById('analyticsRoundSelect').value;
       const tbody = document.getElementById('riskTableRows');
       try {
-        const response = await adminApi('admin_list_bets', { limit: 1000 });
-        const bets = (response.items || []).filter(b =>
-          b.market === market && b.round === round &&
-          ['active','pending'].includes(String(b.status).toLowerCase())
-        );
-        const totalPool = bets.reduce((sum, bet) => sum + Number(bet.amount || 0), 0);
+        const bets = [];
+        let offset = 0;
+        let totalCount = 0;
+        do {
+          const page = await adminApi('admin_list_bets', { limit: 1000, offset });
+          const items = Array.isArray(page.items) ? page.items : [];
+          bets.push(...items);
+          totalCount = Number(page.total_count ?? bets.length);
+          offset += items.length;
+          if (offset >= totalCount) break;
+          if (items.length === 0) break;
+          if (offset >= 10000) {
+            throw new Error('More than 10,000 active bets are present. Ask support to run a full risk report.');
+          }
+        } while (true);
+
+        const marketBets = bets.filter(b => b.market === market && b.round === round);
+        const totalPool = marketBets.reduce((sum, bet) => sum + Number(bet.amount || 0), 0);
         const projections = Array.from({ length: 100 }, (_, index) => {
           const result = String(index).padStart(2, '0');
           let directStake = 0;
           let houseStake = 0;
           let endingStake = 0;
-          for (const bet of bets) {
+          for (const bet of marketBets) {
             const amount = Number(bet.amount || 0);
             const mode = String(bet.bet_mode || '').toLowerCase().replace(/[^a-z]/g, '');
             const number = String(bet.bet_number ?? '').trim();
@@ -1248,7 +1260,7 @@
         document.getElementById('kpiTotalPool').innerText = '₹' + totalPool.toFixed(2);
         document.getElementById('kpiMaxLiability').innerText = '₹' + top.payout.toFixed(2);
         document.getElementById('kpiTopGuti').innerText = top.winningStake > 0
-          ? '${top.result} (₹${top.payout.toFixed(0)} payout)' : '--';
+          ? top.result + ' (₹' + top.payout.toFixed(0) + ' payout)' : '--';
         const status = document.getElementById('kpiRiskStatus');
         status.className = 'text-xs font-bold ' + (top.net < 0 ? 'text-rose-400' : 'text-emerald-400');
         status.innerText = top.net < 0
