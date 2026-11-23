@@ -146,6 +146,144 @@ async function requireAdmin(user: Record<string, unknown> | null) {
   return Boolean(data);
 }
 
+
+// Khanapara Teer source verification. The source page's current result is accepted
+// only when its FR/SR pair matches the newest archive row and the page update date.
+const KHANAPARA_SOURCE_URL = "https://teer-result.com/khanapara-teer-result/";
+const KHANAPARA_MARKET = "Khanapara Teer (Evening)";
+let khanaparaLastCheckAt = 0;
+let khanaparaCheckPromise: Promise<unknown> | null = null;
+
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<script[\\s\\S]*?<\\/script>/gi, " ")
+    .replace(/<style[\\s\\S]*?<\\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;|&apos;/gi, "'")
+    .replace(/&#(\\d+);/g, (_m, n) => String.fromCharCode(Number(n)))
+    .replace(/\\s+/g, " ")
+    .trim();
+}
+
+function dateIsoToDmy(value: string): string {
+  const m = value.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : "";
+}
+
+async function fetchKhanaparaSourcePreview() {
+  const response = await fetch(KHANAPARA_SOURCE_URL, {
+    method: "GET",
+    headers: {
+      "User-Agent": "TeerOnlineResultSync/1.0 (+source verification)",
+      "Accept": "text/html,application/xhtml+xml",
+      "Cache-Control": "no-cache",
+    },
+  });
+  if (!response.ok) throw new Error(`Source website returned HTTP ${response.status}`);
+  const html = await response.text();
+  if (!html || html.length < 1000) throw new Error("Source page content was empty or incomplete");
+
+  const plain = htmlToPlainText(html);
+  const updatedMatch = plain.match(/Updated\\s+(\\d{4}-\\d{2}-\\d{2})/i);
+  const pageDateMatch = plain.match(/Khanapara Teer Result Today\\s+(\\d{2}-\\d{2}-\\d{4})/i);
+  const updatedIso = updatedMatch?.[1] ?? "";
+  const pageDate = pageDateMatch?.[1] ?? "";
+  const awaiting = /Awaiting today's result/i.test(plain.slice(0, 6000));
+
+  const archiveStart = plain.toLowerCase().indexOf("khanapara teer previous result list");
+  const archiveText = archiveStart >= 0 ? plain.slice(archiveStart) : "";
+  const archiveRow = archiveText.match(/(\\d{2}-\\d{2}-\\d{4})\\s+(\\d{2})\\s+(\\d{2})/);
+  const topText = archiveStart >= 0 ? plain.slice(0, archiveStart) : plain.slice(0, 9000);
+  const frMatch = topText.match(/FR\\s*[·•]?\\s*4:15\\s*pm\\s*(\\d{2})/i);
+  const srMatch = topText.match(/SR\\s*[·•]?\\s*5:00\\s*pm\\s*(\\d{2})/i);
+  const frResult = frMatch?.[1] ?? "";
+  const srResult = srMatch?.[1] ?? "";
+
+  // Prefer a precise page-modified timestamp; the visible "Updated" label is date-only.
+  const jsonLdModified = html.match(/"dateModified"\\s*:\\s*"([^"]+)"/i)?.[1] ?? "";
+  const metaModified = html.match(/<meta[^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["']/i)?.[1] ?? "";
+  const candidateTimestamp = jsonLdModified || metaModified || response.headers.get("last-modified") || "";
+  const parsedTimestamp = candidateTimestamp ? new Date(candidateTimestamp) : null;
+  const sourceUpdatedAt = parsedTimestamp && Number.isFinite(parsedTimestamp.getTime()) &&
+    parsedTimestamp.toISOString().slice(0, 10) === updatedIso
+      ? parsedTimestamp.toISOString()
+      : null;
+
+  if (awaiting) {
+    return {
+      ready: false, status: "awaiting", market: KHANAPARA_MARKET,
+      page_date: pageDate, source_update_date: updatedIso,
+      previous_date: archiveRow?.[1] ?? "", previous_fr: archiveRow?.[2] ?? "", previous_sr: archiveRow?.[3] ?? "",
+      source_updated_at: sourceUpdatedAt, source_url: KHANAPARA_SOURCE_URL,
+    };
+  }
+
+  // Never accept "last result" numbers or a partial FR/SR pair as today's result.
+  if (!/^(\\d{2})$/.test(frResult) || !/^(\\d{2})$/.test(srResult) ||
+      !updatedIso || !archiveRow || archiveRow[1] !== dateIsoToDmy(updatedIso) ||
+      archiveRow[2] !== frResult || archiveRow[3] !== srResult) {
+    return {
+      ready: false, status: "not_verified", market: KHANAPARA_MARKET,
+      page_date: pageDate, source_update_date: updatedIso,
+      source_updated_at: sourceUpdatedAt, source_url: KHANAPARA_SOURCE_URL,
+    };
+  }
+
+  return {
+    ready: true, status: "verified", market: KHANAPARA_MARKET,
+    fr: frResult, sr: srResult, date: dateIsoToDmy(updatedIso),
+    source_updated_at: sourceUpdatedAt, source_url: KHANAPARA_SOURCE_URL,
+  };
+}
+
+async function syncKhanaparaSourceIfDue(force = false) {
+  if (!force && Date.now() - khanaparaLastCheckAt < 5 * 60 * 1000) return null;
+  if (khanaparaCheckPromise) return await khanaparaCheckPromise;
+  khanaparaCheckPromise = (async () => {
+    try {
+      const preview = await fetchKhanaparaSourcePreview();
+      khanaparaLastCheckAt = Date.now();
+      if (!preview.ready) return preview;
+
+      const { data: current, error: currentError } = await supabase.from("teer_results")
+        .select("market,fr,sr,result_date,updated_by")
+        .eq("market", KHANAPARA_MARKET).maybeSingle();
+      if (currentError) throw currentError;
+
+      // An admin correction for the same source date is left untouched.
+      if (current?.updated_by && current.result_date === preview.date) {
+        return { ...preview, applied: false, reason: "admin_correction_locked" };
+      }
+      if (current?.result_date === preview.date &&
+          current.fr === preview.fr && current.sr === preview.sr) {
+        return { ...preview, applied: false, reason: "already_current" };
+      }
+
+      const { error: saveError } = await supabase.from("teer_results").upsert({
+        market: KHANAPARA_MARKET,
+        fr: preview.fr,
+        sr: preview.sr,
+        result_date: preview.date,
+        updated_at: new Date().toISOString(),
+        updated_by: null,
+        source_updated_at: preview.source_updated_at,
+      }, { onConflict: "market" });
+      if (saveError) throw saveError;
+      return { ...preview, applied: true };
+    } catch (error) {
+      console.error("Khanapara source sync failed:", error instanceof Error ? error.message : error);
+      return { ready: false, status: "source_error" };
+    } finally {
+      khanaparaCheckPromise = null;
+    }
+  })();
+  return await khanaparaCheckPromise;
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
@@ -395,6 +533,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === "public_app_data") {
+      await syncKhanaparaSourceIfDue(false);
+
       const [{ data: results, error: resultsError }, { data: settings, error: settingsError }, { data: rounds, error: roundsError }] = await Promise.all([
         supabase.from("teer_results").select("market,fr,sr,result_date,updated_at"),
         supabase.from("app_settings").select("helpline,deposit_upi,deposit_qr_image,marquee_text,market_schedules").eq("id", 1).maybeSingle(),
@@ -404,14 +544,25 @@ Deno.serve(async (req) => {
       if (settingsError) throw settingsError;
       if (roundsError) throw roundsError;
       const resultMap: Record<string, unknown> = {};
-      for (const row of results ?? []) resultMap[row.market] = { fr: row.fr ?? "**", sr: row.sr ?? "**", date: row.result_date ?? "" };
+      for (const row of results ?? []) resultMap[row.market] = { fr: row.fr ?? "**", sr: row.sr ?? "**", date: row.result_date ?? "", updated_at: row.updated_at ?? null, source_updated_at: row.source_updated_at ?? null };
       return json({ success: true, results: resultMap, settings: settings ?? {}, rounds: rounds ?? [] }, 200, origin);
     }
 
-    if (["admin_dashboard", "admin_save_result", "admin_reset_result", "admin_save_settings"].includes(action)) {
+    if (["admin_dashboard", "admin_save_result", "admin_reset_result", "admin_save_settings", "admin_fetch_source_result"].includes(action)) {
       const admin = await getSession(req);
       if (!admin || !admin.id) return json({ error: "Please login again" }, 401, origin);
       if (!(await requireAdmin(admin))) return json({ error: "Admin access denied" }, 403, origin);
+
+      if (action === "admin_fetch_source_result") {
+        const preview = await fetchKhanaparaSourcePreview();
+        if (!preview.ready) {
+          return json({ error: preview.status === "awaiting"
+            ? "Website has not published today's complete FR and SR yet. Existing result will be kept."
+            : "Website result did not pass date and archive verification. Existing result will be kept.",
+            preview }, 409, origin);
+        }
+        return json({ success: true, preview }, 200, origin);
+      }
 
       if (action === "admin_dashboard") {
         const [usersQ, walletsQ, depositsQ, withdrawalsQ, betsQ, resultsQ, settingsQ] = await Promise.all([
@@ -430,7 +581,7 @@ Deno.serve(async (req) => {
         const deposits = (depositsQ.data ?? []).map((d: any) => ({ ...(byId[d.user_id] ?? {}), ...d, name: byId[d.user_id]?.name ?? "User", phone: byId[d.user_id]?.phone ?? "", screenshot: d.screenshot_url ?? "" }));
         const withdrawals = (withdrawalsQ.data ?? []).map((w: any) => ({ ...(byId[w.user_id] ?? {}), ...w, name: byId[w.user_id]?.name ?? "User", phone: byId[w.user_id]?.phone ?? "", payoutType: w.payout_details?.method === "bank" ? "bank" : "upi", bankDetails: w.payout_details?.method === "bank" ? { holderName: w.payout_details.holder_name, accountNumber: w.payout_details.account_number, ifsc: w.payout_details.ifsc, bankName: w.payout_details.bank_name } : null, upi: w.payout_details?.upi ?? "" }));
         const resultMap: Record<string, unknown> = {};
-        for (const row of resultsQ.data ?? []) resultMap[row.market] = { fr: row.fr ?? "**", sr: row.sr ?? "**", date: row.result_date ?? "" };
+        for (const row of resultsQ.data ?? []) resultMap[row.market] = { fr: row.fr ?? "**", sr: row.sr ?? "**", date: row.result_date ?? "", updated_at: row.updated_at ?? null, source_updated_at: row.source_updated_at ?? null };
         return json({ success: true, users, deposits, withdrawals, bets: betsQ.data ?? [], results: resultMap, settings: settingsQ.data ?? {} }, 200, origin);
       }
 
