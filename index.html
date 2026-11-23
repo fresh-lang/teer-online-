@@ -2736,8 +2736,10 @@
         const storedDate = String(savedResults[mName].date || '');
         const liveRec = { d: storedDate.includes('-') ? storedDate.split('-').reverse().join('/') : storedDate, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**', savedAt: savedResults[mName].source_updated_at || savedResults[mName].updated_at || null };
         const idx = records.findIndex(r => r.d === liveRec.d);
-        if (idx >= 0) records[idx] = liveRec;
-        else records.unshift(liveRec);
+        if (idx >= 0) {
+          liveRec.savedAt = liveRec.savedAt || records[idx].savedAt || null;
+          records[idx] = liveRec;
+        } else records.unshift(liveRec);
       }
       if (!records.length) {
         const tr = document.createElement('tr');
