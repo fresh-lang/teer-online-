@@ -4231,10 +4231,15 @@
     if (isTeerNativeBiometricHost) {
       window.__teerBiometricBridgeReady = new Promise((resolve) => {
         const script = document.createElement('script');
-        script.src = './biometric-bridge.js';
-        script.onload = () => resolve(true);
-        script.onerror = () => {
-          console.error('Biometric bridge failed to load:', script.src);
+        script.type = 'module';
+        script.src = new URL('biometric-bridge.js', document.baseURI).href;
+        script.onload = () => {
+          const bridgeReady = !!(window.TeerBiometricBridge && typeof window.TeerBiometricBridge.authenticateDeviceCredential === 'function' && typeof window.TeerBiometricBridge.authenticate === 'function');
+          if (!bridgeReady) console.error('Biometric bridge loaded but required unlock methods are missing:', script.src);
+          resolve(bridgeReady);
+        };
+        script.onerror = (error) => {
+          console.error('Biometric bridge failed to load:', script.src, error);
           resolve(false);
         };
         document.head.appendChild(script);
