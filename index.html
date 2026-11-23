@@ -3146,7 +3146,7 @@
       const myRefCode = getMyReferralCode();
       if (!myRefCode) { alert('Please log in before sharing your APK download link.'); openAuthModal(); return; }
       const shareUrl = getBaseShareUrl() + '?ref=' + encodeURIComponent(myRefCode);
-      const message = '🎯 TEER ONLINE - Download the latest APK!\n📲 Open this official link to download the latest Teer Online APK and register.\n\nYour referral code: ' + myRefCode + '\n\nDownload & join here: ' + shareUrl;
+      const message = '🎯 TEER ONLINE - Download the latest official APK!\n📲 Register with your referral link.\n\nGame Ratio:\n• Guti: ₹10 = ₹900\n• House Ending: ₹10 = ₹90\n\nYour referral code: ' + myRefCode + '\n\nDownload & join here: ' + shareUrl;
       window.open('https://wa.me/?text=' + encodeURIComponent(message), '_blank');
     }
     async function copyReferralLink() {
@@ -3189,7 +3189,12 @@
                 <div style="width:62px;height:62px;margin:0 auto 12px;border-radius:18px;background:#e6f7ee;color:#087443;display:flex;align-items:center;justify-content:center;font-size:30px">⬇</div>
                 <div style="font-size:21px;font-weight:800;color:#073b3b;margin-bottom:7px">Download Teer Online</div>
                 <div style="font-size:13px;line-height:1.5;color:#52616b;margin-bottom:14px">Your referral code is saved. Download the latest official APK, then register with your referral link.</div>
-                <div style="display:inline-block;padding:7px 13px;border-radius:9px;background:#effaf3;color:#087443;font-size:12px;font-weight:800;margin-bottom:17px">Referral Code: ${String(refCode).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</div>
+                <div style="display:inline-block;padding:7px 13px;border-radius:9px;background:#effaf3;color:#087443;font-size:12px;font-weight:800;margin-bottom:12px">Referral Code: ${String(refCode).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</div>
+                <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px;padding:11px;margin:0 0 15px;text-align:left">
+                  <div style="font-size:12px;font-weight:800;color:#075b4b;margin-bottom:5px">Game Ratio</div>
+                  <div style="font-size:12px;color:#134e4a;font-weight:700">Guti: ₹10 = ₹900</div>
+                  <div style="font-size:12px;color:#134e4a;font-weight:700">House Ending: ₹10 = ₹90</div>
+                </div>
                 <button id="teerReferralDownloadBtn" style="display:block;width:100%;border:0;border-radius:12px;padding:14px;background:#078348;color:white;font-size:15px;font-weight:800;margin-bottom:10px">Download Latest APK</button>
                 <button id="teerReferralRegisterBtn" style="display:block;width:100%;border:1px solid #0b6653;border-radius:12px;padding:12px;background:white;color:#075b4b;font-size:14px;font-weight:700">Continue to Register</button>
               </div>`;
