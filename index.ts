@@ -923,7 +923,7 @@ async function fetchKhanaparaSecondaryPreview(
     timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
   }).format(new Date());
   const dateIsToday = date === today;
-  const awaiting = /Awaiting today's result/i.test(section);
+  const awaiting = /Awaiting today's result|aaj ka result abhi update nahi hua|result (?:has )?not (?:yet )?updated|showing (?:the )?previous day/i.test(section);
   if (!dateIsToday || awaiting || (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr))) {
     return {
       ready: false,
@@ -1002,8 +1002,9 @@ async function fetchKhanaparaTertiaryPreview(
     timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
   }).format(new Date());
 
-  if (!date || (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr))) {
-    return { ready: false, status: "result_values_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL };
+  const awaitingNotice = /aaj ka result abhi update nahi hua|result (?:has )?not (?:yet )?updated|showing (?:the )?previous day/i.test(section);
+  if (!date || awaitingNotice || (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr))) {
+    return { ready: false, status: awaitingNotice ? "awaiting" : "result_values_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL };
   }
   if (dateDmyToIso(date) !== dateDmyToIso(today)) {
     return {
