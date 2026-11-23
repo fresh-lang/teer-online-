@@ -1654,8 +1654,8 @@
     async function showTeerBiometricLock() {
       if (document.getElementById('teerBiometricLockScreen')) return;
       const bridge = window.TeerBiometricBridge;
-      if (!bridge || !bridge.authenticateDeviceCredential) {
-        console.error('Native phone credential authentication is not available.');
+      if (!bridge || !bridge.authenticateDeviceCredential || !bridge.authenticate) {
+        console.error('Phone lock authentication is not available.');
         return;
       }
       const overlay = document.createElement('div');
@@ -1664,16 +1664,19 @@
       overlay.innerHTML = `
         <div style="width:100%;max-width:430px;text-align:center">
           <img src="./logo.png" alt="Teer Online" style="display:block;width:100%;max-width:300px;max-height:210px;object-fit:contain;margin:0 auto 22px">
-          <div style="font-size:17px;color:#d7f4f0;margin-bottom:28px">Unlock using your phone's Pattern, PIN or Password</div>
+          <div style="font-size:17px;color:#d7f4f0;margin-bottom:28px">Unlock with your phone's Pattern, PIN or Password first</div>
           <button id="teerPatternUnlock" style="width:100%;padding:20px 14px;border:0;border-radius:25px;background:#fff;color:#06484b;font-size:19px;font-weight:800">🔐 Use Pattern / PIN / Password</button>
+          <button id="teerFingerprintUnlock" style="display:none;width:100%;padding:18px 14px;margin-top:12px;border:1px solid #b9e6df;border-radius:25px;background:#08656a;color:#fff;font-size:18px;font-weight:800">👆 Use Fingerprint</button>
           <div id="teerBiometricError" style="font-size:13px;color:#ffd8a8;margin-top:14px;min-height:20px"></div>
         </div>`;
       document.body.appendChild(overlay);
       const credentialUnlock = overlay.querySelector('#teerPatternUnlock');
-      let credentialBusy = false;
+      const fingerprintUnlock = overlay.querySelector('#teerFingerprintUnlock');
+      const errorBox = overlay.querySelector('#teerBiometricError');
+      let busy = false;
       credentialUnlock.addEventListener('click', async () => {
-        if (credentialBusy) return;
-        credentialBusy = true;
+        if (busy) return;
+        busy = true;
         credentialUnlock.disabled = true;
         credentialUnlock.textContent = 'Opening phone screen lock…';
         try {
@@ -1681,12 +1684,29 @@
           overlay.remove();
         } catch (error) {
           const message = String(error && (error.message || error.code) || error);
-          overlay.querySelector('#teerBiometricError').textContent =
-            message || 'Could not open phone Pattern / PIN / Password. Please try again.';
-          credentialUnlock.textContent = '🔐 Use Pattern / PIN / Password';
+          errorBox.textContent = 'Pattern / PIN cancelled. You can now use Fingerprint.';
+          fingerprintUnlock.style.display = 'block';
+          credentialUnlock.textContent = '🔐 Try Pattern / PIN / Password again';
           credentialUnlock.disabled = false;
         } finally {
-          credentialBusy = false;
+          busy = false;
+        }
+      });
+      fingerprintUnlock.addEventListener('click', async () => {
+        if (busy) return;
+        busy = true;
+        fingerprintUnlock.disabled = true;
+        fingerprintUnlock.textContent = 'Checking fingerprint…';
+        try {
+          await bridge.authenticate();
+          overlay.remove();
+        } catch (error) {
+          const message = String(error && (error.message || error.code) || error);
+          errorBox.textContent = message || 'Fingerprint was not verified. Try again or use Pattern / PIN / Password.';
+          fingerprintUnlock.textContent = '👆 Use Fingerprint';
+          fingerprintUnlock.disabled = false;
+        } finally {
+          busy = false;
         }
       });
     }
