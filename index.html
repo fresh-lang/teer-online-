@@ -782,7 +782,7 @@
 
           <div>
             <label class="font-bold text-slate-700 block mb-1">Bet Amount per selection (₹):</label>
-            <input type="number" id="betAmountInput" value="20" min="10" step="10" oninput="calculatePayout()" class="w-full border rounded-xl px-3 py-2 font-bold text-base outline-none">
+            <input type="number" id="betAmountInput" value="5" min="1" max="5" step="1" oninput="calculatePayout()" class="w-full border rounded-xl px-3 py-2 font-bold text-base outline-none">
           </div>
 
           <!-- Live Teer Play Ticker in Modal -->
@@ -2253,7 +2253,9 @@
     }
 
     function calculatePayout() {
-      const amt = parseFloat(document.getElementById('betAmountInput').value) || 0;
+      const amountInput = document.getElementById('betAmountInput');
+      const amt = Math.min(5, Math.max(0, parseFloat(amountInput.value) || 0));
+      if (amountInput && Number(amountInput.value) > 5) amountInput.value = '5';
       const count = state.selectedNumbers.length;
       const roundMultiplier = (state.currentRound === 'BS') ? 2 : 1;
       const totalCost = amt * count * roundMultiplier;
@@ -3857,7 +3859,9 @@
         state.currentMarketObj.name
       ));
       if (closedRound) { alert(closedRound + ' betting time is over. Both FR and SR must be open for a Both Sides bet.'); return; }
-      const amount = Number(document.getElementById('betAmountInput').value || 0);
+      const amountInput = document.getElementById('betAmountInput');
+      const amount = Number(amountInput.value || 0);
+      if (!Number.isInteger(amount) || amount < 1 || amount > 5) { alert('Bet amount per selection must be ₹1 to ₹5 maximum.'); return; }
       if (!(amount > 0) || !state.selectedNumbers.length) { alert('Select an amount and a number.'); return; }
       const rounds = state.currentRound === 'BS' ? ['FR','SR'] : [state.currentRound];
       const selections = rounds.flatMap(round => state.selectedNumbers.map(number => ({round, number:String(number)})));
