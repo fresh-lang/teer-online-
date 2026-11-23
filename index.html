@@ -1627,8 +1627,67 @@
       }).join('');
     }
 
+
+    async function offerTeerBiometricSetup() {
+      if (!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) return;
+      if (localStorage.getItem('teer_biometric_enabled') === '1' || !window.TeerBiometricBridge) return;
+      try {
+        const info = await window.TeerBiometricBridge.check();
+        if (!info.isAvailable) return;
+        if (!confirm('Enable fingerprint or face unlock next time you open Teer Online?')) return;
+        await window.TeerBiometricBridge.authenticate();
+        localStorage.setItem('teer_biometric_enabled', '1');
+        showAppToast('Biometric unlock enabled for this device.');
+      } catch (error) {
+        console.warn('Biometric setup was not completed:', error);
+        alert('Fingerprint/Face unlock could not be enabled. You can continue using your password.');
+      }
+    }
+
+    async function showTeerBiometricLock() {
+      const bridge = window.TeerBiometricBridge;
+      if (!bridge) { localStorage.removeItem('teer_biometric_enabled'); return; }
+      const info = await bridge.check().catch(() => ({ isAvailable: false }));
+      if (!info.isAvailable) { localStorage.removeItem('teer_biometric_enabled'); return; }
+      const overlay = document.createElement('div');
+      overlay.id = 'teerBiometricLockScreen';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:200000;background:#004347;display:flex;align-items:center;justify-content:center;padding:28px;color:white;font-family:Arial,sans-serif;';
+      overlay.innerHTML = `
+        <div style="width:100%;max-width:430px;text-align:center">
+          <img src="./logo.png" alt="Teer Online" style="display:block;width:100%;max-width:300px;max-height:210px;object-fit:contain;margin:0 auto 22px">
+          <div style="font-size:17px;color:#d7f4f0;margin-bottom:52px">Unlock with fingerprint or face</div>
+          <button id="teerBiometricUnlock" style="width:100%;padding:20px 14px;border:0;border-radius:25px;background:#fff;color:#06484b;font-size:20px;font-weight:800;margin-bottom:18px">👆 Unlock now</button>
+          <button id="teerPasswordFallback" style="width:100%;padding:20px 14px;border:0;border-radius:25px;background:#386e72;color:#fff;font-size:17px;font-weight:700">Use Password Login Instead</button>
+          <div id="teerBiometricError" style="font-size:13px;color:#ffd8a8;margin-top:14px;min-height:18px"></div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const unlock = overlay.querySelector('#teerBiometricUnlock');
+      unlock.addEventListener('click', async () => {
+        unlock.disabled = true;
+        unlock.textContent = 'Please wait…';
+        try { await bridge.authenticate(); overlay.remove(); }
+        catch (error) {
+          overlay.querySelector('#teerBiometricError').textContent = 'Unlock cancelled or not recognized. Try again or use password.';
+          unlock.textContent = '👆 Unlock now';
+          unlock.disabled = false;
+        }
+      });
+      overlay.querySelector('#teerPasswordFallback').addEventListener('click', async () => {
+        await clearAccountSession();
+        accountSessionToken = null; accountIsDemo = false;
+        state.user = null; state.balance = 0; state.bids = [];
+        localStorage.removeItem('teer_biometric_enabled');
+        overlay.remove(); updateUI(); openAuthModal();
+      });
+      unlock.click();
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
       await loadStorage();
+      // Biometric gate is native-only and is shown only after the user enables it.
+      if (state.user && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && localStorage.getItem('teer_biometric_enabled') === '1') {
+        await showTeerBiometricLock();
+      }
       // Restore the active server session after a page refresh.
       // Paint market cards immediately; restore account data without blocking the first screen.
       void restoreSavedAccountSession().catch(err => console.warn('Background session restore failed:', err));
@@ -3665,6 +3724,7 @@
         try { await refreshAccountBalance(); }
         catch (balanceError) { console.warn('Initial balance refresh failed:', balanceError); state.balance = 0; }
         updateUI(); closeAuthModal();
+        await offerTeerBiometricSetup();
         showAppToast('Registration successful! ₹10 welcome bonus added to your wallet.');
       } catch (err) { alert(err.message || 'Registration failed.'); }
     }
@@ -3678,7 +3738,9 @@
         accountSessionToken = null; accountIsDemo = true;
         state.user = { ...demo }; state.balance = Number(demo.balance || 0); state.bids = [];
         await syncUserRequestNotifications(true);
-        updateUI(); closeAuthModal(); showAppToast('Login successful. Welcome back!'); return;
+        updateUI(); closeAuthModal();
+        await offerTeerBiometricSetup();
+        showAppToast('Login successful. Welcome back!'); return;
       }
       try {
         const data = await accountApi('login', { phone, password }, false);
@@ -3690,7 +3752,9 @@
         await refreshAccountBalance();
         const bets = await accountApi('my_bets', { limit: 100 });
         state.bids = (bets.items || []).map(b => ({ refId:b.client_ref || b.id, market:b.market, round:b.round, roundId:b.round_id, mode:b.bet_mode, number:b.bet_number, amount:Number(b.amount), status:(String(b.status).toLowerCase()==='active'?'Active':String(b.status).toUpperCase()), payout:Number(b.payout || 0), date:b.created_at, time:'' }));
-        updateUI(); closeAuthModal(); showAppToast('Login successful. Welcome back!');
+        updateUI(); closeAuthModal();
+        await offerTeerBiometricSetup();
+        showAppToast('Login successful. Welcome back!');
       } catch (err) { alert(err.message || 'Login failed.'); }
     }
 
@@ -4007,5 +4071,6 @@
       </div>
     </div>
 
+  <script src="./biometric-bridge.js"></script>
 </body>
 </html>
