@@ -493,15 +493,32 @@ function parseGroundsMarketCard(
 ) {
   const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const token = "(\\d{2}|off|soon|pending|awaiting|--|xx)";
-  const pattern = new RegExp(
-    escapePattern(heading) +
-      "\\s*[-–:]\\s*(\\d{2}[.\\/-]\\d{2}[.\\/-]\\d{4})" +
-      "[\\s\\S]{0,1600}?F\\/R\\s*\\(" + escapePattern(frTime) +
-      "\\)\\s*\\|\\s*S\\/R\\s*\\(" + escapePattern(srTime) +
-      "\\)\\s*" + token + "\\s*\\|\\s*" + token,
+  const lowerPlain = plain.toLowerCase();
+  const headingIndex = lowerPlain.indexOf(heading.toLowerCase());
+  if (headingIndex < 0) {
+    return { ready: false as const, status: "live_card_not_found", market, source_updated_at: null, source_url: "https://shillongteergrounds.in/" };
+  }
+  const otherHeadings = [
+    "Khanapara Teer Result", "Shillong Teer Result", "Shillong Morning Result",
+    "Khanapara Morning Result", "Welcome Morning Result", "Shillong Night (8:30)",
+    "Night Teer Result", "Khanapara Night Result",
+  ].filter((value) => value.toLowerCase() !== heading.toLowerCase());
+  const nextStarts = otherHeadings
+    .map((value) => lowerPlain.indexOf(value.toLowerCase(), headingIndex + heading.length))
+    .filter((index) => index >= 0);
+  const sectionEnd = nextStarts.length ? Math.min(...nextStarts) : Math.min(plain.length, headingIndex + 1800);
+  const section = plain.slice(headingIndex, sectionEnd);
+  const dateMatch = section.match(new RegExp(
+    escapePattern(heading) + "\\s*[-–:]\\s*(\\d{2}[.\\/-]\\d{2}[.\\/-]\\d{4})", "i",
+  ));
+  const rounds = new RegExp(
+    "F\\/R\\s*\\(" + escapePattern(frTime) + "\\)[\\s\\S]{0,100}?S\\/R\\s*\\(" +
+      escapePattern(srTime) + "\\)[\\s\\S]{0,60}?" + token + "(?:\\s*\\|\\s*|\\s+)" + token,
     "i",
   );
-  const card = plain.match(pattern);
+  const card = dateMatch && section.match(rounds)
+    ? [section, dateMatch[1], ...section.match(rounds)!.slice(1)] as RegExpMatchArray
+    : null;
   const sourceUrl = "https://shillongteergrounds.in/";
   if (!card) {
     return { ready: false as const, status: "live_card_not_found", market, source_updated_at: null, source_url: sourceUrl };
