@@ -2550,13 +2550,13 @@
     }
 
     function openChartModal(mName) {
-      if (mName) {
-        const select = document.getElementById('chartMarketSelect');
-        if (select) select.value = mName;
-      }
+      const select = document.getElementById('chartMarketSelect');
+      if (select && !select.options.length) initChartMarketsDropdown();
+      if (mName && select) select.value = mName;
+      if (select && !select.value && select.options.length) select.selectedIndex = 0;
       window.__chartHistoryPage = 0;
       document.getElementById('chartModal').classList.remove('hidden');
-      loadMarketResultHistory(document.getElementById('chartMarketSelect').value);
+      loadMarketResultHistory(select ? select.value : '');
     }
     function closeChartModal() { document.getElementById('chartModal').classList.add('hidden'); }
 
