@@ -1691,28 +1691,29 @@
       const fingerprintUnlock = overlay.querySelector('#teerFingerprintUnlock');
       const errorBox = overlay.querySelector('#teerBiometricError');
       let busy = false;
-      credentialUnlock.addEventListener('click', async () => {
+      const openPhonePattern = async () => {
         if (busy) return;
-        if (!bridge || !bridge.authenticateDeviceCredential) {
-          errorBox.textContent = 'Unlock service is unavailable. Please install the latest app update.';
+        if (!bridge || typeof bridge.authenticateDeviceCredential !== 'function') {
+          errorBox.textContent = 'Phone unlock service is unavailable. Please install the latest app update.';
           return;
         }
         busy = true;
-        credentialUnlock.disabled = true;
-        credentialUnlock.textContent = 'Opening phone screen lock…';
+        credentialUnlock.textContent = 'Opening phone Pattern / PIN…';
         try {
           await bridge.authenticateDeviceCredential();
           overlay.remove();
         } catch (error) {
-          const detail = String(error && (error.message || error.code) || error || 'Unknown error');
-          errorBox.textContent = 'Pattern / PIN did not open: ' + detail + '. You can retry or use Fingerprint.';
+          const detail = String(error && (error.message || error.code) || error || 'Cancelled');
+          errorBox.textContent = 'Phone lock cancelled or not verified. Tap Pattern to try again, or Fingerprint.';
+          console.warn('Device credential prompt ended:', detail);
           fingerprintUnlock.style.display = 'block';
-          credentialUnlock.textContent = '🔐 Try Pattern / PIN / Password again';
-          credentialUnlock.disabled = false;
+          credentialUnlock.textContent = '🔐 Open Pattern / PIN / Password';
         } finally {
           busy = false;
+          credentialUnlock.disabled = false;
         }
-      });
+      };
+      credentialUnlock.addEventListener('click', openPhonePattern);
       fingerprintUnlock.addEventListener('click', async () => {
         if (busy) return;
         if (!bridge || !bridge.authenticate) {
@@ -1735,13 +1736,14 @@
         }
       });
 
-      // Wait for an explicit tap. An automatic native request can remain pending
-      // on some Android WebViews and leave the Pattern button disabled before the
-      // user gets a chance to press it.
+      // Open Android's own Pattern/PIN/Password screen immediately when the
+      // app lock appears. Android's system screen provides its own Cancel action;
+      // cancelling returns here and does NOT unlock the app.
       if (!bridge || typeof bridge.authenticateDeviceCredential !== 'function') {
         errorBox.textContent = 'Phone unlock service could not load. Please reopen the app or update it.';
       } else {
-        errorBox.textContent = 'Tap the Pattern button to open your phone screen lock.';
+        errorBox.textContent = 'Opening your phone screen lock… Use Cancel on the Android screen to return here.';
+        openPhonePattern();
       }
     }
 
