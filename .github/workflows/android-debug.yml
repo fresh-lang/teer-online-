@@ -442,7 +442,7 @@ jobs:
           make_latest: true
 
       - name: Post APK update to Telegram channel
-        if: steps.freshness.outputs.publish == 'true' && env.TELEGRAM_BOT_TOKEN != ''
+        if: steps.freshness.outputs.publish == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
