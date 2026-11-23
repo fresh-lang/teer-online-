@@ -190,7 +190,7 @@
     <div class="bg-[#02181a] border-b border-teal-900/40 py-1.5 px-2 flex items-center gap-2 overflow-hidden text-[11px] text-amber-300 font-semibold shadow-inner">
       <i class="fa-solid fa-bullhorn text-amber-400 animate-pulse text-xs shrink-0"></i>
       <marquee behavior="scroll" direction="left" scrollamount="4">
-        WINNING INSTANT WALLET &bull; 6 DAYS OPEN (SUNDAY OFF)
+        TEER PLAY 1-MINUTE LIVE 24x7 &bull; REGULAR MARKETS SUNDAY OFF
       </marquee>
     </div>
 
@@ -1631,11 +1631,11 @@
       const isSunday = isSundayInIndia();
       const badge = document.getElementById('dayStatusBadge');
       if (isSunday) {
-        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-300";
-        badge.innerText = "● Sunday Off (Closed Today)";
+        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300";
+        badge.innerText = "● Teer Play 24x7 • Other Markets Closed";
       } else {
         badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300";
-        badge.innerText = "● 6 Days Open (Sun Off)";
+        badge.innerText = "● Other Markets 6 Days • Teer Play 24x7";
       }
       return isSunday;
     }
@@ -1865,7 +1865,7 @@
       const cont = document.getElementById('marketCardsContainer');
       cont.innerHTML = '';
       const savedResults = (window.supabaseResults || {});
-      const isSunday = (new Date().getDay() === 0);
+      const isSunday = isSundayInIndia();
       const dynamicDate = getTodayFormattedDate();
 
       // Open markets stay on top, closed markets move to the bottom
@@ -2147,8 +2147,10 @@
     }
 
     function openPlayModalByName(mName) {
-      if (new Date().getDay() === 0) {
-        alert('Sunday Holiday: Teer game is closed on Sundays!');
+      // Teer Play is a separate 1-minute game and stays available every day.
+      // Sunday closure applies only to the scheduled Shillong/Khanapara markets.
+      if (mName !== 'Teer Play' && isSundayInIndia()) {
+        alert('Sunday Holiday: regular Teer markets are closed. Teer Play (1 Minute) remains open.');
         return;
       }
       const mObj = state.markets.find(x => x.name === mName);
