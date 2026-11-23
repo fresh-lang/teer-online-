@@ -209,7 +209,7 @@ async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
   const jsonLdModified = html.match(/"dateModified"\s*:\s*"([^"]+)"/i)?.[1] ?? "";
   const metaModified = html.match(/<meta[^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
     html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["']/i)?.[1] ?? "";
-  const candidateTimestamp = jsonLdModified || metaModified || "";
+  const candidateTimestamp = [jsonLdModified, metaModified].find((value) => /T\d{2}:\d{2}/i.test(value)) ?? "";
   const parsedTimestamp = candidateTimestamp ? new Date(candidateTimestamp) : null;
   const sourceUpdatedAt = parsedTimestamp && Number.isFinite(parsedTimestamp.getTime()) &&
     parsedTimestamp.toISOString().slice(0, 10) === updatedIso
@@ -264,9 +264,9 @@ async function syncKhanaparaSourceIfDue(force = false) {
         // the last verified archive row. Only repair an empty placeholder row;
         // never overwrite a real result or an admin correction.
         if (preview.status === "awaiting" &&
-            /^\\d{2}-\\d{2}-\\d{4}$/.test(preview.previous_date ?? "") &&
-            /^\\d{2}$/.test(preview.previous_fr ?? "") &&
-            /^\\d{2}$/.test(preview.previous_sr ?? "")) {
+            /^\d{2}-\d{2}-\d{4}$/.test(preview.previous_date ?? "") &&
+            /^\d{2}$/.test(preview.previous_fr ?? "") &&
+            /^\d{2}$/.test(preview.previous_sr ?? "")) {
           const { data: waitingCurrent, error: waitingError } = await supabase.from("teer_results")
             .select("market,fr,sr,result_date,updated_by")
             .eq("market", KHANAPARA_MARKET).maybeSingle();
