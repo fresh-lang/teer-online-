@@ -2,6 +2,12 @@ name: Build Teer Online Android APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'onesignal-bridge.js'
+      - '.github/workflows/android-build.yml'
 
 permissions:
   contents: read
