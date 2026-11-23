@@ -1686,9 +1686,16 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
       await loadStorage();
-      // Biometric gate is native-only and is shown only after the user enables it.
-      if (state.user && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && localStorage.getItem('teer_biometric_enabled') === '1') {
-        await showTeerBiometricLock();
+      // On Android, enforce the biometric gate on every launch after enrollment.
+      // If the user is already signed in but has not enrolled yet, offer setup now;
+      // previously setup was offered only after a fresh login/registration.
+      const isNativeTeerApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+      if (state.user && isNativeTeerApp) {
+        if (localStorage.getItem('teer_biometric_enabled') === '1') {
+          await showTeerBiometricLock();
+        } else {
+          await offerTeerBiometricSetup();
+        }
       }
       // Restore the active server session after a page refresh.
       // Paint market cards immediately; restore account data without blocking the first screen.
