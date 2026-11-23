@@ -2510,7 +2510,7 @@
       if (headerRow) {
         const labels = mName === 'Teer Play'
           ? ['Date / Time', 'FR ID', 'FR Result', 'SR ID', 'SR Result']
-          : ['Date', 'FR Result', 'SR Result'];
+          : ['Date / Saved Time', 'FR Result', 'SR Result'];
         headerRow.innerHTML = labels.map(label => '<th class="p-2 border border-teal-800">' + label + '</th>').join('');
       }
       if (pager) pager.classList.toggle('hidden', mName === 'Teer Play');
@@ -2570,15 +2570,15 @@
       const records = (window.teerResultHistory || [])
         .filter(r => r.market === mName)
         .sort((a,b) => String(b.result_date).localeCompare(String(a.result_date)))
-        .map(r => ({ d: String(r.result_date || '').split('-').reverse().join('/'), fr: r.fr || '**', sr: r.sr || '**' }));
+        .map(r => ({ d: String(r.result_date || '').split('-').reverse().join('/'), fr: r.fr || '**', sr: r.sr || '**', created_at: r.created_at || null, source_updated_at: r.source_updated_at || null }));
       const savedResults = window.supabaseResults || {};
       const todayStr = getTodayFormattedDate();
       if (savedResults[mName] && (savedResults[mName].fr !== '**' || savedResults[mName].sr !== '**')) {
         const storedDate = String(savedResults[mName].date || '');
         const liveRec = { d: storedDate.includes('-') ? storedDate.split('-').reverse().join('/') : storedDate, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**' };
         const idx = records.findIndex(r => r.d === liveRec.d);
-        if (idx >= 0) records[idx] = liveRec;
-        else records.unshift(liveRec);
+        if (idx >= 0) records[idx] = { ...records[idx], ...liveRec, created_at: records[idx].created_at || savedResults[mName].updated_at || null, source_updated_at: records[idx].source_updated_at || savedResults[mName].source_updated_at || null };
+        else records.unshift({ ...liveRec, created_at: savedResults[mName].updated_at || null, source_updated_at: savedResults[mName].source_updated_at || null });
       }
       if (!records.length) {
         const tr = document.createElement('tr');
@@ -2614,7 +2614,16 @@
         [r.d, r.fr, r.sr].forEach((value,index) => {
           const td = document.createElement('td');
           td.className = 'p-2 border border-slate-200 ' + (index === 1 ? 'text-teal-900' : index === 2 ? 'text-amber-700' : 'text-slate-600');
-          td.textContent = value;
+          if (index === 0) {
+            const formatStamp = stamp => {
+              if (!stamp) return '';
+              const parsed = new Date(stamp);
+              return Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat('en-IN', { timeZone:'Asia/Kolkata', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true }).format(parsed) : '';
+            };
+            const savedTime = formatStamp(r.created_at);
+            const sourceTime = formatStamp(r.source_updated_at);
+            td.innerHTML = '<div>' + value + '</div>' + (savedTime ? '<div class="text-[9px] font-sans text-slate-500">Saved: ' + savedTime + '</div>' : '<div class="text-[9px] font-sans text-slate-400">Saved time unavailable</div>') + (sourceTime ? '<div class="text-[9px] font-sans text-emerald-700">Website: ' + sourceTime + '</div>' : '');
+          } else td.textContent = value;
           tr.appendChild(td);
         });
         tbody.appendChild(tr);
