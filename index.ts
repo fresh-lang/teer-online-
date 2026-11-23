@@ -903,6 +903,85 @@ async function fetchKhanaparaTertiaryPreview(
   };
 }
 
+// Shillong Morning is a separate 10:30 AM / 11:30 AM market.
+// Read only its named card from the user's selected ShillongTeerGrounds source.
+const SHILLONG_MORNING_SOURCE_URL = "https://shillongteergrounds.in/";
+const SHILLONG_MORNING_MARKET = "Shillong Morning Teer";
+
+async function fetchShillongMorningSourcePreview(): Promise<{
+  ready: boolean; status: string; market: string; date?: string;
+  fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
+}> {
+  const response = await fetch(SHILLONG_MORNING_SOURCE_URL, {
+    method: "GET",
+    headers: {
+      "User-Agent": "TeerOnlineResultSync/1.0 (+Shillong Morning result verification)",
+      "Accept": "text/html,application/xhtml+xml",
+      "Cache-Control": "no-cache",
+    },
+  });
+  if (!response.ok) throw new Error("Shillong Morning source returned HTTP " + response.status);
+  const html = await response.text();
+  if (!html || html.length < 1000) throw new Error("Shillong Morning source page was empty or incomplete");
+
+  const plain = htmlToPlainText(html);
+  const heading = "Shillong Morning Result";
+  const start = plain.toLowerCase().indexOf(heading.toLowerCase());
+  if (start < 0) {
+    return { ready: false, status: "section_missing", market: SHILLONG_MORNING_MARKET, source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
+  }
+  const nextHeading = plain.toLowerCase().indexOf("welcome morning result", start + heading.length);
+  const section = plain.slice(start, nextHeading >= 0 ? nextHeading : Math.min(plain.length, start + 1800));
+  const dateMatch = section.match(/Shillong Morning Result\s*[-–:]\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})/i);
+  const date = dateMatch ? parseGroundDate(dateMatch[1]) : "";
+  const values = section.match(/F\/R\s*\(10:30\s*AM\)\s*\|\s*S\/R\s*\(11:30\s*AM\)\s*(\d{2}|soon|pending|awaiting|off|--|xx)\s*\|\s*(\d{2}|soon|pending|awaiting|off|--|xx)/i);
+  const fr = values?.[1] && /^\d{2}$/.test(values[1]) ? values[1] : undefined;
+  const sr = values?.[2] && /^\d{2}$/.test(values[2]) ? values[2] : undefined;
+  const today = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
+  }).format(new Date());
+
+  if (date !== today) {
+    return { ready: false, status: date ? "date_not_current" : "date_missing", market: SHILLONG_MORNING_MARKET, ...(date ? { date } : {}), source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
+  }
+  if (!fr && !sr) {
+    return { ready: false, status: "awaiting_or_off", market: SHILLONG_MORNING_MARKET, date, source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
+  }
+  return {
+    ready: true, status: "verified", market: SHILLONG_MORNING_MARKET, date,
+    ...(fr ? { fr } : {}), ...(sr ? { sr } : {}),
+    source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL,
+  };
+}
+
+async function syncShillongMorningIfDue(force = false) {
+  const market = SHILLONG_MORNING_MARKET;
+  try {
+    const { data: syncState, error: stateError } = await supabase.from("result_source_sync")
+      .select("last_checked_at").eq("market", market).maybeSingle();
+    if (stateError) throw stateError;
+    const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
+    if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
+
+    const { error: markError } = await supabase.from("result_source_sync")
+      .upsert({ market, last_checked_at: new Date().toISOString() }, { onConflict: "market" });
+    if (markError) throw markError;
+
+    const preview = await fetchShillongMorningSourcePreview();
+    if (!preview.ready) return preview;
+    const applied = await applyVerifiedRoundResults({
+      market, date: preview.date!,
+      ...(preview.fr ? { fr: preview.fr } : {}),
+      ...(preview.sr ? { sr: preview.sr } : {}),
+      source_updated_at: preview.source_updated_at,
+    });
+    return { ...preview, applied };
+  } catch (error) {
+    console.error("Shillong Morning source sync failed:", error instanceof Error ? error.message : error);
+    return { ready: false, status: "source_error", market };
+  }
+}
+
 // Shillong Night is a separate 8:30 PM / 9:30 PM market.
 // Read only its dedicated result card; never mix it with the late 11:10 PM Night Teer.
 const SHILLONG_NIGHT_SOURCE_URL = "https://shillongnightteer.me/shillong-night-teer-result";
@@ -1137,6 +1216,7 @@ Deno.serve(async (req) => {
       const sync = await syncKhanaparaSourceIfDue(false);
       const khanaparaMorningSync = await syncKhanaparaSessionIfDue("morning");
       const khanaparaNightSync = await syncKhanaparaSessionIfDue("night");
+      const shillongMorningSync = await syncShillongMorningIfDue(false);
       const shillongNightSync = await syncShillongNightIfDue(false);
       const shillongSync = await syncShillongSourceIfDue(false);
       const indiaParts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
@@ -1144,7 +1224,7 @@ Deno.serve(async (req) => {
       const previousIndiaDate = new Date(Date.parse(indiaToday + "T00:00:00Z") - 86400000).toISOString().slice(0, 10);
       const expiredBetRefunds = await rpc("refund_unresolved_teer_bets", { p_before_date: previousIndiaDate });
       const notifications = await flushResultPushNotifications();
-      return json({ success: true, marketOffNotifications, sync, khanaparaMorningSync, khanaparaNightSync, shillongNightSync, shillongSync, expiredBetRefunds, notifications }, 200, origin);
+      return json({ success: true, marketOffNotifications, sync, khanaparaMorningSync, khanaparaNightSync, shillongMorningSync, shillongNightSync, shillongSync, expiredBetRefunds, notifications }, 200, origin);
     }
 
     if (action === "register") {
@@ -1436,7 +1516,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "public_app_data") {
-      await Promise.all([syncKhanaparaSourceIfDue(false), syncShillongSourceIfDue(false)]);
+      await Promise.all([syncKhanaparaSourceIfDue(false), syncShillongSourceIfDue(false), syncShillongMorningIfDue(false)]);
 
       const indiaParts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric" }).formatToParts(new Date());
       const part = (type: string) => indiaParts.find((item) => item.type === type)?.value ?? "";
