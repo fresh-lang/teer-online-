@@ -1969,15 +1969,16 @@
         let detectedAtLabel = '';
         const marketOffToday = !!(window.supabaseMarketOff || {})[m.name];
         const roundOffToday = (window.supabaseMarketRoundOff || {})[m.name] || {};
-        const frOffToday = marketOffToday || !!roundOffToday.FR;
-        const srOffToday = marketOffToday || !!roundOffToday.SR;
         const storedResult = savedResults[m.name];
         const storedDate = String(storedResult?.date || '').replaceAll('-', '/');
         const resultIsToday = storedDate === dynamicDate;
-        if (marketOffToday) {
-          liveFr = 'OFF';
-          liveSr = 'OFF';
-        } else if (storedResult && resultIsToday) {
+        const hasFrResultToday = resultIsToday && /^\\d{2}$/.test(String(storedResult?.fr || ''));
+        const hasSrResultToday = resultIsToday && /^\\d{2}$/.test(String(storedResult?.sr || ''));
+        // A verified result takes precedence over stale OFF flags for that round.
+        const effectiveMarketOffToday = marketOffToday && !hasFrResultToday && !hasSrResultToday;
+        const frOffToday = !hasFrResultToday && (effectiveMarketOffToday || !!roundOffToday.FR);
+        const srOffToday = !hasSrResultToday && (effectiveMarketOffToday || !!roundOffToday.SR);
+        if (storedResult && resultIsToday) {
           liveFr = storedResult.fr || '**';
           liveSr = storedResult.sr || '**';
           const formatResultTimestamp = value => {
@@ -1991,10 +1992,8 @@
           sourceUpdatedLabel = formatResultTimestamp(storedResult.source_updated_at);
           detectedAtLabel = formatResultTimestamp(storedResult.updated_at);
         }
-        if (!marketOffToday) {
-          if (frOffToday) liveFr = 'OFF';
-          if (srOffToday) liveSr = 'OFF';
-        }
+        if (frOffToday) liveFr = 'OFF';
+        if (srOffToday) liveSr = 'OFF';
         const live = { fr: liveFr, sr: liveSr };
         const card = document.createElement('div');
         card.className = "bg-white rounded-2xl p-3 border border-slate-200/90 shadow-sm space-y-2";
@@ -2004,7 +2003,7 @@
         const allClosed = (!frOpen && !srOpen);
 
         let bottomBarHtml = '';
-        if (marketOffToday || (isSunday && isSundayOffMarket(m.name))) {
+        if (effectiveMarketOffToday || (isSunday && isSundayOffMarket(m.name) && !hasFrResultToday && !hasSrResultToday)) {
           bottomBarHtml = `
             <div class="flex justify-between items-center pt-1">
               <span class="font-decorative text-base text-rose-600 font-bold">Official Market Holiday</span>
