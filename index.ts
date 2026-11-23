@@ -173,7 +173,11 @@ function dateIsoToDmy(value: string): string {
   return m ? m[3] + "/" + m[2] + "/" + m[1] : "";
 }
 
-async function fetchKhanaparaSourcePreview() {
+type KhanaparaSourcePreview =
+  | { ready: false; status: string; market: string; page_date?: string; source_update_date?: string; previous_date?: string; previous_fr?: string; previous_sr?: string; source_updated_at: string | null; source_url: string }
+  | { ready: true; status: "verified"; market: string; fr: string; sr: string; date: string; source_updated_at: string | null; source_url: string };
+
+async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
   const response = await fetch(KHANAPARA_SOURCE_URL, {
     method: "GET",
     headers: {
@@ -245,7 +249,7 @@ async function syncKhanaparaSourceIfDue(force = false) {
     try {
       const preview = await fetchKhanaparaSourcePreview();
       khanaparaLastCheckAt = Date.now();
-      if (!preview.ready) return preview;
+      if (preview.ready !== true) return preview;
 
       const { data: current, error: currentError } = await supabase.from("teer_results")
         .select("market,fr,sr,result_date,updated_by")
@@ -532,7 +536,7 @@ Deno.serve(async (req) => {
       await syncKhanaparaSourceIfDue(false);
 
       const [{ data: results, error: resultsError }, { data: settings, error: settingsError }, { data: rounds, error: roundsError }] = await Promise.all([
-        supabase.from("teer_results").select("market,fr,sr,result_date,updated_at"),
+        supabase.from("teer_results").select("market,fr,sr,result_date,updated_at,source_updated_at"),
         supabase.from("app_settings").select("helpline,deposit_upi,deposit_qr_image,marquee_text,market_schedules").eq("id", 1).maybeSingle(),
         supabase.from("teer_minute_rounds").select("id,result_type,starts_at,ends_at,result_number,result_source,status,published_at").order("starts_at", { ascending: false }).limit(100),
       ]);
@@ -567,7 +571,7 @@ Deno.serve(async (req) => {
           supabase.from("deposit_requests").select("id,user_id,amount,utr,screenshot_url,status,credited_amount,created_at,reviewed_at").order("created_at", { ascending: false }).limit(300),
           supabase.from("withdrawal_requests").select("id,user_id,amount,payout_details,status,created_at,reviewed_at").order("created_at", { ascending: false }).limit(300),
           supabase.from("bets").select("id,user_id,market,round,round_id,bet_mode,bet_number,amount,status,payout,created_at").order("created_at", { ascending: false }).limit(500),
-          supabase.from("teer_results").select("market,fr,sr,result_date,updated_at"),
+          supabase.from("teer_results").select("market,fr,sr,result_date,updated_at,source_updated_at"),
           supabase.from("app_settings").select("helpline,deposit_upi,deposit_qr_image,marquee_text,market_schedules").eq("id", 1).maybeSingle(),
         ]);
         for (const q of [usersQ, walletsQ, depositsQ, withdrawalsQ, betsQ, resultsQ, settingsQ]) if (q.error) throw q.error;
@@ -594,7 +598,7 @@ Deno.serve(async (req) => {
         if (action === "admin_save_result" && !/^\d{2}\/\d{2}\/\d{4}$/.test(resultDate || "")) {
           return json({ error: "Result date must be DD/MM/YYYY" }, 400, origin);
         }
-        const { error } = await supabase.from("teer_results").upsert({ market, fr, sr, result_date: resultDate, updated_at: new Date().toISOString(), updated_by: admin.id }, { onConflict: "market" });
+        const { error } = await supabase.from("teer_results").upsert({ market, fr, sr, result_date: resultDate, updated_at: new Date().toISOString(), updated_by: admin.id, source_updated_at: null }, { onConflict: "market" });
         if (error) throw error;
         const settlements: unknown[] = [];
         if (action === "admin_save_result") {
