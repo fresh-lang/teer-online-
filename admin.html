@@ -130,7 +130,7 @@
         <div>
           <label for="resultDate" class="text-xs text-slate-300 font-bold block mb-1">Result Date (India):</label>
           <input type="date" id="resultDate" onchange="handleResultDateChange()" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white font-semibold outline-none focus:border-amber-400">
-          <p class="text-[10px] text-slate-500 mt-1">Select the actual draw date. Late holiday updates must use the draw date, not the upload date.</p>
+          <p class="text-[10px] text-slate-500 mt-1">For source-synced Khanapara results, the verified website update date is used automatically. This field applies only to manual admin corrections.</p>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -147,7 +147,7 @@
             <i class="fa-solid fa-cloud-arrow-down mr-1.5"></i> Fetch FR/SR from Result Website (Preview)
           </button>
         </div>
-        <p class="text-[10px] text-emerald-200/90">Automatic source sync checks these markets every 5 minutes. Admin corrections are locked for the day so the source cannot overwrite them. Correcting a result reverses the previous settlement, recalculates affected bets, and records wallet adjustments in the transaction ledger. Use the preview button when you want to inspect the source manually.</p>
+        <p class="text-[10px] text-emerald-200/90">Khanapara Evening checks the source page every 5 minutes when the app refreshes. It accepts a result only after both FR and SR match the newest archive row and the website update date. Awaiting or old results are ignored, so the previous result stays visible. Same-date admin corrections are protected. Use Preview to inspect the source before publishing manually.</p>
         <div class="flex gap-2">
           <button onclick="saveResultAndBroadcast('both')" class="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-xs text-white shadow-lg transition">
             <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> Save FR + SR
