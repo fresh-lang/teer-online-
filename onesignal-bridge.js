@@ -109,10 +109,12 @@ async function showInAppPermissionPrompt() {
         const canPrompt = await OneSignal.Notifications.canRequestPermission();
         if (!canPrompt) {
           message.textContent = 'Notifications ON karne ke liye Phone Settings > Apps > Teer Online > Notifications kholen.';
-          allow.disabled = false;
+          const closeButton = allow.cloneNode(true);
+          closeButton.textContent = 'Got it';
+          closeButton.disabled = false;
+          allow.replaceWith(closeButton);
           later.disabled = false;
-          allow.textContent = 'Open Settings';
-          allow.onclick = close;
+          closeButton.addEventListener('click', close);
           return;
         }
         granted = await OneSignal.Notifications.requestPermission(false);
