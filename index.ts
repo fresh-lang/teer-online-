@@ -307,6 +307,14 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const action = String(body?.action ?? "");
 
+    // Server-side five-minute poller. The request is rate-limited by the
+    // persistent result_source_sync row, so repeated public calls cannot
+    // cause repeated source fetches inside the five-minute window.
+    if (action === "scheduled_result_sync") {
+      const sync = await syncKhanaparaSourceIfDue(false);
+      return json({ success: true, sync }, 200, origin);
+    }
+
     if (action === "register") {
       const name = String(body.name ?? "").trim().slice(0, 80);
       const phone = cleanPhone(body.phone);
