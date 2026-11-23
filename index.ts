@@ -776,7 +776,8 @@ Deno.serve(async (req) => {
       const pageSize = 100;
       const { data, error } = await supabase.from("teer_result_history")
         .select("id,market,result_date,fr,sr,source,created_at")
-        .eq("market", market).order("result_date", { ascending: false })
+        .eq("market", market).not("fr", "is", null).not("sr", "is", null)
+        .order("result_date", { ascending: false })
         .range(page * pageSize, page * pageSize + pageSize);
       if (error) throw error;
       const items = data ?? [];
