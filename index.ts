@@ -1283,28 +1283,6 @@ async function fetchShillongFallbackPreview(
   return { ready: true as const, status: "verified" as const, market, date, ...(fr ? { fr } : {}), ...(sr ? { sr } : {}), source_updated_at: null, source_url: SHILLONG_FALLBACK_URL };
 }
 
-async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
-  return await fetchGroundsMarketPreview(
-    SHILLONG_MARKET, "Shillong Teer Result", "03:15 PM", "04:15 PM",
-  ) as ShillongSourcePreview;
-}
-");
-  const frMatch = section.match(new RegExp("F\\\\/R\\\\s*\\\\(\\\\s*" + escapePattern(frTime) + "\\\\s*\\\\)\\\\s*(\\\\d{2})", "i"));
-  const srMatch = section.match(new RegExp("S\\\\/R\\\\s*\\\\(\\\\s*" + escapePattern(srTime) + "\\\\s*\\\\)\\\\s*(\\\\d{2})", "i"));
-  const fr = frMatch?.[1] ?? "";
-  const sr = srMatch?.[1] ?? "";
-  const today = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
-  }).format(new Date());
-  if (date !== today) {
-    return { ready: false as const, status: date ? "date_not_current" : "date_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: SHILLONG_FALLBACK_URL };
-  }
-  if (!/^\\d{2}$/.test(fr) && !/^\\d{2}$/.test(sr)) {
-    return { ready: false as const, status: "awaiting", market, date, source_updated_at: null, source_url: SHILLONG_FALLBACK_URL };
-  }
-  return { ready: true as const, status: "verified" as const, market, date, ...(fr ? { fr } : {}), ...(sr ? { sr } : {}), source_updated_at: null, source_url: SHILLONG_FALLBACK_URL };
-}
-
 async function syncShillongSourceIfDue(force = false) {
   if (shillongCheckPromise) return await shillongCheckPromise;
   shillongCheckPromise = (async () => {
