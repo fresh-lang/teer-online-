@@ -293,6 +293,24 @@ jobs:
                       return;
                   }
 
+                  // Prefer Android's dedicated device-credential screen. This opens
+                  // the configured Pattern/PIN/Password directly, without asking
+                  // for a fingerprint first.
+                  try {
+                      Intent credentialIntent = keyguard.createConfirmDeviceCredentialIntent(
+                          "Unlock Teer Online",
+                          "Enter your phone Pattern, PIN or Password"
+                      );
+                      if (credentialIntent != null) {
+                          startActivityForResult(call, credentialIntent, "deviceCredentialResult");
+                          return;
+                      }
+                  } catch (Exception e) {
+                      android.util.Log.w("TeerDeviceCredential", "Direct device credential screen unavailable; trying BiometricPrompt", e);
+                  }
+
+                  // Android 11+ fallback for devices where Keyguard does not
+                  // provide a confirmation intent.
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                       try {
                           BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
@@ -300,7 +318,6 @@ jobs:
                               .setSubtitle("Enter your phone Pattern, PIN or Password")
                               .setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                               .build();
-
                           activePrompt = new BiometricPrompt(
                               getActivity(),
                               ContextCompat.getMainExecutor(getContext()),
@@ -310,7 +327,6 @@ jobs:
                                       activePrompt = null;
                                       call.resolve();
                                   }
-
                                   @Override
                                   public void onAuthenticationError(int errorCode, CharSequence errString) {
                                       activePrompt = null;
@@ -326,15 +342,7 @@ jobs:
                       return;
                   }
 
-                  Intent intent = keyguard.createConfirmDeviceCredentialIntent(
-                      "Unlock Teer Online",
-                      "Enter your phone Pattern, PIN or Password"
-                  );
-                  if (intent == null) {
-                      call.reject("Android could not open the phone screen-lock prompt.");
-                      return;
-                  }
-                  startActivityForResult(call, intent, "deviceCredentialResult");
+                  call.reject("Android could not open the phone screen-lock prompt. Check that Pattern, PIN or Password is enabled.");
               }
 
               @ActivityCallback
