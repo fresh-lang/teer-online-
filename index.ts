@@ -209,7 +209,7 @@ async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
   const jsonLdModified = html.match(/"dateModified"\s*:\s*"([^"]+)"/i)?.[1] ?? "";
   const metaModified = html.match(/<meta[^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
     html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:article:modified_time|last-modified)["']/i)?.[1] ?? "";
-  const candidateTimestamp = jsonLdModified || metaModified || response.headers.get("last-modified") || "";
+  const candidateTimestamp = jsonLdModified || metaModified || "";
   const parsedTimestamp = candidateTimestamp ? new Date(candidateTimestamp) : null;
   const sourceUpdatedAt = parsedTimestamp && Number.isFinite(parsedTimestamp.getTime()) &&
     parsedTimestamp.toISOString().slice(0, 10) === updatedIso
