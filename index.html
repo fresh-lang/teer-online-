@@ -2500,7 +2500,7 @@
       if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-slate-500">Loading full previous result archive…</td></tr>';
       try {
         const rows = [];
-        for (let page = 0; page < 10; page++) {
+        for (let page = 0; page < 50; page++) {
           const result = await accountApi('public_result_history', { market, page }, false);
           rows.push(...(result.history || []));
           if (!result.has_more) break;
