@@ -2944,29 +2944,29 @@
     }
 
     function getBaseShareUrl() {
-      // Jab domain active ho toh direct app.teeronline.fun, nahi toh current GitHub Pages URL
+      // Official app landing page: the APK button always resolves the latest published APK.
       if (window.location.hostname.includes('teeronline.fun')) {
-        return `${window.location.origin}/register`;
+        return window.location.origin + '/';
       } else if (window.location.hostname.includes('github.io')) {
-        return `${window.location.origin}${window.location.pathname}`;
+        return window.location.origin + window.location.pathname;
       }
-      return 'https://app.teeronline.fun/register';
+      return 'https://app.teeronline.fun/';
     }
 
     function getMyReferralCode() { return state.user && state.user.uid ? String(state.user.uid) : ''; }
     function shareReferralWhatsApp() {
       const myRefCode = getMyReferralCode();
-      if (!myRefCode) { alert('Please log in before sharing your referral link.'); openAuthModal(); return; }
-      const shareUrl = `${getBaseShareUrl()}?ref=${encodeURIComponent(myRefCode)}`;
-      const text = encodeURIComponent(`🎯 TEER ONLINE Registration!\\n🎁 New user: ₹10 one-time registration bonus.\\n\\nReferral code: ${myRefCode}\\nApproved deposit ₹100+ par referrer ko ₹5, aur eligible total bets ₹1,000 par extra ₹5.\\n\\nRegister here: ${shareUrl}`);
-      window.open(`https://wa.me/?text=${text}`, '_blank');
+      if (!myRefCode) { alert('Please log in before sharing your APK download link.'); openAuthModal(); return; }
+      const shareUrl = getBaseShareUrl() + '?ref=' + encodeURIComponent(myRefCode);
+      const message = '🎯 TEER ONLINE - Download the latest APK!\n📲 Open this official link to download the latest Teer Online APK and register.\n\nYour referral code: ' + myRefCode + '\n\nDownload & join here: ' + shareUrl;
+      window.open('https://wa.me/?text=' + encodeURIComponent(message), '_blank');
     }
     async function copyReferralLink() {
       const myRefCode = getMyReferralCode();
-      if (!myRefCode) { alert('Please log in before copying your referral link.'); openAuthModal(); return; }
-      const shareUrl = `${getBaseShareUrl()}?ref=${encodeURIComponent(myRefCode)}`;
-      try { await navigator.clipboard.writeText(shareUrl); showAppToast('Referral link copied!'); }
-      catch (_) { window.prompt('Copy your referral link:', shareUrl); }
+      if (!myRefCode) { alert('Please log in before copying your APK download link.'); openAuthModal(); return; }
+      const shareUrl = getBaseShareUrl() + '?ref=' + encodeURIComponent(myRefCode);
+      try { await navigator.clipboard.writeText(shareUrl); showAppToast('APK download link with your referral code copied!'); }
+      catch (_) { window.prompt('Copy your APK download link:', shareUrl); }
     }
 
     /* Removed stale in-memory account persistence handler logoutUser. */
