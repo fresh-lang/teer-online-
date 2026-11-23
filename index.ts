@@ -178,6 +178,108 @@ function dateDmyToIso(value: string): string {
   return m ? m[3] + "-" + m[2] + "-" + m[1] : "";
 }
 
+
+// OneSignal result notification outbox. The REST API key is supplied later as
+// the Supabase secret ONESIGNAL_REST_API_KEY; without it, messages stay pending.
+const ONESIGNAL_APP_ID = "5c602eb8-04b1-4007-8edf-936fd353fcc1";
+
+async function queueResultPushNotification(market: string, date: string, fr: string, sr: string) {
+  const eventKey = `${market}:${date}:${fr}:${sr}`;
+  const title = `${market} Result Updated`.slice(0, 80);
+  const message = `${date} | FR: ${fr} | SR: ${sr}`;
+  const { error } = await supabase.from("broadcast_notifications").insert({
+    title,
+    message,
+    status: "pending",
+    recipients: 0,
+    event_key: eventKey,
+    created_by: null,
+  });
+  if (error?.code === "23505") return { queued: false, reason: "duplicate_event" };
+  if (error) throw error;
+  return { queued: true };
+}
+
+async function flushResultPushNotifications() {
+  const restKey = Deno.env.get("ONESIGNAL_REST_API_KEY")?.trim();
+  if (!restKey) return { configured: false, sent: 0, pending: true };
+
+  const { data: pending, error: listError } = await supabase.from("broadcast_notifications")
+    .select("id,title,message,event_key")
+    .eq("status", "pending")
+    .not("event_key", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(20);
+  if (listError) throw listError;
+
+  let sent = 0;
+  let failed = 0;
+  for (const item of pending ?? []) {
+    const { data: claimed, error: claimError } = await supabase.from("broadcast_notifications")
+      .update({ status: "sending", error_message: null })
+      .eq("id", item.id)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
+    if (claimError) {
+      console.error("Could not claim result notification:", claimError.message);
+      continue;
+    }
+    if (!claimed) continue;
+
+    try {
+      const response = await fetch("https://api.onesignal.com/notifications", {
+        method: "POST",
+        headers: {
+          "Authorization": `Key ${restKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          app_id: ONESIGNAL_APP_ID,
+          included_segments: ["Subscribed Users"],
+          headings: { en: item.title },
+          contents: { en: item.message },
+          name: `Teer result ${item.event_key}`,
+          data: { type: "teer_result", event_key: item.event_key },
+        }),
+      });
+      const responseText = await response.text();
+      let payload: Record<string, unknown> = {};
+      try { payload = responseText ? JSON.parse(responseText) : {}; } catch { /* keep response text for diagnostics */ }
+      if (!response.ok) {
+        const detail = String(payload.errors ?? payload.error ?? responseText ?? `HTTP ${response.status}`).slice(0, 500);
+        await supabase.from("broadcast_notifications").update({
+          status: "failed",
+          error_message: detail,
+        }).eq("id", item.id);
+        failed++;
+        continue;
+      }
+
+      const { error: updateError } = await supabase.from("broadcast_notifications").update({
+        status: "sent",
+        notification_id: typeof payload.id === "string" ? payload.id : null,
+        recipients: Number.isFinite(Number(payload.recipients)) ? Number(payload.recipients) : 0,
+        sent_at: new Date().toISOString(),
+        error_message: null,
+      }).eq("id", item.id);
+      if (updateError) {
+        console.error("OneSignal accepted result notification but DB receipt update failed:", updateError.message);
+      } else {
+        sent++;
+      }
+    } catch (error) {
+      const detail = (error instanceof Error ? error.message : String(error)).slice(0, 500);
+      await supabase.from("broadcast_notifications").update({
+        status: "failed",
+        error_message: detail,
+      }).eq("id", item.id);
+      failed++;
+    }
+  }
+  return { configured: true, sent, failed, remaining: Math.max(0, (pending?.length ?? 0) - sent - failed) };
+}
+
 async function saveVerifiedResultHistory(market: string, date: string, fr: string, sr: string, source: "source" | "admin") {
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date) || !/^\d{2}$/.test(fr) || !/^\d{2}$/.test(sr)) {
     throw new Error("Only complete dated FR/SR pairs can be archived");
@@ -340,7 +442,8 @@ async function syncKhanaparaSourceIfDue(force = false) {
       }, { onConflict: "market" });
       if (saveError) throw saveError;
       const history = await saveVerifiedResultHistory(KHANAPARA_MARKET, preview.date, preview.fr, preview.sr, "source");
-      return { ...preview, applied: true, history };
+      const notification = await queueResultPushNotification(KHANAPARA_MARKET, preview.date, preview.fr, preview.sr);
+      return { ...preview, applied: true, history, notification };
     } catch (error) {
       console.error("Khanapara source sync failed:", error instanceof Error ? error.message : error);
       return { ready: false, status: "source_error" };
@@ -500,7 +603,8 @@ async function syncShillongSourceIfDue(force = false) {
       }, { onConflict: "market" });
       if (saveError) throw saveError;
       const history = await saveVerifiedResultHistory(SHILLONG_MARKET, preview.date, preview.fr, preview.sr, "source");
-      return { ...preview, applied: true, history };
+      const notification = await queueResultPushNotification(SHILLONG_MARKET, preview.date, preview.fr, preview.sr);
+      return { ...preview, applied: true, history, notification };
     } catch (error) {
       console.error("Shillong source sync failed:", error instanceof Error ? error.message : error);
       return { ready: false, status: "source_error" };
@@ -529,7 +633,8 @@ Deno.serve(async (req) => {
     if (action === "scheduled_result_sync") {
       const sync = await syncKhanaparaSourceIfDue(false);
       const shillongSync = await syncShillongSourceIfDue(false);
-      return json({ success: true, sync, shillongSync }, 200, origin);
+      const notifications = await flushResultPushNotifications();
+      return json({ success: true, sync, shillongSync, notifications }, 200, origin);
     }
 
     if (action === "register") {
