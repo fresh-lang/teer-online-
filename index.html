@@ -2084,14 +2084,22 @@
         const dynamicDate = getTodayFormattedDate();
         let liveFr = '**';
         let liveSr = '**';
+        let resultDateLabel = dynamicDate;
+        let sourceUpdatedLabel = '';
         if (savedResults[m.name]) {
           const res = savedResults[m.name];
-          if (m.name === 'Teer Play') {
-            liveFr = res.fr || '**';
-            liveSr = res.sr || '**';
-          } else if ((String(res.date || '').includes('-') ? String(res.date).split('-').reverse().join('/') : String(res.date || '')) === dynamicDate) {
-            liveFr = res.fr || '**';
-            liveSr = res.sr || '**';
+          liveFr = res.fr || '**';
+          liveSr = res.sr || '**';
+          const storedDate = String(res.date || '');
+          if (storedDate) resultDateLabel = storedDate.includes('-') ? storedDate.split('-').reverse().join('/') : storedDate;
+          if (m.name === 'Khanapara Teer (Evening)' && res.source_updated_at) {
+            const sourceDate = new Date(res.source_updated_at);
+            if (Number.isFinite(sourceDate.getTime())) {
+              sourceUpdatedLabel = new Intl.DateTimeFormat('en-IN', {
+                timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+              }).format(sourceDate);
+            }
           }
         }
         const live = { fr: liveFr, sr: liveSr };
@@ -2151,7 +2159,7 @@
         card.innerHTML = `
           <div class="flex justify-between items-center">
             <h5 class="font-decorative text-xl font-bold text-slate-800">${m.name}</h5>
-            <span class="font-decorative text-base text-slate-700 font-semibold">${dynamicDate}</span>
+            <span class="font-decorative text-base text-slate-700 font-semibold">${resultDateLabel}</span>
           </div>
 
           <div class="grid grid-cols-2 gap-2 bg-[#f4f9f9] border border-teal-100 rounded-xl p-2.5 text-center">
@@ -2164,6 +2172,7 @@
               <p class="font-decorative text-3xl font-bold text-slate-900 mt-0.5">${live.sr}</p>
             </div>
           </div>
+          ${sourceUpdatedLabel ? `<p class="text-[9px] text-slate-500 text-right">Website updated: ${sourceUpdatedLabel}</p>` : ''}
 
           ${bottomBarHtml}
         `;
