@@ -1650,8 +1650,8 @@
       if (document.getElementById('teerBiometricLockScreen')) return;
       const bridge = window.TeerBiometricBridge;
       if (!bridge) { localStorage.removeItem('teer_biometric_enabled'); return; }
-      const info = await bridge.check().catch(() => ({ isAvailable: false }));
-      if (!info.isAvailable) { localStorage.removeItem('teer_biometric_enabled'); return; }
+      // Do not require enrolled biometrics here: Android device credentials
+      // may still be available through allowDeviceCredential in the native prompt.
       const overlay = document.createElement('div');
       overlay.id = 'teerBiometricLockScreen';
       overlay.style.cssText = 'position:fixed;inset:0;z-index:200000;background:#004347;display:flex;align-items:center;justify-content:center;padding:28px;color:white;font-family:Arial,sans-serif;';
@@ -1690,13 +1690,9 @@
       // Login and registration must never trigger a separate lock prompt.
       const isNativeTeerApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
       if (isNativeTeerApp) {
-        if (localStorage.getItem('teer_biometric_enabled') === '1') {
-          await showTeerBiometricLock();
-        } else {
-            if (localStorage.getItem('teer_biometric_enabled') === '1') {
-            await showTeerBiometricLock();
-          }
-        }
+        // Lock on every cold app launch, even for users who never enabled
+        // the old optional biometric flag.
+        await showTeerBiometricLock();
       }
       // Re-lock whenever the Android app returns from the background.
       let teerWasBackgrounded = false;
@@ -1708,9 +1704,7 @@
           }
           if (teerWasBackgrounded) {
             teerWasBackgrounded = false;
-            if (localStorage.getItem('teer_biometric_enabled') === '1') {
-              await showTeerBiometricLock();
-            }
+            await showTeerBiometricLock();
           }
         });
       }
