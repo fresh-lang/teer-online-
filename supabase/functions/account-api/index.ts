@@ -1501,10 +1501,20 @@ Deno.serve(async (req) => {
         const response = await fetch("https://api.onesignal.com/notifications", {
           method: "POST",
           headers: { "Authorization": "Key " + restKey, "Content-Type": "application/json" },
-          body: JSON.stringify({ app_id: ONESIGNAL_APP_ID, included_segments: ["Subscribed Users"], headings: { en: title }, contents: { en: message } }),
+          body: JSON.stringify({
+            app_id: ONESIGNAL_APP_ID,
+            included_segments: ["Subscribed Users"],
+            headings: { en: title },
+            contents: { en: message },
+            name: "Teer Online admin broadcast " + eventKey,
+            android_channel_id: "478b866d-a74d-4808-91d2-6e926e3f456b",
+            priority: 10,
+            data: { type: "admin_broadcast", event_key: eventKey },
+          }),
         });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok || payload.errors) {
+        const hasErrors = Array.isArray(payload.errors) ? payload.errors.length > 0 : Boolean(payload.errors);
+        if (!response.ok || hasErrors) {
           const reason = String(payload.errors?.[0] || payload.errors || ("OneSignal HTTP " + response.status)).slice(0, 500);
           await supabase.from("broadcast_notifications").update({ status: "failed", error_message: reason }).eq("id", logRow.id);
           return json({ error: "OneSignal rejected the notification", details: reason }, 502, origin);
