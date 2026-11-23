@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: teer-online-android-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -369,13 +373,26 @@ jobs:
             exit 1
           fi
           "$ZIPALIGN" -c -v 4 teer-online.apk
+      - name: Confirm this is still the latest branch commit
+        id: freshness
+        run: |
+          git fetch origin "$GITHUB_REF_NAME" --quiet
+          LATEST_SHA="$(git rev-parse FETCH_HEAD)"
+          if [ "$LATEST_SHA" != "$GITHUB_SHA" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping obsolete APK from $GITHUB_SHA; current branch is $LATEST_SHA"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Upload APK artifact
+        if: steps.freshness.outputs.publish == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: teer-online-apk
           path: teer-online.apk
           if-no-files-found: error
       - name: Publish APK download
+        if: steps.freshness.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: apk-${{ github.run_number }}
