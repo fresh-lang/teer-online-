@@ -2734,7 +2734,7 @@
       const todayStr = getTodayFormattedDate();
       if (savedResults[mName] && (savedResults[mName].fr !== '**' || savedResults[mName].sr !== '**')) {
         const storedDate = String(savedResults[mName].date || '');
-        const liveRec = { d: storedDate.includes('-') ? storedDate.split('-').reverse().join('/') : storedDate, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**', savedAt: savedResults[mName].source_updated_at || savedResults[mName].updated_at || null };
+        const liveRec = { d: storedDate.includes('-') ? storedDate.split('-').reverse().join('/') : storedDate, fr: savedResults[mName].fr || '**', sr: savedResults[mName].sr || '**', savedAt: savedResults[mName].source_updated_at || null };
         const idx = records.findIndex(r => r.d === liveRec.d);
         if (idx >= 0) {
           liveRec.savedAt = liveRec.savedAt || records[idx].savedAt || null;
