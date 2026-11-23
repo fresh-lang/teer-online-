@@ -444,7 +444,7 @@ Deno.serve(async (req) => {
         const indiaPart = (type: string) => indiaDateParts.find((part) => part.type === type)?.value ?? "";
         const indiaToday = `${indiaPart("day")}/${indiaPart("month")}/${indiaPart("year")}`;
         const resultDate = action === "admin_reset_result" ? null : String(body.result_date ?? indiaToday).trim();
-        if (action === "admin_save_result" && !/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(resultDate || "")) {
+        if (action === "admin_save_result" && !/^\d{2}\/\d{2}\/\d{4}$/.test(resultDate || "")) {
           return json({ error: "Result date must be DD/MM/YYYY" }, 400, origin);
         }
         const { error } = await supabase.from("teer_results").upsert({ market, fr, sr, result_date: resultDate, updated_at: new Date().toISOString(), updated_by: admin.id }, { onConflict: "market" });
