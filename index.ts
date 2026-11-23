@@ -604,7 +604,24 @@ async function syncKhanaparaSourceIfDue(force = false) {
       if (markError) throw markError;
       khanaparaLastCheckAt = Date.now();
 
-      const preview = await fetchKhanaparaSourcePreview();
+      let preview: KhanaparaSourcePreview;
+      try {
+        preview = await fetchKhanaparaSourcePreview();
+      } catch (error) {
+        console.error("Khanapara Evening primary source failed:", error instanceof Error ? error.message : error);
+        preview = { ready: false, status: "source_error", market: KHANAPARA_MARKET, source_updated_at: null, source_url: KHANAPARA_SOURCE_URL };
+      }
+      if (preview.ready !== true) {
+        try {
+          const fallback = await fetchShillongFallbackPreview(
+            KHANAPARA_MARKET, "Khanapara Teer Result", "04:10 PM", "04:45 PM",
+            ["Khanapara Morning Result", "Khanapara Night Result"],
+          );
+          if (fallback.ready) preview = fallback as KhanaparaSourcePreview;
+        } catch (error) {
+          console.error("Khanapara Evening fallback failed:", error instanceof Error ? error.message : error);
+        }
+      }
       if (preview.ready !== true) {
         // If the source says today's result is still pending/holiday, preserve
         // the last verified archive row. Only repair an empty placeholder row;
