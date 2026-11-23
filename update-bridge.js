@@ -1,13 +1,19 @@
-import { Browser } from '@capacitor/browser';
+import { registerPlugin } from '@capacitor/core';
 
-// Open the official APK download in the Android browser. The app deliberately
-// does not request REQUEST_INSTALL_PACKAGES or install APKs itself.
+const NativeUpdater = registerPlugin('TeerAppUpdater');
+
 window.TeerAppUpdater = {
-  async openDownloadPage(url) {
-    if (!url || !/^https:\/\//i.test(url)) {
-      throw new Error('A secure APK download link is required.');
+  async downloadAndInstall(url, onProgress) {
+    if (!url || !/^https:\/\//i.test(url) || !/github\.com/i.test(new URL(url).hostname)) {
+      throw new Error('A valid official GitHub APK link is required.');
     }
-    await Browser.open({ url });
-    return true;
+    const listener = await NativeUpdater.addListener('downloadProgress', event => {
+      if (typeof onProgress === 'function') onProgress(Number(event.percent || 0));
+    });
+    try {
+      return await NativeUpdater.downloadAndInstall({ url });
+    } finally {
+      await listener.remove();
+    }
   }
 };
