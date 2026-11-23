@@ -2,6 +2,15 @@ name: Build Teer Online Android APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'onesignal-bridge.js'
+      - 'index.html'
+      - 'biometric-bridge.js'
+      - 'capacitor.config.json'
+      - '.github/workflows/android-build.yml'
   push:
     branches:
       - main
@@ -9,6 +18,7 @@ on:
       - 'onesignal-bridge.js'
       - 'index.html'
       - 'biometric-bridge.js'
+      - 'capacitor.config.json'
       - '.github/workflows/android-build.yml'
 
 permissions:
@@ -31,7 +41,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Configure Android SDK
         run: |
