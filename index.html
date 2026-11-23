@@ -1130,9 +1130,29 @@
 
   </div>
 
-  <script src="./onesignal-bridge.js"></script>
-  <script src="./update-bridge.js"></script>
-  <script src="./native-back-bridge.js"></script>
+  <script>
+    // Native-only bridges are bundled by the Android build. Do not load their
+    // unbundled ES-module source files on the public website.
+    window.__teerNativeBridgesReady = Promise.resolve(false);
+    if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
+      window.__teerNativeBridgesReady = new Promise((resolve) => {
+        const files = ['./onesignal-bridge.js', './update-bridge.js', './native-back-bridge.js'];
+        let index = 0;
+        const loadNext = () => {
+          if (index >= files.length) { resolve(true); return; }
+          const script = document.createElement('script');
+          script.src = files[index++];
+          script.onload = loadNext;
+          script.onerror = () => {
+            console.error('Native app bridge failed to load:', script.src);
+            resolve(false);
+          };
+          document.head.appendChild(script);
+        };
+        loadNext();
+      });
+    }
+  </script>
   <script>
     // Volatile UI-only storage. Account, wallet, bets, results and settings live in Supabase.
     const memoryStore = (() => { const values = new Map(); return { getItem:k => values.has(k) ? values.get(k) : null, setItem:(k,v) => values.set(k, String(v)), removeItem:k => values.delete(k) }; })();
@@ -1715,6 +1735,15 @@
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
+      // Wait for native-only bundles before checking unlock, OneSignal or updater APIs.
+      try {
+        await Promise.all([
+          window.__teerNativeBridgesReady || Promise.resolve(false),
+          window.__teerBiometricBridgeReady || Promise.resolve(false)
+        ]);
+      } catch (error) {
+        console.warn('Native bridge initialization failed:', error);
+      }
       // Detect the installed Capacitor app and show its lock before storage/session work.
       const bridge = window.TeerBiometricBridge;
       let isNativeTeerApp = false;
@@ -4183,6 +4212,22 @@
       </div>
     </div>
 
-  <script src="./biometric-bridge.js"></script>
+  <script>
+    // The biometric bridge is also native-only; website visitors should not
+    // execute the raw source file containing package imports.
+    window.__teerBiometricBridgeReady = Promise.resolve(false);
+    if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
+      window.__teerBiometricBridgeReady = new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = './biometric-bridge.js';
+        script.onload = () => resolve(true);
+        script.onerror = () => {
+          console.error('Biometric bridge failed to load:', script.src);
+          resolve(false);
+        };
+        document.head.appendChild(script);
+      });
+    }
+  </script>
 </body>
 </html>
