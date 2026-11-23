@@ -1660,10 +1660,25 @@
           <img src="./logo.png" alt="Teer Online" style="display:block;width:100%;max-width:300px;max-height:210px;object-fit:contain;margin:0 auto 22px">
           <div style="font-size:17px;color:#d7f4f0;margin-bottom:52px">Unlock with fingerprint, face or phone screen lock</div>
           <button id="teerBiometricUnlock" style="width:100%;padding:20px 14px;border:0;border-radius:25px;background:#fff;color:#06484b;font-size:20px;font-weight:800">🔓 Unlock now</button>
+          <button id="teerPatternUnlock" style="width:100%;padding:16px 14px;margin-top:12px;border:1px solid #b8e5df;border-radius:20px;background:transparent;color:#fff;font-size:16px;font-weight:700">Use Pattern / PIN / Password</button>
           <div id="teerBiometricError" style="font-size:13px;color:#ffd8a8;margin-top:14px;min-height:18px"></div>
         </div>`;
       document.body.appendChild(overlay);
       const unlock = overlay.querySelector('#teerBiometricUnlock');
+      const credentialUnlock = overlay.querySelector('#teerPatternUnlock');
+      credentialUnlock.addEventListener('click', async () => {
+        credentialUnlock.disabled = true;
+        credentialUnlock.textContent = 'Opening phone screen lock…';
+        try {
+          if (!bridge.authenticateDeviceCredential) throw new Error('Phone screen-lock option is not available in this APK.');
+          await bridge.authenticateDeviceCredential();
+          overlay.remove();
+        } catch (error) {
+          overlay.querySelector('#teerBiometricError').textContent = 'Pattern/PIN unlock cancelled. Try again.';
+          credentialUnlock.textContent = 'Use Pattern / PIN / Password';
+          credentialUnlock.disabled = false;
+        }
+      });
       unlock.addEventListener('click', async () => {
         unlock.disabled = true;
         unlock.textContent = 'Please wait…';
