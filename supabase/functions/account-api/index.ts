@@ -362,7 +362,7 @@ async function flushResultPushNotifications() {
         },
         body: JSON.stringify({
           app_id: ONESIGNAL_APP_ID,
-          included_segments: ["Subscribed Users"],
+          included_segments: ["Active Subscriptions"],
           headings: { en: item.title },
           contents: { en: item.message },
           name: `Teer notification ${item.event_key}`,
@@ -1520,7 +1520,7 @@ Deno.serve(async (req) => {
           headers: { "Authorization": "Key " + restKey, "Content-Type": "application/json" },
           body: JSON.stringify({
             app_id: ONESIGNAL_APP_ID,
-            included_segments: ["Subscribed Users"],
+            included_segments: ["Active Subscriptions"],
             headings: { en: title },
             contents: { en: message },
             name: "Teer Online admin broadcast " + eventKey,
