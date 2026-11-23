@@ -440,8 +440,9 @@
       <div class="space-y-2">
         <label class="text-xs font-bold text-amber-300 block">Adjust Wallet Balance (+/-):</label>
         <div class="flex gap-2">
-          <input type="number" id="adjustAmtInput" placeholder="Amount (e.g. 100)" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">
+          <input type="number" id="adjustAmtInput" min="0.01" step="0.01" placeholder="Amount (e.g. 100)" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">
         </div>
+        <input type="text" id="adjustReasonInput" maxlength="180" placeholder="Reason / note (optional)" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">
         <div class="grid grid-cols-2 gap-2 pt-1">
           <button onclick="adjustUserBalance('add')" class="py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow">
             <i class="fa-solid fa-plus mr-1"></i> Add Balance
@@ -671,6 +672,7 @@
       if (betElem) betElem.innerText = `${u.betCount || 0} Bets Placed`;
 
       document.getElementById('adjustAmtInput').value = '';
+      document.getElementById('adjustReasonInput').value = '';
       document.getElementById('userModal').classList.remove('hidden');
     }
 
@@ -1149,7 +1151,29 @@
     }
     function toggleBlockUser() { alert('User blocking is not currently available in the Supabase schema/API. Direct database writes are disabled.'); }
     function adminResetUserPassword() { alert('Password reset still needs a secure server-side RPC. Password changes from the browser are disabled.'); }
-    function adjustUserBalance() { alert('Direct balance editing is disabled. A server-side adjustment RPC with wallet-ledger auditing is required.'); }
+    async function adjustUserBalance(action) {
+      const user = activeModalUserPhone ? allUsersCache[activeModalUserPhone] : null;
+      if (!user || !user.id) return alert('Please select a valid user.');
+      const amount = Number(document.getElementById('adjustAmtInput').value);
+      const reason = document.getElementById('adjustReasonInput').value.trim();
+      if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000 || Math.round(amount * 100) !== amount * 100) {
+        return alert('Enter a valid amount greater than 0 (maximum ₹10,00,000; up to 2 decimals).');
+      }
+      const direction = action === 'add' ? 'credit' : 'debit';
+      const label = direction === 'credit' ? 'ADD' : 'DEDUCT';
+      if (!confirm(label + ' ₹' + amount.toFixed(2) + ' ' + (direction === 'credit' ? 'to' : 'from') + ' ' + (user.name || 'this user') + "'s wallet?")) return;
+      try {
+        const response = await adminApi('admin_adjust_wallet', { user_id: user.id, amount, direction, description: reason });
+        user.balance = Number(response.result?.balance ?? response.balance);
+        document.getElementById('mUserBalance').innerText = '₹' + user.balance.toFixed(2);
+        document.getElementById('adjustAmtInput').value = '';
+        document.getElementById('adjustReasonInput').value = '';
+        renderUsersList();
+        alert('Wallet updated successfully. New balance: ₹' + user.balance.toFixed(2));
+      } catch (error) {
+        alert('Wallet adjustment failed: ' + (error.message || error));
+      }
+    }
     async function saveMarketSchedule(mName, idx) {
       const frTime = document.getElementById('sch_fr_' + idx).value.trim();
       const srTime = document.getElementById('sch_sr_' + idx).value.trim();
