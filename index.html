@@ -1881,19 +1881,27 @@
       window.scrollTo(0, 0);
     }
 
-    function getMinutesRemaining(timeStr) {
-      const parts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    function getMinutesRemaining(timeStr, marketName) {
+      const parts = String(timeStr || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
       if (!parts) return -999;
-      let h = parseInt(parts[1]);
-      const m = parseInt(parts[2]);
+      let h = parseInt(parts[1], 10);
+      const m = parseInt(parts[2], 10);
       const ampm = parts[3].toUpperCase();
       if (ampm === 'PM' && h !== 12) h += 12;
       if (ampm === 'AM' && h === 12) h = 0;
 
-      const now = new Date();
-      const drawTime = new Date();
-      drawTime.setHours(h, m, 0, 0);
-      return Math.floor((drawTime - now) / 60000);
+      const nowParts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+      }).formatToParts(new Date());
+      const getPart = type => Number(nowParts.find(part => part.type === type)?.value || 0);
+      const nowMinutes = getPart('hour') * 60 + getPart('minute');
+      let drawMinutes = h * 60 + m;
+
+      // Generic Night SR is at 12:10 AM after its 11:10 PM FR.
+      if (marketName === 'Generic Night' && h === 0 && m === 10 && nowMinutes >= (23 * 60 + 10)) {
+        drawMinutes += 24 * 60;
+      }
+      return drawMinutes - nowMinutes;
     }
 
     function isSundayInIndia() {
@@ -1929,7 +1937,7 @@
         return true;
       }
       if (isSundayInIndia() && isSundayOffMarket(marketName)) return false;
-      return (getMinutesRemaining(timeStr) > 10);
+      return (getMinutesRemaining(timeStr, marketName) > 0);
     }
 
     function renderMarkets() {
