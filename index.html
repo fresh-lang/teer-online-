@@ -512,9 +512,9 @@
           </div>
           <div class="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-1.5">
             <p class="text-xs font-bold text-slate-800">Referral Offer Details</p>
-            <p class="text-[11px] text-slate-700">Eligible referral par ₹10 bonus.</p>
-            <p class="text-[11px] text-slate-700">Eligible referral user ke total ₹1,000 bet par ₹100 bonus.</p>
-            <p class="text-[10px] text-slate-500 mt-1">Referrer reward: referred user ke approved ₹100+ deposit par ₹5; eligible total ₹1,000 bets par extra ₹5. Har reward ek baar.</p>
+            <p class="text-[11px] text-slate-700">Referrer reward: ₹5 when your referred user completes an approved ₹100+ deposit.</p>
+            <p class="text-[11px] text-slate-700">Extra ₹5 when that user's total bets reach ₹1,000. Each reward is credited once.</p>
+            <p class="text-[10px] text-slate-500 mt-1">The referred user's separate ₹100 milestone bonus is not currently active.</p>
             <p class="text-[10px] text-slate-500">Your referral code: <b id="profileReferralCode" class="font-mono text-teal-900">Log in</b></p>
           </div>
           <div class="pt-1 grid grid-cols-3 gap-2">
@@ -3440,6 +3440,11 @@
         return;
       }
       document.getElementById('myReferralsModal').classList.remove('hidden');
+      myReferralFriends = [];
+      const count = document.getElementById('modalRefFriendsCount');
+      const earned = document.getElementById('modalRefTotalEarned');
+      if (count) count.textContent = '0 Members';
+      if (earned) earned.textContent = '₹0.00';
       renderMyReferralsModal();
       syncMyReferralsFromSupabase();
     }
@@ -3892,6 +3897,7 @@
       try { if (window.TeerOneSignalBridge) await window.TeerOneSignalBridge.logout(); } catch (_) {}
       await clearAccountSession();
       accountSessionToken = null; accountIsDemo = false; state.user = null; state.balance = 0; state.bids = [];
+      myReferralFriends = [];
       updateUI(); openAuthModal();
     }
 
@@ -4015,7 +4021,6 @@
     function initDemoAgentsSystem() {}
     function applyAgentBetTurnoverCommission() {}
     function claimAgentCommission() { alert('Referral commission transfer is not enabled until its secure Supabase ledger API is deployed.'); }
-    function syncMyReferralsFromSupabase() {}
     function recordTransaction(tx) {
       const list = getTransactions();
       list.unshift({ id: tx.id || ('tx_' + Date.now()), type: tx.type, title: tx.title, amount: Number(tx.amount || 0), isCredit: !!tx.isCredit, status: tx.status || 'Completed', date: tx.date || new Date().toLocaleDateString(), time: tx.time || new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}), timestamp: Date.now() });
