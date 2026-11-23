@@ -1906,6 +1906,23 @@
         marketName === 'Khanapara Teer (Evening)';
     }
 
+    function notifyDailyMarketClosures() {
+      if (!isSundayInIndia()) return;
+      const dateKey = getTodayFormattedDate();
+      const offMarkets = state.markets.filter(m => isSundayOffMarket(m.name));
+      offMarkets.forEach(m => {
+        const eventKey = 'market_off:' + dateKey + ':' + m.name;
+        const alreadyNotified = state.notifications.some(n => n && n.eventKey === eventKey);
+        if (alreadyNotified) return;
+        addAppNotification({
+          type: 'market_off',
+          eventKey,
+          title: m.name + ' — OFF Today',
+          message: dateKey + ' | Official Sunday holiday. This market is closed today.'
+        });
+      });
+    }
+
     function isRoundBettingOpen(timeStr, marketName) {
       if (marketName === 'Teer Play' || (timeStr === '1 Min' || timeStr === '1 Min Auto')) {
         return true;
@@ -1915,6 +1932,7 @@
     }
 
     function renderMarkets() {
+      notifyDailyMarketClosures();
       const cont = document.getElementById('marketCardsContainer');
       cont.innerHTML = '';
       const savedResults = (window.supabaseResults || {});
