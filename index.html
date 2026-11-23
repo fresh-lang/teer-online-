@@ -1137,7 +1137,7 @@
     const isTeerNativeBridgeHost = (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) || window.location.hostname === 'localhost' || window.location.protocol === 'capacitor:';
     if (isTeerNativeBridgeHost) {
       window.__teerNativeBridgesReady = new Promise((resolve) => {
-        const files = ['./onesignal-bridge.js', './update-bridge.js', './native-back-bridge.js'];
+        const files = ['./onesignal-bridge.js', './update-bridge.js', './native-back-bridge.js', './biometric-bridge.js'];
         let index = 0;
         const loadNext = () => {
           if (index >= files.length) { resolve(true); return; }
