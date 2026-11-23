@@ -1733,6 +1733,14 @@
           busy = false;
         }
       });
+
+      // Open Android's Pattern / PIN / Password prompt immediately when the
+      // app launches. Keep the button available as a retry if the prompt is cancelled.
+      if (bridge && typeof bridge.authenticateDeviceCredential === 'function') {
+        credentialUnlock.click();
+      } else {
+        errorBox.textContent = 'Phone unlock service could not load. Please reopen the app or update it.';
+      }
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
@@ -4231,7 +4239,8 @@
     if (isTeerNativeBiometricHost) {
       window.__teerBiometricBridgeReady = new Promise((resolve) => {
         const script = document.createElement('script');
-        script.type = 'module';
+        // biometric-bridge.js is built as an IIFE bundle, so load it as a
+        // classic script. This is more reliable in Android WebView than module scripts.
         script.src = new URL('biometric-bridge.js', document.baseURI).href;
         script.onload = () => {
           const bridgeReady = !!(window.TeerBiometricBridge && typeof window.TeerBiometricBridge.authenticateDeviceCredential === 'function' && typeof window.TeerBiometricBridge.authenticate === 'function');
