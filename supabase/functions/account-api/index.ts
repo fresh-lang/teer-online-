@@ -316,9 +316,15 @@ async function queueMarketOffPushNotifications() {
 }
 async function queueResultRoundPushNotification(market: string, date: string, round: "FR" | "SR", value: string) {
   const eventKey = `${market}:${date}:${round}:${value}`;
-  const displayMarket = market
-    .replace(" (Evening)", "")
-    .replace(/^Shilong Morning Teer$/, "Shillong Morning Teer");
+  const marketNames: Record<string, string> = {
+    "Shilong Morning Teer": "Shillong Morning Teer",
+    "Khanapara Morning Teer": "Khanapara Morning Teer",
+    "Shillong Teer (Evening)": "Shillong Evening Teer",
+    "Khanapara Teer (Evening)": "Khanapara Evening Teer",
+    "Shillong Night Teer": "Shillong Night Teer",
+    "Khanapara Night Teer": "Khanapara Night Teer",
+  };
+  const displayMarket = marketNames[market] ?? market;
   const title = `🎯 ${displayMarket} — ${round} Result`.slice(0, 80);
   const message = `${round} Number: ${value} 🎯 Check your wallet now!`;
   const { error } = await supabase.from("broadcast_notifications").insert({
