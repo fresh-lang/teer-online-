@@ -272,6 +272,9 @@ jobs:
           import android.content.Intent;
           import android.os.Build;
           import androidx.activity.result.ActivityResult;
+          import androidx.biometric.BiometricManager;
+          import androidx.biometric.BiometricPrompt;
+          import androidx.core.content.ContextCompat;
           import com.getcapacitor.Plugin;
           import com.getcapacitor.PluginCall;
           import com.getcapacitor.PluginMethod;
@@ -280,6 +283,8 @@ jobs:
 
           @CapacitorPlugin(name = "TeerDeviceCredential")
           public class TeerDeviceCredentialPlugin extends Plugin {
+              private BiometricPrompt activePrompt;
+
               @PluginMethod
               public void authenticate(PluginCall call) {
                   KeyguardManager keyguard = (KeyguardManager) getContext().getSystemService(Context.KEYGUARD_SERVICE);
@@ -288,19 +293,48 @@ jobs:
                       return;
                   }
 
-                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                      Intent intent = keyguard.createConfirmDeviceCredentialIntent(
-                          "Unlock Teer Online",
-                          "Enter your phone Pattern, PIN or Password"
-                      );
-                      if (intent == null) {
-                          call.reject("Android could not open the phone screen-lock prompt.");
-                          return;
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                      try {
+                          BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                              .setTitle("Unlock Teer Online")
+                              .setSubtitle("Enter your phone Pattern, PIN or Password")
+                              .setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                              .build();
+
+                          activePrompt = new BiometricPrompt(
+                              getActivity(),
+                              ContextCompat.getMainExecutor(getContext()),
+                              new BiometricPrompt.AuthenticationCallback() {
+                                  @Override
+                                  public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
+                                      activePrompt = null;
+                                      call.resolve();
+                                  }
+
+                                  @Override
+                                  public void onAuthenticationError(int errorCode, CharSequence errString) {
+                                      activePrompt = null;
+                                      call.reject("Phone Pattern / PIN / Password was not verified: " + errString);
+                                  }
+                              }
+                          );
+                          activePrompt.authenticate(promptInfo);
+                      } catch (Exception e) {
+                          activePrompt = null;
+                          call.reject("Could not open Android device-credential prompt: " + e.getMessage(), e);
                       }
-                      startActivityForResult(call, intent, "deviceCredentialResult");
-                  } else {
-                      call.reject("This Android version does not support the secure device-credential prompt.");
+                      return;
                   }
+
+                  Intent intent = keyguard.createConfirmDeviceCredentialIntent(
+                      "Unlock Teer Online",
+                      "Enter your phone Pattern, PIN or Password"
+                  );
+                  if (intent == null) {
+                      call.reject("Android could not open the phone screen-lock prompt.");
+                      return;
+                  }
+                  startActivityForResult(call, intent, "deviceCredentialResult");
               }
 
               @ActivityCallback
