@@ -8,9 +8,12 @@ create table if not exists public.user_notifications (
  message text not null,
  created_at timestamptz not null default now(),
  read_at timestamptz,
+ push_sent_at timestamptz,
+ push_error text,
  constraint user_notifications_user_event_key unique(user_id,event_key)
 );
 create index if not exists user_notifications_user_created_idx on public.user_notifications(user_id,created_at desc);
+create index if not exists user_notifications_pending_push_idx on public.user_notifications(created_at) where push_sent_at is null;
 alter table public.user_notifications enable row level security;
 revoke all on public.user_notifications from anon, authenticated;
 
