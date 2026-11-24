@@ -1,6 +1,11 @@
 name: Daily Redeem Code and Telegram Publisher
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/redeem-code-publisher.yml'
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
