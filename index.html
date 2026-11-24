@@ -3141,6 +3141,24 @@
         const history = [...container.querySelectorAll('[data-role]')].slice(-8).map(el => ({ role: el.dataset.role, content: el.innerText }));
         const result = await accountApi('ai_support_chat', { message, history });
         addBubble('assistant', result.reply || 'No reply received.');
+        if (result.limitReached) {
+          const limitBubble = document.createElement('div');
+          limitBubble.className = 'bg-slate-100 p-2.5 rounded-2xl rounded-tl-none max-w-[90%]';
+          const link = document.createElement('button');
+          link.type = 'button';
+          link.textContent = 'Open Agent Chat';
+          link.style.cssText = 'display:inline-block;padding:9px 14px;border-radius:10px;background:#073b3b;color:#f4c34e;font-weight:700';
+          link.addEventListener('click', () => openAgentChat('general'));
+          limitBubble.appendChild(link);
+          container.appendChild(limitBubble);
+          container.scrollTop = container.scrollHeight;
+        } else if (result.usage) {
+          const usageNote = document.createElement('div');
+          usageNote.className = 'text-slate-500 text-[11px] ml-2';
+          usageNote.textContent = 'Today’s free AI searches: ' + result.usage.used + '/5 used · ' + result.usage.remaining + ' left';
+          container.appendChild(usageNote);
+          container.scrollTop = container.scrollHeight;
+        }
       } catch (error) {
         addBubble('assistant', (error.message || 'AI support is unavailable.') + ' If you want a team member to reply, type “connect me to an agent”.');
       } finally {
