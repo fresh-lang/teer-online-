@@ -1281,7 +1281,7 @@ async function sendRedeemCodePush(code: Record<string, unknown>) {
       app_id: ONESIGNAL_APP_ID,
       included_segments: ["Active Subscriptions"],
       headings: { en: "🎁 New Redeem Code — Teer Online" },
-      contents: { en: "A common redeem code is live! Claim your random ₹2–₹20 reward. Limited users only. Open the app → menu → Redeem Code." },
+      contents: { en: "Redeem code " + String(code.code || "") + " is live! Claim your random ₹2–₹20 reward. Limited users only." },
       name: "Teer Online redeem code " + String(code.code || ""),
       android_channel_id: "478b866d-a74d-4808-91d2-6e926e3f456b",
       priority: 10,
@@ -1622,8 +1622,13 @@ async function flushRedeemTelegramPosts(token: string) {
       if (!user || !user.id) return json({ error: "Please login to redeem a code" }, 401, origin);
       const code = String(body.code ?? "").trim().toUpperCase();
       if (!/^[A-Z0-9-]{6,32}$/.test(code)) return json({ error: "Enter a valid redeem code" }, 400, origin);
-      const result = await rpc("api_claim_redeem_code", { p_user_id: user.id, p_code: code });
-      return json({ success: true, result }, 200, origin);
+      try {
+        const result = await rpc("api_claim_redeem_code", { p_user_id: user.id, p_code: code });
+        return json({ success: true, result }, 200, origin);
+      } catch (error) {
+        const message = String(error instanceof Error ? error.message : error);
+        return json({ error: message.slice(0, 180) }, 409, origin);
+      }
     }
 \n    if (action === "my_notifications" || action === "mark_notifications_read" || action === "clear_my_notifications") {
       const user = await getSession(req);
