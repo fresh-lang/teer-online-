@@ -299,9 +299,29 @@ async function queueMarketOffPushNotifications() {
       const srOff = hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("SR");
       if (frOff) await enqueueRoundOff(source.market, "FR", "Source-confirmed round closure.");
       if (srOff) await enqueueRoundOff(source.market, "SR", "Source-confirmed round closure.");
-      if (hasMarketHeading && hasSessionTimes && hasCurrentDate && (explicitOff || (frOff && srOff))) {
+
+      // Shillong Evening must be marked fully OFF only by an explicit OFF/holiday
+      // statement for today's dated market section. Two loosely matched round
+      // labels are not enough to close the whole market.
+      const isShillongEvening = source.market === "Shillong Teer (Evening)";
+      const verifiedTodaySection = hasMarketHeading && hasSessionTimes && hasCurrentDate;
+      const confirmedFullMarketOff = explicitOff || (!isShillongEvening && frOff && srOff);
+      if (verifiedTodaySection && confirmedFullMarketOff) {
         await enqueueOff(source.market, "Source-confirmed full-market holiday.");
         confirmedOff++;
+      }
+
+      // A fresh, dated Shillong Evening section with no OFF markers invalidates
+      // stale OFF flags previously stored for this same market and date.
+      if (isShillongEvening && verifiedTodaySection && !explicitOff && !frOff && !srOff) {
+        const staleKeys = [
+          "market_off:" + source.market + ":" + dateIso,
+          "market_round_off:" + source.market + ":" + dateIso + ":FR",
+          "market_round_off:" + source.market + ":" + dateIso + ":SR",
+        ];
+        const { error: clearOffError } = await supabase.from("broadcast_notifications")
+          .delete().in("event_key", staleKeys);
+        if (clearOffError) throw clearOffError;
       }
       // Record a successful check only after the source was fetched and parsed.
       const { error: markError } = await supabase.from("result_source_sync")
