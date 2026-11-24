@@ -1348,6 +1348,26 @@ async function flushRedeemTelegramPosts(token: string) {
   }
   return { sent, checked: (pending || []).length };
 }
+async function searchSupportWeb(query: string) {
+  const apiKey = Deno.env.get("TAVILY_API_KEY");
+  if (!apiKey) return null;
+  const response = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ api_key: apiKey, query, search_depth: "basic", max_results: 5, include_answer: true }),
+  });
+  if (!response.ok) throw new Error("Online search is temporarily unavailable.");
+  const payload = await response.json();
+  return {
+    answer: String(payload.answer ?? ""),
+    results: (payload.results ?? []).slice(0, 5).map((item: any) => ({
+      title: String(item.title ?? "Web result"),
+      content: String(item.content ?? "").slice(0, 700),
+      url: String(item.url ?? ""),
+    })),
+  };
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
