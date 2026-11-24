@@ -292,6 +292,28 @@
     </div>
 
     <!-- TAB 5: SETTINGS & AGENTS -->
+    <!-- TAB: TODAY'S ALL-MARKET BET CHECK -->
+    <div class="bg-[#0f1d21] p-4 rounded-2xl border border-amber-500/30 space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 class="font-bold text-sm text-amber-300">All Market Bet Check — Today Only</h3>
+          <p id="todayBetDateLabel" class="text-[10px] text-slate-400">Current India date • Old dates excluded</p>
+        </div>
+        <button onclick="loadTodayBetSummary()" class="px-3 py-2 bg-amber-400 text-teal-950 font-black text-xs rounded-xl"><i class="fa-solid fa-rotate mr-1"></i> Refresh Bets</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40"><span class="text-[10px] text-slate-400 block">Today's Total Bet</span><strong id="todayBetTotalAmount" class="text-lg text-emerald-400">₹0.00</strong></div>
+        <div class="bg-black/40 p-3 rounded-xl border border-teal-900/40"><span class="text-[10px] text-slate-400 block">Total Bet Entries</span><strong id="todayBetTotalCount" class="text-lg text-amber-300">0</strong></div>
+      </div>
+      <div class="max-h-80 overflow-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-teal-950/70 text-slate-400 uppercase text-[10px] sticky top-0"><tr><th class="p-2">Market</th><th class="p-2">Round</th><th class="p-2">Number</th><th class="p-2 text-right">Total Bet</th><th class="p-2 text-right">Entries</th></tr></thead>
+          <tbody id="todayBetSummaryRows" class="divide-y divide-teal-900/30"><tr><td colspan="5" class="p-4 text-center text-slate-500">Tap Refresh Bets to load today's bets.</td></tr></tbody>
+        </table>
+      </div>
+      <p class="text-[10px] text-slate-500">Highest amount appears first within each market and FR/SR round. Only bets placed today (India time) are included.</p>
+    </div>
+
     <!-- TAB: LIVE RISK & BET ANALYTICS (1:90 RATE) -->
     <div id="tabContent_analytics" class="tab-pane space-y-4 hidden">
       <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-3">
@@ -648,6 +670,7 @@
       if (pane) pane.classList.remove('hidden');
       if (btn) btn.className = "admin-tab-btn flex-1 py-2 px-3 rounded-xl bg-amber-400 text-teal-950 font-bold transition whitespace-nowrap";
       if (tabId === 'settings') loadRedeemCodesAdmin();
+      if (tabId === 'analytics') loadTodayBetSummary();
     }
 
     // INITIALIZE REALTIME SYNC FOR USERS, DEPOSITS, WITHDRAWALS
@@ -1316,6 +1339,33 @@
         alert('Notification sent successfully. Recipients: ' + Number(result.recipients || 0));
       } catch (e) {
         alert('Notification could not be sent: ' + (e.message || e));
+      }
+    }
+
+    async function loadTodayBetSummary() {
+      const tbody = document.getElementById('todayBetSummaryRows');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">Loading today\'s bets…</td></tr>';
+      try {
+        const data = await adminApi('admin_today_bet_summary');
+        document.getElementById('todayBetDateLabel').textContent = 'India date: ' + data.date + ' • Previous dates excluded';
+        document.getElementById('todayBetTotalAmount').textContent = '₹' + Number(data.total_amount || 0).toFixed(2);
+        document.getElementById('todayBetTotalCount').textContent = String(Number(data.total_bets || 0));
+        tbody.innerHTML = '';
+        (data.items || []).forEach(item => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-teal-950/30';
+          [item.market, item.round || '—', item.number, '₹' + Number(item.amount || 0).toFixed(2), String(item.bets || 0)].forEach((value, index) => {
+            const td = document.createElement('td');
+            td.className = 'p-2 ' + (index === 3 ? 'text-right font-black text-emerald-300' : index === 2 ? 'font-mono font-bold text-amber-300' : index === 4 ? 'text-right' : '');
+            td.textContent = String(value);
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        if (!tbody.children.length) tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">No bets placed today.</td></tr>';
+      } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-rose-300">Bet check failed: ' + escapeHtml(error.message || error) + '</td></tr>';
       }
     }
 
