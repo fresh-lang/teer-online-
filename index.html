@@ -3881,6 +3881,7 @@
       facebook: { key: 'teer_social_bonus_facebook_progress', label: 'Facebook' }
     };
     var SOCIAL_BONUS_WAIT_MS = 15000;
+    var activeSocialBonusPlatform = null;
     function readSocialBonusProgress(step) {
       try { return JSON.parse(sessionStorage.getItem(step.key) || '{"elapsed":0,"hiddenAt":null}'); }
       catch (_) { return { elapsed: 0, hiddenAt: null }; }
@@ -3889,23 +3890,31 @@
       try { sessionStorage.setItem(step.key, JSON.stringify(progress)); } catch (_) {}
     }
     function markSocialBonusAway() {
-      Object.values(SOCIAL_BONUS_STEPS).forEach(step => {
-        const progress = readSocialBonusProgress(step);
-        if (!progress.hiddenAt && Number(progress.elapsed || 0) < SOCIAL_BONUS_WAIT_MS) {
-          progress.hiddenAt = Date.now();
-          writeSocialBonusProgress(step, progress);
-        }
-      });
+      if (!activeSocialBonusPlatform) return;
+      const step = SOCIAL_BONUS_STEPS[activeSocialBonusPlatform];
+      if (!step) return;
+      const progress = readSocialBonusProgress(step);
+      if (!progress.hiddenAt && Number(progress.elapsed || 0) < SOCIAL_BONUS_WAIT_MS) {
+        progress.hiddenAt = Date.now();
+        writeSocialBonusProgress(step, progress);
+      }
     }
     function markSocialBonusReturn() {
-      Object.values(SOCIAL_BONUS_STEPS).forEach(step => {
+      if (!activeSocialBonusPlatform) {
+        activeSocialBonusPlatform = Object.keys(SOCIAL_BONUS_STEPS).find(platform =>
+          Boolean(readSocialBonusProgress(SOCIAL_BONUS_STEPS[platform]).hiddenAt)
+        ) || null;
+      }
+      const step = activeSocialBonusPlatform ? SOCIAL_BONUS_STEPS[activeSocialBonusPlatform] : null;
+      if (step) {
         const progress = readSocialBonusProgress(step);
         if (progress.hiddenAt) {
           progress.elapsed = Math.min(SOCIAL_BONUS_WAIT_MS, Number(progress.elapsed || 0) + Math.max(0, Date.now() - Number(progress.hiddenAt)));
           progress.hiddenAt = null;
           writeSocialBonusProgress(step, progress);
         }
-      });
+      }
+      activeSocialBonusPlatform = null;
       renderSocialBonus();
     }
     document.addEventListener('visibilitychange', () => {
@@ -3923,6 +3932,7 @@
         setTimeout(() => { if (!state.user) { alert('Please login to claim the ₹10 bonus.'); openAuthModal(); } }, 100);
         return;
       }
+      activeSocialBonusPlatform = platform;
       const progress = readSocialBonusProgress(step);
       if (Number(progress.elapsed || 0) < SOCIAL_BONUS_WAIT_MS) {
         progress.hiddenAt = Date.now();
