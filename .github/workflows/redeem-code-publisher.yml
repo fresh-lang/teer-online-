@@ -33,3 +33,20 @@ jobs:
             --header "x-redeem-telegram-token: $TELEGRAM_BOT_TOKEN" \
             --data '{"action":"redeem_scheduler"}' \
             "https://qzbqmbrzmfggzzeufkyh.supabase.co/functions/v1/account-api"
+
+      - name: Publish new FR/SR result updates with latest APK link to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+            echo "::error::Missing GitHub Actions secret TELEGRAM_BOT_TOKEN"
+            exit 1
+          fi
+          curl --fail --silent --show-error --retry 2 \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --header "apikey: sb_publishable_Z2ij7JqELoVfBQ75wrSrFg_bKDt3aj1" \
+            --header "Authorization: Bearer sb_publishable_Z2ij7JqELoVfBQ75wrSrFg_bKDt3aj1" \
+            --header "x-redeem-telegram-token: $TELEGRAM_BOT_TOKEN" \
+            --data '{"action":"result_telegram_publisher"}' \
+            "https://qzbqmbrzmfggzzeufkyh.supabase.co/functions/v1/account-api"
