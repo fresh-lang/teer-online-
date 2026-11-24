@@ -417,6 +417,52 @@ async function flushResultPushNotifications() {
   return { configured: true, sent, failed, remaining: Math.max(0, (pending?.length ?? 0) - sent - failed) };
 }
 
+async function flushRefundPushNotifications() {
+  const restKey = Deno.env.get("ONESIGNAL_REST_API_KEY")?.trim();
+  if (!restKey) return { configured: false, sent: 0, failed: 0 };
+  const { data: pending, error } = await supabase.from("user_notifications")
+    .select("id,user_id,title,message")
+    .is("push_sent_at", null)
+    .order("created_at", { ascending: true })
+    .limit(100);
+  if (error) throw error;
+  let sent = 0;
+  let failed = 0;
+  for (const item of pending ?? []) {
+    try {
+      const response = await fetch("https://api.onesignal.com/notifications", {
+        method: "POST",
+        headers: { "Authorization": `Key ${restKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          app_id: ONESIGNAL_APP_ID,
+          include_aliases: { external_id: [String(item.user_id)] },
+          target_channel: "push",
+          headings: { en: item.title },
+          contents: { en: item.message },
+          name: `Personal refund notification ${item.id}`,
+          data: { type: "bet_refund", notification_id: item.id }
+        })
+      });
+      const responseText = await response.text();
+      let payload: Record<string, unknown> = {};
+      try { payload = responseText ? JSON.parse(responseText) : {}; } catch { /* retain response text */ }
+      if (!response.ok) {
+        const detail = String(payload.errors ?? payload.error ?? responseText ?? `HTTP ${response.status}`).slice(0, 500);
+        await supabase.from("user_notifications").update({ push_error: detail }).eq("id", item.id);
+        failed++;
+        continue;
+      }
+      await supabase.from("user_notifications").update({ push_sent_at: new Date().toISOString(), push_error: null }).eq("id", item.id);
+      sent++;
+    } catch (error) {
+      const detail = (error instanceof Error ? error.message : String(error)).slice(0, 500);
+      await supabase.from("user_notifications").update({ push_error: detail }).eq("id", item.id);
+      failed++;
+    }
+  }
+  return { configured: true, sent, failed, remaining: Math.max(0, (pending?.length ?? 0) - sent - failed) };
+}
+
 async function saveVerifiedResultHistory(market: string, date: string, fr: string, sr: string, source: "source" | "admin", sourceUpdatedAt: string | null = null) {
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date) || !/^\d{2}$/.test(fr) || !/^\d{2}$/.test(sr)) {
     throw new Error("Only complete dated FR/SR pairs can be archived");
@@ -1230,7 +1276,8 @@ Deno.serve(async (req) => {
       const previousIndiaDate = new Date(Date.parse(indiaToday + "T00:00:00Z") - 86400000).toISOString().slice(0, 10);
       const expiredBetRefunds = await rpc("refund_unresolved_teer_bets", { p_before_date: previousIndiaDate });
       const notifications = await flushResultPushNotifications();
-      return json({ success: true, marketOffNotifications, sync, khanaparaMorningSync, khanaparaNightSync, shillongMorningSync, shillongNightSync, shillongSync, expiredBetRefunds, notifications }, 200, origin);
+      const refundPushNotifications = await flushRefundPushNotifications();
+      return json({ success: true, marketOffNotifications, sync, khanaparaMorningSync, khanaparaNightSync, shillongMorningSync, shillongNightSync, shillongSync, expiredBetRefunds, notifications, refundPushNotifications }, 200, origin);
     }
 
     if (action === "register") {
