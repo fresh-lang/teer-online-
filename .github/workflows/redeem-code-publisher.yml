@@ -40,6 +40,7 @@ jobs:
             "https://qzbqmbrzmfggzzeufkyh.supabase.co/functions/v1/account-api"
 
       - name: Publish new FR/SR result updates with latest APK link to Telegram
+        if: always()
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
