@@ -1139,45 +1139,55 @@ async function fetchShillongNightSourcePreview(): Promise<{
   const html = await response.text();
   if (!html || html.length < 1000) throw new Error("Shillong Night source page was empty or incomplete");
   const plain = htmlToPlainText(html);
+  const lower = plain.toLowerCase();
   const heading = "Shillong Night Teer Result Today";
-  const start = plain.toLowerCase().indexOf(heading.toLowerCase());
+  const start = lower.indexOf(heading.toLowerCase());
   if (start < 0) {
     return { ready: false, status: "section_missing", market, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
   }
-  const nextHeadings = ["Khanapara Teer Result Today", "Shillong Morning Teer Result Today", "Khanapara Morning Teer Result Today"];
-  const ends = nextHeadings.map(h => plain.toLowerCase().indexOf(h.toLowerCase(), start + heading.length)).filter(n => n >= 0);
-  const section = plain.slice(start, ends.length ? Math.min(...ends) : Math.min(plain.length, start + 1800));
-  const dateMatch = section.match(/(\d{2})-(\d{2})-(\d{4})/);
+
+  // Keep this exact market card isolated. Never borrow a date or number from
+  // another market card or from the page's previous-result/last-result area.
+  const nextHeadings = [
+    "Khanapara Night Teer Result Today", "Khanapara Teer Result Today",
+    "Shillong Morning Teer Result Today", "Khanapara Morning Teer Result Today",
+    "Shillong Teer Result Today",
+  ];
+  const nextStarts = nextHeadings
+    .map((h) => lower.indexOf(h.toLowerCase(), start + heading.length))
+    .filter((n) => n >= 0);
+  const sectionEnd = nextStarts.length ? Math.min(...nextStarts) : Math.min(plain.length, start + 1200);
+  const section = plain.slice(start, sectionEnd);
+
+  // The displayed date must belong to this exact heading/card. Clock labels
+  // are intentionally ignored because source-site round times can change.
+  const header = section.slice(heading.length, Math.min(section.length, heading.length + 100));
+  const dateMatch = header.match(/^\\s*[-–:]?\\s*(\\d{2})[-/.](\\d{2})[-/.](\\d{4})/);
   const date = dateMatch ? dateMatch[1] + "/" + dateMatch[2] + "/" + dateMatch[3] : "";
-  // Source cards may show 8:30 pm (without a leading zero) and append
-  // "last · DD-MM-YYYY" when the displayed number belongs to yesterday.
-  // Accept only a number that is not explicitly tagged as a previous result.
-  const extractCurrentRound = (round: "FR" | "SR", hour: string): string => {
-    const pattern = new RegExp(
-      "\\b" + round + "\\s*[·•]?\\s*0?" + hour + "\\s*PM\\s*(\\d{2})([\\s\\S]{0,100}?)(?=\\b(?:FR|SR|First Round|Second Round)\\b|$)",
-      "i",
-    );
-    const match = section.match(pattern);
-    if (!match) return "";
-    const trailing = match[2] ?? "";
-    if (/\\blast\\b|\\b\\d{2}[-/]\\d{2}[-/]\\d{4}\\b/i.test(trailing)) return "";
-    return match[1];
-  };
-  const fr = extractCurrentRound("FR", "8:30");
-  const sr = extractCurrentRound("SR", "9:30");
+  if (!date) {
+    return { ready: false, status: "date_missing", market, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
+  }
+
+  const roundPattern = /\\bFR\\b(?:\\s*[-·•:]\\s*|\\s+)(?:\\([^)]*\\)\\s*)?(?:\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\s*)?(\\d{2})\\b[\\s\\S]{0,120}?\\bSR\\b(?:\\s*[-·•:]\\s*|\\s+)(?:\\([^)]*\\)\\s*)?(?:\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\s*)?(\\d{2})\\b/i;
+  const pair = section.match(roundPattern);
+  if (!pair) {
+    return { ready: false, status: "awaiting_complete_same_date_pair", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
+  }
+  const pairStart = pair.index ?? 0;
+  const pairText = section.slice(pairStart, pairStart + pair[0].length);
+  if (/\\blast\\b|previous|yesterday/i.test(pairText)) {
+    return { ready: false, status: "previous_result_rejected", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
+  }
+
   const today = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
   }).format(new Date());
   if (date !== today) {
-    return { ready: false, status: date ? "date_not_current" : "date_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
-  }
-  if (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr)) {
-    return { ready: false, status: "awaiting", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
+    return { ready: false, status: "date_not_current", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
   }
   return {
     ready: true, status: "verified", market, date,
-    ...( /^\d{2}$/.test(fr) ? { fr } : {}),
-    ...( /^\d{2}$/.test(sr) ? { sr } : {}),
+    fr: pair[1], sr: pair[2],
     source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL,
   };
 }
