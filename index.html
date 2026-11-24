@@ -3060,39 +3060,6 @@
       window.open(whatsappUrl, '_blank');
     }
 
-    async function createSupportWebsiteLink() {
-      if (!state.user || !accountSessionToken || accountIsDemo) {
-        throw new Error('Please log in to your real Teer Online account before opening Support Chat.');
-      }
-      const issued = await accountApi('support_link_create', {});
-      // Host the support portal on the free GitHub Pages site, independent
-      // of the app's custom domain routing.
-      const target = new URL('https://fresh-lang.github.io/teer-online-/support/index.html');
-      target.searchParams.set('ticket', issued.ticket);
-      return target.toString();
-    }
-
-    function openSupportWebsiteFromApp() {
-      // Use the authenticated private inbox already supported by account-api.
-      // The legacy ticket-link endpoints are not deployed and must not be called.
-      switchTab('support');
-      openAgentChat('general');
-    }
-
-    function addSupportWebsiteLinkBubble(container, url) {
-      const bubble = document.createElement('div');
-      bubble.className = 'bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[90%] text-xs';
-      bubble.dataset.role = 'assistant';
-      bubble.appendChild(document.createTextNode('Your secure Support Chat link is ready. Tap below to continue with the support team. '));
-      const link = document.createElement('a');
-      link.href = url;
-      link.textContent = 'Open Support Chat';
-      link.style.cssText = 'display:inline-block;margin-top:8px;padding:8px 12px;border-radius:10px;background:#073b3b;color:#f4c34e;font-weight:700;text-decoration:none';
-      bubble.appendChild(link);
-      container.appendChild(bubble);
-      container.scrollTop = container.scrollHeight;
-    }
-
     async function handleSendChat(e) {
       e.preventDefault();
       const input = document.getElementById('chatInput');
