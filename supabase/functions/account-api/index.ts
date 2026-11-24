@@ -1818,6 +1818,54 @@ Deno.serve(async (req) => {
       return json({ success: true }, 200, origin);
     }
 
+    if (action === "get_payout_profile" || action === "save_payout_profile") {
+      const user = await getSession(req);
+      if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
+
+      if (action === "get_payout_profile") {
+        const { data, error } = await supabase.from("user_payout_profiles")
+          .select("upi_id,bank_holder_name,bank_account_number,bank_ifsc,bank_name")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (error) throw error;
+        return json({ success: true, profile: data ?? null }, 200, origin);
+      }
+
+      const upiId = String(body.upi_id ?? "").trim();
+      const holderName = String(body.bank_holder_name ?? "").trim();
+      const accountNumber = String(body.bank_account_number ?? "").trim();
+      const ifsc = String(body.bank_ifsc ?? "").trim().toUpperCase();
+      const bankName = String(body.bank_name ?? "").trim();
+
+      if (upiId && !/^[A-Za-z0-9._-]{2,100}@[A-Za-z0-9.-]{2,64}$/.test(upiId)) {
+        return json({ error: "Please enter a valid UPI ID" }, 400, origin);
+      }
+      const hasAnyBankField = Boolean(holderName || accountNumber || ifsc || bankName);
+      if (hasAnyBankField) {
+        if (!holderName || holderName.length > 100 ||
+            !/^\d{6,20}$/.test(accountNumber) ||
+            !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc) ||
+            bankName.length > 100) {
+          return json({ error: "Enter account holder name, a valid 6–20 digit account number and valid IFSC. Bank name is optional." }, 400, origin);
+        }
+      }
+      if (upiId.length > 100) return json({ error: "UPI ID is too long" }, 400, origin);
+
+      const { data, error } = await supabase.from("user_payout_profiles").upsert({
+        user_id: user.id,
+        upi_id: upiId || null,
+        bank_holder_name: holderName || null,
+        bank_account_number: accountNumber || null,
+        bank_ifsc: ifsc || null,
+        bank_name: bankName || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" })
+        .select("upi_id,bank_holder_name,bank_account_number,bank_ifsc,bank_name")
+        .single();
+      if (error) throw error;
+      return json({ success: true, profile: data }, 200, origin);
+    }
+
     if (action === "create_withdrawal") {
       const user = await getSession(req);
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
