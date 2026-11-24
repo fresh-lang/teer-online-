@@ -755,9 +755,7 @@ async function fetchKhanaparaSessionPreview(
   const section = plain.slice(start, endCandidate >= 0 ? endCandidate : Math.min(plain.length, start + 2200));
   const dateMatch = section.match(/Khanapara (?:Morning|Night) Result\s*[-–:]\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})/i);
   const date = dateMatch ? parseGroundDate(dateMatch[1]) : "";
-  const resultPattern = session === "morning"
-    ? /F\/R\s*\(10:30\s*AM\)\s*\|\s*S\/R\s*\(11:30\s*AM\)\s*(\d{2})\s*\|?\s*(\d{2})?/i
-    : /F\/R\s*\(10:30\s*PM\)\s*\|\s*S\/R\s*\(11:30\s*PM\)\s*(\d{2})\s*\|?\s*(\d{2})?/i;
+  const resultPattern = /F\/R(?:\s*\([^)]*\))?\s*\|\s*S\/R(?:\s*\([^)]*\))?\s*(\d{2})\s*\|\s*(\d{2})/i;
   const values = section.match(resultPattern);
   const fr = values?.[1] && /^\d{2}$/.test(values[1]) ? values[1] : undefined;
   const sr = values?.[2] && /^\d{2}$/.test(values[2]) ? values[2] : undefined;
@@ -810,8 +808,8 @@ async function fetchKhanaparaNightPreferredPreview(): Promise<{
   const dateMatch = section.match(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i);
   const monthIndex = dateMatch ? ["january","february","march","april","may","june","july","august","september","october","november","december"].indexOf(dateMatch[2].toLowerCase()) + 1 : 0;
   const date = dateMatch ? dateMatch[1].padStart(2, "0") + "/" + String(monthIndex).padStart(2, "0") + "/" + dateMatch[3] : "";
-  const frMatch = section.match(/FR\s*10:30\s*PM\s*(\d{2})/i);
-  const srMatch = section.match(/SR\s*11:30\s*PM\s*(\d{2})/i);
+  const frMatch = section.match(/FR(?:\s*\([^)]*\))?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
+  const srMatch = section.match(/SR(?:\s*\([^)]*\))?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
   const fr = frMatch?.[1] ?? "";
   const sr = srMatch?.[1] ?? "";
   const today = new Intl.DateTimeFormat("en-GB", {
@@ -820,7 +818,7 @@ async function fetchKhanaparaNightPreferredPreview(): Promise<{
   if (date !== today) {
     return { ready: false, status: date ? "date_not_current" : "date_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: KHANAPARA_NIGHT_PREFERRED_URL };
   }
-  if (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr)) {
+  if (!/^\d{2}$/.test(fr) || !/^\d{2}$/.test(sr)) {
     return { ready: false, status: "awaiting", market, date, source_updated_at: null, source_url: KHANAPARA_NIGHT_PREFERRED_URL };
   }
   return {
@@ -1045,19 +1043,15 @@ async function fetchKhanaparaTertiaryPreview(
     ? String(dateParts[1]).padStart(2, "0") + "/" + monthNameToNumber(dateParts[2]) + "/" + dateParts[3]
     : "";
 
-  const frMatch = session === "morning"
-    ? section.match(/FR\s+10:30\s*AM\s+(\d{2})/i)
-    : section.match(/FR\s+10:30\s*PM\s+(\d{2})/i);
-  const srMatch = session === "morning"
-    ? section.match(/SR\s+11:30\s*AM\s+(\d{2})/i)
-    : section.match(/SR\s+11:30\s*PM\s+(\d{2})/i);
+  const frMatch = section.match(/FR(?:\s*\([^)]*\))?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
+  const srMatch = section.match(/SR(?:\s*\([^)]*\))?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
   const fr = frMatch?.[1] ?? "";
   const sr = srMatch?.[1] ?? "";
   const today = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
   }).format(new Date());
 
-  if (!date || (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr))) {
+  if (!date || !/^\d{2}$/.test(fr) || !/^\d{2}$/.test(sr)) {
     return { ready: false, status: "result_values_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL };
   }
   if (dateDmyToIso(date) > dateDmyToIso(today)) {
