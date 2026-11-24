@@ -1358,6 +1358,69 @@ async function flushRedeemTelegramPosts(token: string) {
   }
   return { sent, checked: (pending || []).length };
 }
+function escapeTelegramHtml(value: unknown): string {
+  return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+async function flushResultTelegramPosts(token: string) {
+  const { data: pending, error } = await supabase.from("broadcast_notifications")
+    .select("id,title,message,event_key")
+    .is("telegram_posted_at", null)
+    .not("event_key", "is", null)
+    .or("event_key.ilike.*:FR:*,event_key.ilike.*:SR:*")
+    .order("created_at", { ascending: true })
+    .limit(50);
+  if (error) throw error;
+
+  let sent = 0;
+  let failed = 0;
+  for (const item of pending ?? []) {
+    if (!/:(FR|SR):\d{1,2}$/i.test(String(item.event_key ?? ""))) continue;
+    const { data: claimed, error: claimError } = await supabase.from("broadcast_notifications")
+      .update({ telegram_error: "sending" })
+      .eq("id", item.id)
+      .is("telegram_posted_at", null)
+      .select("id")
+      .maybeSingle();
+    if (claimError || !claimed) continue;
+
+    const text = [
+      "🎯 <b>TEER ONLINE — RESULT UPDATE</b>",
+      "",
+      "<b>" + escapeTelegramHtml(item.title) + "</b>",
+      escapeTelegramHtml(item.message),
+      "",
+      "📲 <b>Latest APK:</b> <a href=\"https://github.com/fresh-lang/teer-online-/releases/latest/download/teer-online.apk\">Download &amp; Update Teer Online</a>",
+      "🌐 <a href=\"https://fresh-lang.github.io/teer-online-/\">Open Teer Online App</a>",
+    ].join("\n");
+    try {
+      const response = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: "@teerofficiall", text, parse_mode: "HTML", disable_web_page_preview: true }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && payload.ok) {
+        await supabase.from("broadcast_notifications")
+          .update({ telegram_posted_at: new Date().toISOString(), telegram_error: null })
+          .eq("id", item.id);
+        sent++;
+      } else {
+        await supabase.from("broadcast_notifications")
+          .update({ telegram_error: String(payload.description || ("Telegram HTTP " + response.status)).slice(0, 500) })
+          .eq("id", item.id);
+        failed++;
+      }
+    } catch (error) {
+      await supabase.from("broadcast_notifications")
+        .update({ telegram_error: String(error instanceof Error ? error.message : error).slice(0, 500) })
+        .eq("id", item.id);
+      failed++;
+    }
+  }
+  return { sent, failed, checked: (pending ?? []).length };
+}
+
 async function searchSupportWeb(query: string) {
   const apiKey = Deno.env.get("TAVILY_API_KEY");
   if (!apiKey) return null;
@@ -1426,6 +1489,13 @@ Deno.serve(async (req) => {
       const telegram = await flushRedeemTelegramPosts(botToken);
       return json({ success: true, india_date: indiaDate, generated: generated?.code || null, telegram }, 200, origin);
     }
+    if (action === "result_telegram_publisher") {
+      const botToken = String(req.headers.get("x-redeem-telegram-token") || "").trim();
+      if (!(await validateRedeemTelegramBot(botToken))) return json({ error: "Telegram publisher authentication failed" }, 403, origin);
+      const telegram = await flushResultTelegramPosts(botToken);
+      return json({ success: true, telegram }, 200, origin);
+    }
+
     if (action === "register") {
       const name = String(body.name ?? "").trim().slice(0, 80);
       const phone = cleanPhone(body.phone);
@@ -2223,6 +2293,22 @@ Deno.serve(async (req) => {
                   " | FR " + String(x.fr ?? "—") + " / SR " + String(x.sr ?? "—")
                 ).join("\n") +
                 "\nFor a specific analysis, ask for Shillong or Khanapara and say Guti frequency or previous results. Saved results are historical records, not a guaranteed prediction.";
+            }
+            // Search live web context only for Teer topics, after quota validation.
+            // Treat all returned snippets as untrusted reference text.
+            try {
+              const live = await searchSupportWeb("Assam traditional archery Teer " + marketLabel + ": " + message.slice(0, 500));
+              if (live && (live.answer || live.results?.length)) {
+                const liveParts: string[] = [];
+                if (live.answer) liveParts.push("Web search summary: " + live.answer.slice(0, 900));
+                const sources = (live.results ?? []).slice(0, 3).map((item: any, index: number) =>
+                  (index + 1) + ". " + item.title + ": " + item.content.slice(0, 320) + (item.url ? "\n" + item.url : "")
+                );
+                if (sources.length) liveParts.push("Web sources (check date and reliability):\n" + sources.join("\n"));
+                reply += "\n\nLive web context (not an official result unless confirmed in the app):\n" + liveParts.join("\n\n");
+              }
+            } catch (searchError) {
+              console.warn("Teer support web search unavailable:", searchError);
             }
           }
         }
