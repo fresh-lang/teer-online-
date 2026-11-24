@@ -2118,6 +2118,22 @@ Deno.serve(async (req) => {
       if (!message) return json({ error: "Please type a message" }, 400, origin);
       const q = message.toLowerCase();
       let reply = "";
+      let usageInfo: { used: number; remaining: number; resetsAt: string } | null = null;
+      const isAccountHelp = /agent\\s*number|my agent|agent details|withdraw|payout|deposit|utr|payment|recharge/.test(q);
+      if (!isAccountHelp) {
+        const { data: quotaData, error: quotaError } = await supabase.rpc("consume_ai_support_daily_use", { p_user_id: user.id });
+        if (quotaError) throw quotaError;
+        const quota = Array.isArray(quotaData) ? quotaData[0] : quotaData;
+        if (!quota?.allowed) {
+          return json({
+            success: true,
+            limitReached: true,
+            reply: "Aapka aaj ka 5/5 free AI search aur information limit poora ho gaya hai. Kal India time 12:00 AM ke baad aapko phir 5 free searches milenge. Abhi help ke liye Agent Chat khol sakte hain.",
+            usage: { used: 5, remaining: 0, resetsAt: quota?.resets_at ?? null }
+          }, 200, origin);
+        }
+        usageInfo = { used: Number(quota.used), remaining: Number(quota.remaining), resetsAt: quota.resets_at };
+      }
       if (/agent\s*number|my agent|agent details/.test(q)) {
         const { data, error } = await supabase.from("app_users").select("agent_number").eq("id", user.id).maybeSingle();
         if (error) throw error;
@@ -2201,7 +2217,7 @@ Deno.serve(async (req) => {
           }
         }
       }
-      return json({ success: true, reply }, 200, origin);
+      return json({ success: true, reply, usage: usageInfo }, 200, origin);
     }
 
     if (action === "user_support_open") {
