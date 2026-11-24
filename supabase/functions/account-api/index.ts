@@ -1198,7 +1198,7 @@ type ShillongSourcePreview =
 
 async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
   return await fetchGroundsMarketPreview(
-    SHILLONG_MARKET, "Shillong Teer Result", "03:15 PM", "04:15 PM",
+    SHILLONG_MARKET, "Shillong Teer Result", "04:00 PM", "05:00 PM",
   ) as ShillongSourcePreview;
 }
 
