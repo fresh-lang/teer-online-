@@ -72,7 +72,7 @@ begin
   insert into public.user_notifications(user_id, event_key, type, title, message)
   select u.id, 'redeem_code:' || v_row.id::text, 'redeem_code',
          '🎁 New Redeem Code Available',
-         'A new common redeem code is live. Open Redeem Code in the menu and claim your random ₹2–₹20 reward. Limited to the first ' || p_limit || ' users.'
+         'Common redeem code: ' || v_row.code || '. Open Redeem Code in the menu and claim your random ₹2–₹20 reward. Limited to the first ' || p_limit || ' users.'
   from public.app_users u
   on conflict (user_id, event_key) do nothing;
   return v_row;
