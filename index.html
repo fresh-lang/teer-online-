@@ -1739,7 +1739,7 @@
     /* Removed stale in-memory account persistence handler loadStorage. */
 
     async function saveNotifications() {
-      try { await writeUiStore('teer_notifications', state.notifications); }
+      try { await writeUiStore('teer_notifications', state.notifications.filter(n => !n.serverSaved)); }
       catch (e) { console.warn('Notification history could not be saved:', e); }
     }
 
@@ -1747,9 +1747,8 @@
       if (!state.user || accountIsDemo || !accountSessionToken) return;
       try {
         const response = await accountApi('my_notifications', { limit: 100 });
-        const existing = new Set(state.notifications.map(n => n.event_key).filter(Boolean));
+        state.notifications = state.notifications.filter(n => !n.serverSaved);
         (response.items || []).slice().reverse().forEach(row => {
-          if (existing.has(row.event_key)) return;
           state.notifications.unshift({
             id: row.id, event_key: row.event_key, type: row.type || 'refund',
             title: row.title, message: row.message,
@@ -1759,7 +1758,6 @@
         });
         state.notifications = state.notifications.slice(0, 100);
         syncNotifications();
-        await saveNotifications();
       } catch (e) { console.warn('Server notification history could not be loaded:', e.message); }
     }
 
