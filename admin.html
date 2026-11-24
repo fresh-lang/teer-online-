@@ -476,6 +476,10 @@
         <div class="flex justify-between"><span class="text-slate-400">Total Deposits:</span> <span id="mUserTotalDeposits" class="font-black text-emerald-400">₹0.00</span></div>
         <div class="flex justify-between"><span class="text-slate-400">Total Withdrawals:</span> <span id="mUserTotalWithdrawals" class="font-black text-rose-400">₹0.00</span></div>
         <div class="flex justify-between"><span class="text-slate-400">Total Bets Placed:</span> <span id="mUserTotalBets" class="font-bold text-teal-300">0 Bets</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Today Bet Amount:</span> <span id="mUserTodayBetAmount" class="font-bold text-white">₹0.00</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Today Win:</span> <span id="mUserTodayWin" class="font-bold text-emerald-300">₹0.00</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Today Loss:</span> <span id="mUserTodayLoss" class="font-bold text-rose-300">₹0.00</span></div>
+        <div id="mUserActivityList" class="mt-2 border-t border-teal-900/50 pt-2 text-[10px] text-slate-400">Loading today's activity...</div>
         <div class="flex justify-between"><span class="text-slate-400">Referred By:</span> <span id="mUserReferredBy" class="text-slate-300">Direct</span></div>
         <div class="flex justify-between"><span class="text-slate-400">Registered Date:</span> <span id="mUserCreatedAt" class="text-slate-400">--</span></div>
       </div>
@@ -790,9 +794,22 @@
       const betElem = document.getElementById('mUserTotalBets');
       if (betElem) betElem.innerText = `${u.betCount || 0} Bets Placed`;
 
+      loadUserTodayActivity(u.id).catch(e => { const el=document.getElementById('mUserActivityList'); if(el) el.textContent='Activity load failed: '+(e.message||e); });
       document.getElementById('adjustAmtInput').value = '';
       document.getElementById('adjustReasonInput').value = '';
       document.getElementById('userModal').classList.remove('hidden');
+    }
+
+    async function loadUserTodayActivity(userId) {
+      const box = document.getElementById('mUserActivityList');
+      ['mUserTodayBetAmount','mUserTodayWin','mUserTodayLoss'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='Loading...'; });
+      const data = await adminApi('admin_user_activity', { user_id: userId });
+      document.getElementById('mUserTodayBetAmount').textContent = '₹' + Number(data.total_bet_amount || 0).toFixed(2) + ' (' + Number(data.total_bets || 0) + ' bets)';
+      document.getElementById('mUserTodayWin').textContent = '₹' + Number(data.total_win || 0).toFixed(2);
+      document.getElementById('mUserTodayLoss').textContent = '₹' + Number(data.total_loss || 0).toFixed(2);
+      const rows = data.items || [];
+      box.innerHTML = '<div class="font-bold text-amber-300 mb-1">Today Bet Activity (' + rows.length + ' latest)</div>' +
+        (rows.length ? rows.slice(0,12).map(x => '<div class="flex justify-between gap-2 py-1 border-b border-teal-900/30"><span>' + escapeHtml(x.market || '') + ' ' + escapeHtml(x.round || '') + ' #' + escapeHtml(x.bet_number || '') + ' · ' + escapeHtml(x.status || '') + '</span><span>₹' + Number(x.amount || 0).toFixed(2) + '</span></div>').join('') : '<div>No bets today.</div>');
     }
 
     function closeUserModal() {
