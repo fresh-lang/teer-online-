@@ -61,6 +61,11 @@ begin
   if p_limit not in (100, 500) or p_source not in ('daily', 'manual') then
     raise exception 'Invalid redeem code settings';
   end if;
+  -- A newly generated common code replaces every currently active code immediately.
+  update public.redeem_codes
+    set active = false, expires_at = now()
+    where active = true;
+
   v_code := 'TEER' || to_char(coalesce(p_india_date, (now() at time zone 'Asia/Kolkata')::date), 'YYYYMMDD')
             || upper(substr(encode(gen_random_bytes(6), 'hex'), 1, 6));
   insert into public.redeem_codes(code, max_redemptions, source, india_date, created_by, expires_at)
