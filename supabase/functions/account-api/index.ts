@@ -1424,6 +1424,27 @@ Deno.serve(async (req) => {
       return json({ success: true, referral_code: user.uid ?? "", total_referrals: friends.length, total_earned: totalEarned, friends }, 200, origin);
     }
 
+    if (action === "my_notifications" || action === "mark_notifications_read" || action === "clear_my_notifications") {
+      const user = await getSession(req);
+      if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
+      if (action === "my_notifications") {
+        const limit = Math.min(100, Math.max(1, Number.isInteger(Number(body.limit)) ? Number(body.limit) : 50));
+        const { data, error } = await supabase.from("user_notifications").select("id,event_key,type,title,message,created_at,read_at")
+          .eq("user_id", user.id).order("created_at", { ascending: false }).limit(limit);
+        if (error) throw error;
+        return json({ success: true, items: data ?? [] }, 200, origin);
+      }
+      if (action === "mark_notifications_read") {
+        const { error } = await supabase.from("user_notifications").update({ read_at: new Date().toISOString() })
+          .eq("user_id", user.id).is("read_at", null);
+        if (error) throw error;
+        return json({ success: true }, 200, origin);
+      }
+      const { error } = await supabase.from("user_notifications").delete().eq("user_id", user.id);
+      if (error) throw error;
+      return json({ success: true }, 200, origin);
+    }
+
     if (action === "my_bets" || action === "my_transactions" ||
         action === "my_deposit_requests" || action === "my_withdrawal_requests") {
       const user = await getSession(req);
