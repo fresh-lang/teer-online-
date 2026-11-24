@@ -3998,6 +3998,10 @@
       window.__supabasePublicRefresh = setInterval(() => { initSupabasePublicSync(); syncUserRequestNotifications(false); }, 20000);
     }
 
+    // Capture referral URLs and show the APK download prompt on website entry.
+    // Runs after the referral helper and page elements have been defined.
+    checkUrlReferral();
+
     // Safe placeholders for features without an audited server-side Supabase API.
     function initDemoAgentsSystem() {}
     function applyAgentBetTurnoverCommission() {}
