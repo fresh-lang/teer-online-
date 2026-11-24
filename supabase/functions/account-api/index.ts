@@ -1772,6 +1772,50 @@ Deno.serve(async (req) => {
       return json({ success: true, items: data ?? [] }, 200, origin);
     }
 
+    if (action === "admin_today_bet_summary") {
+      const user = await getSession(req);
+      if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
+      if (!(await requireAdmin(user))) return json({ error: "Admin access denied" }, 403, origin);
+      const indiaDate = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(new Date());
+      const dayStart = new Date(indiaDate + "T00:00:00+05:30").toISOString();
+      const nextDate = new Date(new Date(dayStart).getTime() + 86400000).toISOString();
+      const totals = new Map<string, { market: string; round: string; number: string; amount: number; bets: number }>();
+      let offset = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data, error } = await supabase.from("bets")
+          .select("market,round,bet_number,amount,created_at")
+          .gte("created_at", dayStart).lt("created_at", nextDate)
+          .order("created_at", { ascending: false })
+          .range(offset, offset + pageSize - 1);
+        if (error) throw error;
+        const rows = data ?? [];
+        for (const bet of rows) {
+          const market = String(bet.market ?? "Unknown Market");
+          const round = String(bet.round ?? "").toUpperCase();
+          const number = String(bet.bet_number ?? "").trim().padStart(2, "0");
+          const key = market + "\u0000" + round + "\u0000" + number;
+          const current = totals.get(key) ?? { market, round, number, amount: 0, bets: 0 };
+          current.amount += Number(bet.amount ?? 0);
+          current.bets += 1;
+          totals.set(key, current);
+        }
+        offset += rows.length;
+        if (rows.length < pageSize) break;
+        if (offset >= 50000) throw new Error("Today's bet count exceeds the 50,000-row report limit.");
+      }
+      const items = Array.from(totals.values()).sort((a, b) =>
+        a.market.localeCompare(b.market) || a.round.localeCompare(b.round) ||
+        b.amount - a.amount || a.number.localeCompare(b.number)
+      );
+      return json({
+        success: true, date: indiaDate, total_amount: items.reduce((sum, item) => sum + item.amount, 0),
+        total_bets: items.reduce((sum, item) => sum + item.bets, 0), items,
+      }, 200, origin);
+    }
+
     if (action === "admin_settle_bet" || action === "admin_list_bets") {
       const user = await getSession(req);
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
