@@ -565,6 +565,7 @@ type KhanaparaSourcePreview =
 
 function parseGroundsMarketCard(
   plain: string, market: string, heading: string, frTime: string, srTime: string,
+  dynamicTimes = false,
 ) {
   const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const token = "(\\d{2}|off|soon|pending|awaiting|--|xx)";
@@ -586,11 +587,20 @@ function parseGroundsMarketCard(
   const dateMatch = section.match(new RegExp(
     escapePattern(heading) + "\\s*[-–:]\\s*(\\d{2}[.\\/-]\\d{2}[.\\/-]\\d{4})", "i",
   ));
-  const rounds = new RegExp(
-    "F\\/R\\s*\\(" + escapePattern(frTime) + "\\)[\\s\\S]{0,100}?S\\/R\\s*\\(" +
-      escapePattern(srTime) + "\\)[\\s\\S]{0,60}?" + token + "(?:\\s*\\|\\s*|\\s+)" + token,
-    "i",
-  );
+  // Shillong Evening's displayed round times can change. Match the FR/SR
+  // labels without pinning the parser to clock text; keep fixed-time matching
+  // for the other markets that still use their configured source labels.
+  const rounds = dynamicTimes
+    ? new RegExp(
+      "F\\/R(?:\\s*\\([^)]*\\))?[\\s\\S]{0,100}?S\\/R(?:\\s*\\([^)]*\\))?[\\s\\S]{0,60}?" +
+        token + "(?:\\s*\\|\\s*|\\s+)" + token,
+      "i",
+    )
+    : new RegExp(
+      "F\\/R\\s*\\(" + escapePattern(frTime) + "\\)[\\s\\S]{0,100}?S\\/R\\s*\\(" +
+        escapePattern(srTime) + "\\)[\\s\\S]{0,60}?" + token + "(?:\\s*\\|\\s*|\\s+)" + token,
+      "i",
+    );
   const card = dateMatch && section.match(rounds)
     ? [section, dateMatch[1], ...section.match(rounds)!.slice(1)] as RegExpMatchArray
     : null;
@@ -619,7 +629,7 @@ function parseGroundsMarketCard(
 }
 
 async function fetchGroundsMarketPreview(
-  market: string, heading: string, frTime: string, srTime: string,
+  market: string, heading: string, frTime: string, srTime: string, dynamicTimes = false,
 ) {
   const response = await fetch("https://shillongteergrounds.in/", {
     method: "GET",
@@ -632,7 +642,7 @@ async function fetchGroundsMarketPreview(
   if (!response.ok) throw new Error("ShillongTeerGrounds source returned HTTP " + response.status);
   const html = await response.text();
   if (!html || html.length < 1000) throw new Error("ShillongTeerGrounds source page was empty or incomplete");
-  return parseGroundsMarketCard(htmlToPlainText(html), market, heading, frTime, srTime);
+  return parseGroundsMarketCard(htmlToPlainText(html), market, heading, frTime, srTime, dynamicTimes);
 }
 
 async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
@@ -1198,7 +1208,7 @@ type ShillongSourcePreview =
 
 async function fetchShillongSourcePreview(): Promise<ShillongSourcePreview> {
   return await fetchGroundsMarketPreview(
-    SHILLONG_MARKET, "Shillong Teer Result", "04:00 PM", "05:00 PM",
+    SHILLONG_MARKET, "Shillong Teer Result", "", "", true,
   ) as ShillongSourcePreview;
 }
 
