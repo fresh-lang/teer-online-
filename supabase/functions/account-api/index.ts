@@ -2129,49 +2129,72 @@ Deno.serve(async (req) => {
         if (error) throw error;
         reply = "Withdrawal help: the app accepts withdrawal requests from ₹1,000 to ₹5,000. " +
           (data?.length ? "Your latest requests:\n" + data.map((x: any) => "₹" + Number(x.amount).toFixed(2) + " — " + String(x.status) + " (" + new Date(x.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) + ")").join("\n") : "I could not find a withdrawal request on your account yet.") +
-          "\nFor a request that needs manual checking, type “connect me to an agent”.";
+          "\nFor manual checking, type “connect me to an agent”.";
       } else if (/deposit|utr|payment|recharge/.test(q)) {
         const { data, error } = await supabase.from("deposit_requests").select("amount,status,utr,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5);
         if (error) throw error;
-        reply = "Deposit help: submit the correct UTR/reference number and payment screenshot in the Wallet → Deposit section. " +
+        reply = "Deposit help: submit the correct UTR/reference number and payment screenshot in Wallet → Deposit. " +
           (data?.length ? "Your latest deposit requests:\n" + data.map((x: any) => "₹" + Number(x.amount).toFixed(2) + " — " + String(x.status) + " (UTR: " + String(x.utr || "not available") + ")").join("\n") : "I could not find a deposit request on your account yet.") +
           "\nIf money was deducted but not credited, type “connect me to an agent” and share your UTR.";
-      } else if (/dream/.test(q)) {
-        const online = await searchSupportWeb("Shillong Teer dream number chart " + message + " traditional dream number direct house ending");
-        reply = online
-          ? (online.answer || "Online dream-number references found:") + "\n" + online.results.map((x: any) => x.title + "\n" + x.content + "\n" + x.url).join("\n\n") + "\nDream charts vary by source and are traditional references, not reliable predictions."
-          : "I can explain traditional dream-number charts, but live web search is not configured yet. Admin must add the TAVILY_API_KEY secret. Tell me what you saw (snake, river, water, animal, etc.). Dream charts are not guaranteed predictions.";
-      } else if (/1\s*guti|guti|direct analysis|frequency|repeat/.test(q)) {
-        const online = await searchSupportWeb("Shillong Teer 1 Guti direct hit analysis latest common number FR SR pattern " + message);
-        if (online) {
-          reply = (online.answer || "Online 1 Guti analysis references:") + "\n" + online.results.map((x: any) => x.title + "\n" + x.content + "\n" + x.url).join("\n\n") + "\nOnline tips are unverified and do not guarantee a result.";
-        } else {
-          const { data, error } = await supabase.from("teer_result_history").select("market,result_date,fr,sr").order("result_date", { ascending: false }).limit(100);
-          if (error) throw error;
-          const rows = (data ?? []).filter((x: any) => /^\d{1,2}$/.test(String(x.fr)) || /^\d{1,2}$/.test(String(x.sr)));
-          const counts: Record<string, number> = {};
-          for (const row of rows) for (const value of [row.fr, row.sr]) if (/^\d{1,2}$/.test(String(value))) counts[String(value).padStart(2, "0")] = (counts[String(value).padStart(2, "0")] ?? 0) + 1;
-          const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
-          reply = top.length
-            ? "1 Guti historical analysis (last " + rows.length + " saved result rows):\n" + top.map(([n, c]) => n + " appeared " + c + " times").join("\n") + "\nThis is only past frequency, not a winning prediction. Past results cannot guarantee future results."
-            : "Historical FR/SR data is not available for analysis yet. Live online search requires TAVILY_API_KEY.";
-        }
-      } else if (/hit\s*number|previous result|last result|chart/.test(q)) {
-        const online = await searchSupportWeb("Shillong Teer hit number today FR SR latest hit numbers " + message);
-        if (online) {
-          reply = (online.answer || "Online Hit Number references:") + "\n" + online.results.map((x: any) => x.title + "\n" + x.content + "\n" + x.url).join("\n\n") + "\nThese are third-party suggestions, not official results or guaranteed predictions.";
-        } else {
-          const { data, error } = await supabase.from("teer_result_history").select("market,result_date,fr,sr").order("result_date", { ascending: false }).limit(12);
-          if (error) throw error;
-          reply = data?.length
-            ? "Latest saved FR/SR results:\n" + data.map((x: any) => String(x.market) + " — " + new Date(x.result_date + "T00:00:00").toLocaleDateString("en-IN") + " | FR " + x.fr + " / SR " + x.sr).join("\n")
-            : "No saved result history is available yet. Please check Previous Results in the app. Live online search requires TAVILY_API_KEY.";
-        }
       } else {
-        const online = await searchSupportWeb(message + " Teer Online support");
-        reply = online
-          ? (online.answer || "I found these online sources:") + "\n" + online.results.map((x: any) => x.title + "\n" + x.content + "\n" + x.url).join("\n\n")
-          : "I can answer Teer Online account questions and basic support. For other questions, live online search needs the TAVILY_API_KEY secret to be configured by admin. Type “connect me to an agent” for human help.";
+        const isTeerTopic = /teer|archery|assam|shillong|khanapara|fr\b|sr\b|first round|second round|guti|hit number|dream number|previous result|result history|common number|frequency|market/.test(q);
+        if (!isTeerTopic) {
+          reply = "I am Teer Online Support. I can help only with Assam traditional archery Teer: Shillong Teer, Khanapara Teer, FR/SR results, previous-result history, Guti frequency and traditional dream-number chart context. I do not answer unrelated company, business or general web-search questions.";
+        } else {
+          const knownMarkets = [
+            "Shilong Morning Teer",
+            "Khanapara Morning Teer",
+            "Shillong Teer (Evening)",
+            "Khanapara Teer (Evening)",
+            "Shillong Night Teer",
+            "Khanapara Night Teer",
+          ];
+          const targetMarkets = /khanapara/.test(q)
+            ? knownMarkets.filter((name) => name.toLowerCase().startsWith("khanapara"))
+            : /shillong|shilong/.test(q)
+              ? knownMarkets.filter((name) => name.toLowerCase().startsWith("shillong") || name.toLowerCase().startsWith("shilong"))
+              : knownMarkets;
+          if (/dream/.test(q)) {
+            reply = "Dream-number charts are traditional reference charts used by some Assam Teer players; there is no single verified or official dream-to-number mapping. I will not invent a number. Tell me the exact dream symbol (for example, snake, river or bird), and I can explain the chart-style interpretation as an unverified traditional reference—not a prediction.";
+          } else {
+            const { data, error } = await supabase.from("teer_result_history")
+              .select("market,result_date,fr,sr")
+              .in("market", targetMarkets)
+              .order("result_date", { ascending: false })
+              .limit(300);
+            if (error) throw error;
+            const rows = data ?? [];
+            const marketLabel = /khanapara/.test(q) ? "Khanapara" : /shillong|shilong/.test(q) ? "Shillong" : "Assam Teer markets";
+            if (!rows.length) {
+              reply = "No saved FR/SR history is available for " + marketLabel + " in the selected market data. Check Previous Results in the app or ask for another Assam Teer market.";
+            } else if (/1\s*guti|guti|direct analysis|frequency|repeat|common number/.test(q)) {
+              const countRound = (key: "fr" | "sr") => {
+                const counts: Record<string, number> = {};
+                for (const row of rows) {
+                  const value = String(row[key] ?? "");
+                  if (/^\d{1,2}$/.test(value)) {
+                    const normalized = value.padStart(2, "0");
+                    counts[normalized] = (counts[normalized] ?? 0) + 1;
+                  }
+                }
+                return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+              };
+              const frTop = countRound("fr");
+              const srTop = countRound("sr");
+              reply = "Historical Assam Teer frequency — " + marketLabel + " (latest " + rows.length + " saved market rows)\n" +
+                "FR: " + (frTop.map(([n, count]) => n + " (" + count + ")").join(", ") || "No FR data") + "\n" +
+                "SR: " + (srTop.map(([n, count]) => n + " (" + count + ")").join(", ") || "No SR data") +
+                "\nThese are counts from saved past results only. They are not live tips and cannot predict or guarantee the next result.";
+            } else {
+              reply = "Latest saved Assam Teer FR/SR results — " + marketLabel + ":\n" +
+                rows.slice(0, 15).map((x: any) =>
+                  String(x.market) + " — " + new Date(x.result_date + "T00:00:00").toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) +
+                  " | FR " + String(x.fr ?? "—") + " / SR " + String(x.sr ?? "—")
+                ).join("\n") +
+                "\nFor a specific analysis, ask for Shillong or Khanapara and say Guti frequency or previous results. Saved results are historical records, not a guaranteed prediction.";
+            }
+          }
+        }
       }
       return json({ success: true, reply }, 200, origin);
     }
