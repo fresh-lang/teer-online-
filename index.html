@@ -3928,6 +3928,10 @@
         progress.hiddenAt = Date.now();
         writeSocialBonusProgress(step, progress);
       }
+      void accountApi('start_social_follow_bonus_step', { platform }).catch(error => {
+        const status = document.getElementById('socialBonusStatus');
+        if (status) status.textContent = error.message || 'Could not start this bonus step. Please try again.';
+      });
       renderSocialBonus();
     }
 

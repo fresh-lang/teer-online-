@@ -5,6 +5,40 @@ CREATE TABLE IF NOT EXISTS public.social_follow_bonus_claims (
   amount numeric NOT NULL DEFAULT 10 CHECK (amount = 10),
   created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS public.social_follow_bonus_steps (
+  user_id uuid NOT NULL REFERENCES public.app_users(id) ON DELETE CASCADE,
+  platform text NOT NULL CHECK (platform IN ('telegram', 'facebook')),
+  started_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, platform)
+);
+ALTER TABLE public.social_follow_bonus_steps ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.social_follow_bonus_steps FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.social_follow_bonus_steps TO service_role;
+
+CREATE OR REPLACE FUNCTION public.api_start_social_follow_bonus_step(p_user_id uuid, p_platform text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_started_at timestamptz;
+BEGIN
+  IF p_user_id IS NULL OR p_platform NOT IN ('telegram', 'facebook') THEN
+    RAISE EXCEPTION 'A valid user and social channel are required';
+  END IF;
+  INSERT INTO public.social_follow_bonus_steps (user_id, platform)
+  VALUES (p_user_id, p_platform)
+  ON CONFLICT (user_id, platform) DO NOTHING;
+  SELECT started_at INTO v_started_at
+  FROM public.social_follow_bonus_steps
+  WHERE user_id = p_user_id AND platform = p_platform;
+  RETURN jsonb_build_object('success', true, 'started_at', v_started_at);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.api_start_social_follow_bonus_step(uuid, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.api_start_social_follow_bonus_step(uuid, text) TO service_role;
+
 ALTER TABLE public.social_follow_bonus_claims ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.social_follow_bonus_claims FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.social_follow_bonus_claims TO service_role;
@@ -21,6 +55,14 @@ DECLARE
   v_claim_id uuid;
 BEGIN
   IF p_user_id IS NULL THEN RAISE EXCEPTION 'A valid user is required'; END IF;
+  IF (
+    SELECT count(*) FROM public.social_follow_bonus_steps
+    WHERE user_id = p_user_id
+      AND platform IN ('telegram', 'facebook')
+      AND started_at <= now() - interval '15 seconds'
+  ) < 2 THEN
+    RAISE EXCEPTION 'Please complete both 15-second channel steps first';
+  END IF;
   SELECT balance INTO v_balance FROM public.wallet_accounts WHERE user_id = p_user_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Wallet not found'; END IF;
 

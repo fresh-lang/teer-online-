@@ -1312,6 +1312,20 @@ Deno.serve(async (req) => {
       return json({ success: true }, 200, origin);
     }
 
+    if (action === "start_social_follow_bonus_step") {
+      const user = await getSession(req);
+      if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
+      const platform = String(body.platform ?? "").trim().toLowerCase();
+      if (platform !== "telegram" && platform !== "facebook") {
+        return json({ error: "A valid social channel is required" }, 400, origin);
+      }
+      const result = await rpc<Record<string, unknown>>("api_start_social_follow_bonus_step", {
+        p_user_id: user.id,
+        p_platform: platform,
+      });
+      return json({ success: true, started_at: result?.started_at ?? null }, 200, origin);
+    }
+
     if (action === "claim_social_follow_bonus") {
       const user = await getSession(req);
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
