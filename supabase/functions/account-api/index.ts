@@ -1541,6 +1541,7 @@ Deno.serve(async (req) => {
           if (upgradeError) console.error("Legacy password hash upgrade failed:", upgradeError.message);
         }
       }
+      await supabase.from("app_users").update({ last_login_at: new Date().toISOString() }).eq("id", user.id ?? user.user_id);
       let isAdmin = false;
       if (action === "admin_login") {
         const { data, error } = await supabase.from("admin_allowlist")
@@ -2035,6 +2036,46 @@ Deno.serve(async (req) => {
             preview }, 409, origin);
         }
         return json({ success: true, preview }, 200, origin);
+      }
+
+      if (action === "admin_adjust_wallet") {
+        const targetUserId = String(body.user_id ?? "");
+        const amount = Number(body.amount);
+        const direction = String(body.direction ?? "");
+        const description = String(body.description ?? "").slice(0, 180);
+        if (!/^[0-9a-f-]{36}$/i.test(targetUserId) || !Number.isFinite(amount) || amount <= 0 ||
+            amount > 1000000 || Math.round(amount * 100) !== amount * 100 ||
+            !["credit", "debit"].includes(direction)) {
+          return json({ error: "Valid user, amount and wallet direction are required" }, 400, origin);
+        }
+        const result = await rpc<Record<string, unknown>>("admin_adjust_wallet", {
+          p_user_id: targetUserId, p_amount: amount, p_direction: direction, p_description: description,
+        });
+        return json({ success: true, result }, 200, origin);
+      }
+
+      if (action === "admin_active_users") {
+        const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+        const [loginQ, betQ] = await Promise.all([
+          supabase.from("app_users").select("id,uid,name,phone,last_login_at,created_at").gte("last_login_at", since).order("last_login_at", { ascending: false }).limit(500),
+          supabase.from("bets").select("user_id,created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(5000),
+        ]);
+        if (loginQ.error) throw loginQ.error;
+        if (betQ.error) throw betQ.error;
+        const activity = new Map<string, string>();
+        for (const u of loginQ.data ?? []) if (u.last_login_at) activity.set(u.id, u.last_login_at);
+        for (const bet of betQ.data ?? []) {
+          const prior = activity.get(bet.user_id);
+          if (!prior || new Date(bet.created_at).getTime() > new Date(prior).getTime()) activity.set(bet.user_id, bet.created_at);
+        }
+        const ids = Array.from(activity.keys());
+        if (!ids.length) return json({ success: true, since, items: [] }, 200, origin);
+        const { data: users, error: usersError } = await supabase.from("app_users")
+          .select("id,uid,name,phone,last_login_at,created_at").in("id", ids);
+        if (usersError) throw usersError;
+        const items = (users ?? []).map((u: any) => ({ ...u, last_activity_at: activity.get(u.id) }))
+          .sort((x: any, y: any) => new Date(y.last_activity_at).getTime() - new Date(x.last_activity_at).getTime());
+        return json({ success: true, since, total: items.length, items }, 200, origin);
       }
 
       if (action === "admin_dashboard") {
