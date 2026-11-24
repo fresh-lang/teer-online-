@@ -654,7 +654,7 @@ async function syncKhanaparaSourceIfDue(force = false) {
         .select("last_checked_at").eq("market", KHANAPARA_MARKET).maybeSingle();
       if (stateError) throw stateError;
       const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-      if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
+      if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
 
       const checkedAt = new Date().toISOString();
       const { error: markError } = await supabase.from("result_source_sync")
@@ -838,7 +838,7 @@ async function syncKhanaparaSessionIfDue(session: "morning" | "night") {
       .select("last_checked_at").eq("market", market).maybeSingle();
     if (stateError) throw stateError;
     const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-    if (lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
+    if (lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
 
     const checkedAt = new Date().toISOString();
     const { error: markError } = await supabase.from("result_source_sync")
@@ -1092,7 +1092,7 @@ async function syncShillongMorningIfDue(force = false) {
       .select("last_checked_at").eq("market", market).maybeSingle();
     if (stateError) throw stateError;
     const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-    if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
+    if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
 
     const { error: markError } = await supabase.from("result_source_sync")
       .upsert({ market, last_checked_at: new Date().toISOString() }, { onConflict: "market" });
@@ -1193,7 +1193,7 @@ async function syncShillongNightIfDue(force = false) {
       .select("last_checked_at").eq("market", market).maybeSingle();
     if (stateError) throw stateError;
     const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-    if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
+    if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
     const { error: markError } = await supabase.from("result_source_sync")
       .upsert({ market, last_checked_at: new Date().toISOString() }, { onConflict: "market" });
     if (markError) throw markError;
@@ -1237,7 +1237,7 @@ async function syncShillongSourceIfDue(force = false) {
         .select("last_checked_at").eq("market", SHILLONG_MARKET).maybeSingle();
       if (stateError) throw stateError;
       const lastChecked = syncState?.last_checked_at ? new Date(syncState.last_checked_at).getTime() : 0;
-      if (!force && lastChecked && Date.now() - lastChecked < 5 * 60 * 1000) return null;
+      if (!force && lastChecked && Date.now() - lastChecked < 60 * 1000) return null;
 
       const checkedAt = new Date().toISOString();
       const { error: markError } = await supabase.from("result_source_sync")
