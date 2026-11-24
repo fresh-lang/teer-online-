@@ -1862,6 +1862,11 @@ Deno.serve(async (req) => {
       }, { onConflict: "user_id" })
         .select("upi_id,bank_holder_name,bank_account_number,bank_ifsc,bank_name")
         .single();
+      if (error?.code === "23505") {
+        return json({
+          error: "This Bank/UPI Details Is Already Registered With Another Account.",
+        }, 409, origin);
+      }
       if (error) throw error;
       return json({ success: true, profile: data }, 200, origin);
     }
