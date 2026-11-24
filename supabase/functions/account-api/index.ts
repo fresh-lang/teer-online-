@@ -1348,7 +1348,7 @@ async function flushRedeemTelegramPosts(token: string) {
   }
   return { sent, checked: (pending || []).length };
 }
-\nDeno.serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405, origin);
@@ -1396,7 +1396,7 @@ async function flushRedeemTelegramPosts(token: string) {
       const telegram = await flushRedeemTelegramPosts(botToken);
       return json({ success: true, india_date: indiaDate, generated: generated?.code || null, telegram }, 200, origin);
     }
-\n    if (action === "register") {
+    if (action === "register") {
       const name = String(body.name ?? "").trim().slice(0, 80);
       const phone = cleanPhone(body.phone);
       const password = body.password;
@@ -1630,7 +1630,7 @@ async function flushRedeemTelegramPosts(token: string) {
         return json({ error: message.slice(0, 180) }, 409, origin);
       }
     }
-\n    if (action === "my_notifications" || action === "mark_notifications_read" || action === "clear_my_notifications") {
+    if (action === "my_notifications" || action === "mark_notifications_read" || action === "clear_my_notifications") {
       const user = await getSession(req);
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
       if (action === "my_notifications") {
@@ -1829,7 +1829,7 @@ async function flushRedeemTelegramPosts(token: string) {
       const push = await sendRedeemCodePush(code);
       return json({ success: true, code, push }, 200, origin);
     }
-\n    if (action === "admin_send_push") {
+    if (action === "admin_send_push") {
       const admin = await getSession(req);
       if (!admin || !admin.id) return json({ error: "Please login again" }, 401, origin);
       if (!(await requireAdmin(admin))) return json({ error: "Admin access denied" }, 403, origin);
