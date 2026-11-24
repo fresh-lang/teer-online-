@@ -1348,6 +1348,26 @@ async function flushRedeemTelegramPosts(token: string) {
   }
   return { sent, checked: (pending || []).length };
 }
+async function searchSupportWeb(query: string) {
+  const apiKey = Deno.env.get("TAVILY_API_KEY");
+  if (!apiKey) return null;
+  const response = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ api_key: apiKey, query, search_depth: "basic", max_results: 5, include_answer: true }),
+  });
+  if (!response.ok) throw new Error("Online search is temporarily unavailable.");
+  const payload = await response.json();
+  return {
+    answer: String(payload.answer ?? ""),
+    results: (payload.results ?? []).slice(0, 5).map((item: any) => ({
+      title: String(item.title ?? "Web result"),
+      content: String(item.content ?? "").slice(0, 700),
+      url: String(item.url ?? ""),
+    })),
+  };
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
@@ -2089,6 +2109,146 @@ Deno.serve(async (req) => {
         p_screenshot_url: screenshotUrl,
       });
       return json({ success: true, request: result }, 200, origin);
+    }
+
+    if (action === "ai_support_chat") {
+      const user = await getSession(req);
+      if (!user?.id) return json({ error: "Please log in again" }, 401, origin);
+      const message = String(body.message ?? "").trim().slice(0, 1000);
+      if (!message) return json({ error: "Please type a message" }, 400, origin);
+      const q = message.toLowerCase();
+      let reply = "";
+      if (/agent\s*number|my agent|agent details/.test(q)) {
+        const { data, error } = await supabase.from("app_users").select("agent_number").eq("id", user.id).maybeSingle();
+        if (error) throw error;
+        reply = data?.agent_number
+          ? "Your assigned Agent WhatsApp number is: " + data.agent_number + ". You can contact this number for personal help."
+          : "No agent number is assigned to your account yet. Type “connect me to an agent” to send a private message to our support team.";
+      } else if (/withdraw|payout/.test(q)) {
+        const { data, error } = await supabase.from("withdrawal_requests").select("amount,status,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5);
+        if (error) throw error;
+        reply = "Withdrawal help: the app accepts withdrawal requests from ₹1,000 to ₹5,000. " +
+          (data?.length ? "Your latest requests:\n" + data.map((x: any) => "₹" + Number(x.amount).toFixed(2) + " — " + String(x.status) + " (" + new Date(x.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) + ")").join("\n") : "I could not find a withdrawal request on your account yet.") +
+          "\nFor a request that needs manual checking, type “connect me to an agent”.";
+      } else if (/deposit|utr|payment|recharge/.test(q)) {
+        const { data, error } = await supabase.from("deposit_requests").select("amount,status,utr,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5);
+        if (error) throw error;
+        reply = "Deposit help: submit the correct UTR/reference number and payment screenshot in the Wallet → Deposit section. " +
+          (data?.length ? "Your latest deposit requests:\n" + data.map((x: any) => "₹" + Number(x.amount).toFixed(2) + " — " + String(x.status) + " (UTR: " + String(x.utr || "not available") + ")").join("\n") : "I could not find a deposit request on your account yet.") +
+          "\nIf money was deducted but not credited, type “connect me to an agent” and share your UTR.";
+      } else if (/dream/.test(q)) {
+        const online = await searchSupportWeb("Shillong Teer dream number chart " + message + " traditional dream number direct house ending");
+        reply = online
+          ? (online.answer || "Online dream-number references found:") + "\\n" + online.results.map((x: any) => x.title + "\\n" + x.content + "\\n" + x.url).join("\\n\\n") + "\\nDream charts vary by source and are traditional references, not reliable predictions."
+          : "I can explain traditional dream-number charts, but live web search is not configured yet. Admin must add the TAVILY_API_KEY secret. Tell me what you saw (snake, river, water, animal, etc.). Dream charts are not guaranteed predictions.";
+      } else if (/1\\s*guti|guti|direct analysis|frequency|repeat/.test(q)) {
+        const online = await searchSupportWeb("Shillong Teer 1 Guti direct hit analysis latest common number FR SR pattern " + message);
+        if (online) {
+          reply = (online.answer || "Online 1 Guti analysis references:") + "\\n" + online.results.map((x: any) => x.title + "\\n" + x.content + "\\n" + x.url).join("\\n\\n") + "\\nOnline tips are unverified and do not guarantee a result.";
+        } else {
+          const { data, error } = await supabase.from("teer_result_history").select("market,result_date,fr,sr").order("result_date", { ascending: false }).limit(100);
+          if (error) throw error;
+          const rows = (data ?? []).filter((x: any) => /^\\d{1,2}$/.test(String(x.fr)) || /^\\d{1,2}$/.test(String(x.sr)));
+          const counts: Record<string, number> = {};
+          for (const row of rows) for (const value of [row.fr, row.sr]) if (/^\\d{1,2}$/.test(String(value))) counts[String(value).padStart(2, "0")] = (counts[String(value).padStart(2, "0")] ?? 0) + 1;
+          const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+          reply = top.length
+            ? "1 Guti historical analysis (last " + rows.length + " saved result rows):\\n" + top.map(([n, c]) => n + " appeared " + c + " times").join("\\n") + "\\nThis is only past frequency, not a winning prediction. Past results cannot guarantee future results."
+            : "Historical FR/SR data is not available for analysis yet. Live online search requires TAVILY_API_KEY.";
+        }
+      } else if (/hit\\s*number|previous result|last result|chart/.test(q)) {
+        const online = await searchSupportWeb("Shillong Teer hit number today FR SR latest hit numbers " + message);
+        if (online) {
+          reply = (online.answer || "Online Hit Number references:") + "\\n" + online.results.map((x: any) => x.title + "\\n" + x.content + "\\n" + x.url).join("\\n\\n") + "\\nThese are third-party suggestions, not official results or guaranteed predictions.";
+        } else {
+          const { data, error } = await supabase.from("teer_result_history").select("market,result_date,fr,sr").order("result_date", { ascending: false }).limit(12);
+          if (error) throw error;
+          reply = data?.length
+            ? "Latest saved FR/SR results:\\n" + data.map((x: any) => String(x.market) + " — " + new Date(x.result_date + "T00:00:00").toLocaleDateString("en-IN") + " | FR " + x.fr + " / SR " + x.sr).join("\\n")
+            : "No saved result history is available yet. Please check Previous Results in the app. Live online search requires TAVILY_API_KEY.";
+        }
+      } else {
+        const online = await searchSupportWeb(message + " Teer Online support");
+        reply = online
+          ? (online.answer || "I found these online sources:") + "\\n" + online.results.map((x: any) => x.title + "\\n" + x.content + "\\n" + x.url).join("\\n\\n")
+          : "I can answer Teer Online account questions and basic support. For other questions, live online search needs the TAVILY_API_KEY secret to be configured by admin. Type “connect me to an agent” for human help.";
+      }
+      return json({ success: true, reply }, 200, origin);
+    }
+
+    if (action === "user_support_open") {
+      const user = await getSession(req);
+      if (!user?.id) return json({ error: "Please log in again" }, 401, origin);
+      const category = ["deposit", "withdrawal"].includes(String(body.category)) ? String(body.category) : "general";
+      const { data, error } = await supabase.from("support_conversations").insert({
+        user_id: user.id, category, subject: category === "general" ? "General support" : category + " help",
+        status: "open", last_message: "Support conversation opened", last_message_at: new Date().toISOString(),
+      }).select("id,user_id,category,subject,status,created_at").single();
+      if (error) throw error;
+      return json({ success: true, conversation: data }, 200, origin);
+    }
+
+    if (action === "user_support_messages" || action === "user_support_send") {
+      const user = await getSession(req);
+      if (!user?.id) return json({ error: "Please log in again" }, 401, origin);
+      const conversationId = String(body.conversation_id ?? "");
+      const { data: conversation, error: conversationError } = await supabase.from("support_conversations")
+        .select("id").eq("id", conversationId).eq("user_id", user.id).maybeSingle();
+      if (conversationError) throw conversationError;
+      if (!conversation) return json({ error: "Support conversation not found" }, 404, origin);
+      if (action === "user_support_messages") {
+        const { data, error } = await supabase.from("support_messages").select("id,sender_role,message,created_at")
+          .eq("conversation_id", conversationId).order("created_at", { ascending: true }).limit(200);
+        if (error) throw error;
+        return json({ success: true, messages: data ?? [] }, 200, origin);
+      }
+      const message = String(body.message ?? "").trim().slice(0, 2000);
+      if (!message) return json({ error: "Message is required" }, 400, origin);
+      const { error } = await supabase.from("support_messages").insert({ conversation_id: conversationId, sender_role: "user", sender_user_id: user.id, message });
+      if (error) throw error;
+      await supabase.from("support_conversations").update({ status: "open", last_message: message, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", conversationId);
+      return json({ success: true }, 200, origin);
+    }
+
+    if (["admin_support_list", "admin_support_messages", "admin_support_reply", "admin_assign_agent_number"].includes(action)) {
+      const admin = await getSession(req);
+      if (!admin?.id || !(await requireAdmin(admin))) return json({ error: "Admin access denied" }, 403, origin);
+      if (action === "admin_assign_agent_number") {
+        const userId = String(body.user_id ?? "");
+        const agentNumber = String(body.agent_number ?? "").trim();
+        if (!/^\+?[0-9]{10,15}$/.test(agentNumber)) return json({ error: "Enter a valid agent WhatsApp number" }, 400, origin);
+        const { error } = await supabase.from("app_users").update({ agent_number: agentNumber }).eq("id", userId);
+        if (error) throw error;
+        return json({ success: true, agent_number: agentNumber }, 200, origin);
+      }
+      if (action === "admin_support_list") {
+        const { data, error } = await supabase.from("support_conversations").select("id,user_id,category,status,last_message,last_message_at,created_at")
+          .order("last_message_at", { ascending: false }).limit(100);
+        if (error) throw error;
+        const ids = [...new Set((data ?? []).map((x: any) => x.user_id))];
+        const { data: users, error: usersError } = ids.length
+          ? await supabase.from("app_users").select("id,name,phone").in("id", ids)
+          : { data: [], error: null };
+        if (usersError) throw usersError;
+        const byId = Object.fromEntries((users ?? []).map((x: any) => [x.id, x]));
+        return json({ success: true, conversations: (data ?? []).map((x: any) => ({ ...x, app_users: byId[x.user_id] ?? null })) }, 200, origin);
+      }
+      const conversationId = String(body.conversation_id ?? "");
+      const { data: conversation, error: conversationError } = await supabase.from("support_conversations").select("id").eq("id", conversationId).maybeSingle();
+      if (conversationError) throw conversationError;
+      if (!conversation) return json({ error: "Support conversation not found" }, 404, origin);
+      if (action === "admin_support_messages") {
+        const { data, error } = await supabase.from("support_messages").select("id,sender_role,message,created_at")
+          .eq("conversation_id", conversationId).order("created_at", { ascending: true }).limit(200);
+        if (error) throw error;
+        return json({ success: true, messages: data ?? [] }, 200, origin);
+      }
+      const message = String(body.message ?? "").trim().slice(0, 2000);
+      if (!message) return json({ error: "Message is required" }, 400, origin);
+      const { error } = await supabase.from("support_messages").insert({ conversation_id: conversationId, sender_role: "admin", sender_user_id: admin.id, message });
+      if (error) throw error;
+      await supabase.from("support_conversations").update({ status: "open", last_message: message, last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", conversationId);
+      return json({ success: true }, 200, origin);
     }
 
     return json({ error: "Unknown action" }, 400, origin);
