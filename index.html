@@ -3072,13 +3072,11 @@
       return target.toString();
     }
 
-    async function openSupportWebsiteFromApp() {
-      try {
-        const link = await createSupportWebsiteLink();
-        window.location.href = link;
-      } catch (error) {
-        showAppToast(error.message || 'Support Chat could not be opened.');
-      }
+    function openSupportWebsiteFromApp() {
+      // Use the authenticated private inbox already supported by account-api.
+      // The legacy ticket-link endpoints are not deployed and must not be called.
+      switchTab('support');
+      openAgentChat('general');
     }
 
     function addSupportWebsiteLinkBubble(container, url) {
