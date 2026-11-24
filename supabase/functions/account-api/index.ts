@@ -2149,11 +2149,16 @@ Deno.serve(async (req) => {
             "Shillong Night Teer",
             "Khanapara Night Teer",
           ];
-          const targetMarkets = /khanapara/.test(q)
-            ? knownMarkets.filter((name) => name.toLowerCase().startsWith("khanapara"))
-            : /shillong|shilong/.test(q)
-              ? knownMarkets.filter((name) => name.toLowerCase().startsWith("shillong") || name.toLowerCase().startsWith("shilong"))
-              : knownMarkets;
+          const asksKhanapara = /khanapara/.test(q);
+          const asksShillong = /shillong|shilong/.test(q);
+          let targetMarkets = knownMarkets.filter((name) => {
+            const isKhanapara = name.toLowerCase().startsWith("khanapara");
+            const isShillong = name.toLowerCase().startsWith("shillong") || name.toLowerCase().startsWith("shilong");
+            return (!asksKhanapara && !asksShillong) || (asksKhanapara && isKhanapara) || (asksShillong && isShillong);
+          });
+          if (/evening/.test(q)) targetMarkets = targetMarkets.filter((name) => name.includes("(Evening)"));
+          else if (/morning/.test(q)) targetMarkets = targetMarkets.filter((name) => /morning/i.test(name));
+          else if (/night/.test(q)) targetMarkets = targetMarkets.filter((name) => /night/i.test(name));
           if (/dream/.test(q)) {
             reply = "Dream-number charts are traditional reference charts used by some Assam Teer players; there is no single verified or official dream-to-number mapping. I will not invent a number. Tell me the exact dream symbol (for example, snake, river or bird), and I can explain the chart-style interpretation as an unverified traditional reference—not a prediction.";
           } else {
