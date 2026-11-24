@@ -3102,10 +3102,21 @@
       const send = e.submitter || document.querySelector('#screen-support form button[type="submit"]');
       if (send) send.disabled = true;
       try {
-        const asksForAgent = /\b(agent|ajent|human|person|support staff)\b.*\b(connect|conect|talk|chat|help|speak)\b|\b(connect|conect|talk|chat|speak)\b.*\b(agent|ajent|human|person|support staff)\b/i.test(message);
+        const asksForAgent = /\b(agent|ajent|aijent|human|person|support staff)\b|\b(connect|conect|contact|talk|chat|speak)\s+(me\s+)?(to\s+)?(an?\s+)?(agent|ajent|aijent|human|person)\b/i.test(message);
         if (asksForAgent) {
-          const supportLink = await createSupportWebsiteLink();
-          addSupportWebsiteLinkBubble(container, supportLink);
+          const bubble = document.createElement('div');
+          bubble.className = 'bg-slate-100 text-slate-700 p-2.5 rounded-2xl rounded-tl-none max-w-[90%] text-xs';
+          bubble.dataset.role = 'assistant';
+          bubble.appendChild(document.createTextNode('You can contact our team through your secure private Agent Chat. Tap below to open it.'));
+          const link = document.createElement('button');
+          link.type = 'button';
+          link.textContent = 'Open Agent Chat';
+          link.style.cssText = 'display:inline-block;margin-top:8px;padding:8px 12px;border-radius:10px;background:#073b3b;color:#f4c34e;font-weight:700';
+          link.addEventListener('click', () => openAgentChat('general'));
+          bubble.appendChild(document.createElement('br'));
+          bubble.appendChild(link);
+          container.appendChild(bubble);
+          container.scrollTop = container.scrollHeight;
           return;
         }
         const history = [...container.querySelectorAll('[data-role]')].slice(-8).map(el => ({ role: el.dataset.role, content: el.innerText }));
