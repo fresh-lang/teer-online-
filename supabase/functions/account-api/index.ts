@@ -1312,6 +1312,21 @@ Deno.serve(async (req) => {
       return json({ success: true }, 200, origin);
     }
 
+    if (action === "claim_social_follow_bonus") {
+      const user = await getSession(req);
+      if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
+      const result = await rpc<Record<string, unknown>>("api_claim_social_follow_bonus", {
+        p_user_id: user.id,
+      });
+      if (!result || typeof result !== "object") throw new Error("Bonus claim response was invalid");
+      return json({
+        success: result.success === true,
+        already_claimed: result.already_claimed === true,
+        amount: Number(result.amount ?? 0),
+        balance: Number(result.balance ?? 0),
+      }, 200, origin);
+    }
+
     if (action === "place_bets") {
       const user = await getSession(req);
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
