@@ -677,6 +677,7 @@
       if (btn) btn.className = "admin-tab-btn flex-1 py-2 px-3 rounded-xl bg-amber-400 text-teal-950 font-bold transition whitespace-nowrap";
       if (tabId === 'settings') loadRedeemCodesAdmin();
       if (tabId === 'analytics') loadTodayBetSummary();
+      if (tabId === 'users') refreshActiveUsersCount();
     }
 
     // INITIALIZE REALTIME SYNC FOR USERS, DEPOSITS, WITHDRAWALS
@@ -731,6 +732,20 @@
       }).join('');
     }
 
+    async function refreshActiveUsersCount() {
+      const count = document.getElementById('activeUsersCount');
+      if (!count) return;
+      count.textContent = '…';
+      try {
+        const data = await adminApi('admin_active_users');
+        const items = Array.isArray(data.items) ? data.items : [];
+        count.textContent = String(Number.isFinite(Number(data.total)) ? Number(data.total) : items.length);
+      } catch (e) {
+        count.textContent = '!';
+        console.error('Active users count failed:', e);
+      }
+    }
+
     async function loadActiveUsersPanel() {
       const panel = document.getElementById('activeUsersPanel');
       const list = document.getElementById('activeUsersList');
@@ -738,8 +753,8 @@
       list.textContent = 'Loading active users...';
       try {
         const data = await adminApi('admin_active_users');
-        const items = data.items || [];
-        document.getElementById('activeUsersCount').textContent = String(items.length);
+        const items = Array.isArray(data.items) ? data.items : [];
+        document.getElementById('activeUsersCount').textContent = String(Number.isFinite(Number(data.total)) ? Number(data.total) : items.length);
         if (!items.length) { list.textContent = 'No users active in the last 2 days.'; return; }
         list.innerHTML = items.map(u => {
           const phone = String(u.phone || '');
