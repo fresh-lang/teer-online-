@@ -1149,10 +1149,22 @@ async function fetchShillongNightSourcePreview(): Promise<{
   const section = plain.slice(start, ends.length ? Math.min(...ends) : Math.min(plain.length, start + 1800));
   const dateMatch = section.match(/(\d{2})-(\d{2})-(\d{4})/);
   const date = dateMatch ? dateMatch[1] + "/" + dateMatch[2] + "/" + dateMatch[3] : "";
-  const frMatch = section.match(/FR\s*[·•]?\s*08:30\s*PM\s*(\d{2})/i);
-  const srMatch = section.match(/SR\s*[·•]?\s*09:30\s*PM\s*(\d{2})/i);
-  const fr = frMatch?.[1] ?? "";
-  const sr = srMatch?.[1] ?? "";
+  // Source cards may show 8:30 pm (without a leading zero) and append
+  // "last · DD-MM-YYYY" when the displayed number belongs to yesterday.
+  // Accept only a number that is not explicitly tagged as a previous result.
+  const extractCurrentRound = (round: "FR" | "SR", hour: string): string => {
+    const pattern = new RegExp(
+      "\\b" + round + "\\s*[·•]?\\s*0?" + hour + "\\s*PM\\s*(\\d{2})([\\s\\S]{0,100}?)(?=\\b(?:FR|SR|First Round|Second Round)\\b|$)",
+      "i",
+    );
+    const match = section.match(pattern);
+    if (!match) return "";
+    const trailing = match[2] ?? "";
+    if (/\\blast\\b|\\b\\d{2}[-/]\\d{2}[-/]\\d{4}\\b/i.test(trailing)) return "";
+    return match[1];
+  };
+  const fr = extractCurrentRound("FR", "8:30");
+  const sr = extractCurrentRound("SR", "9:30");
   const today = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
   }).format(new Date());
