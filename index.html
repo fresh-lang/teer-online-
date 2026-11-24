@@ -3876,11 +3876,11 @@
     }
 
     // One-time social bonus: count only time spent away from the app after opening each link.
-    const SOCIAL_BONUS_STEPS = {
+    var SOCIAL_BONUS_STEPS = {
       telegram: { key: 'teer_social_bonus_telegram_progress', label: 'Telegram' },
       facebook: { key: 'teer_social_bonus_facebook_progress', label: 'Facebook' }
     };
-    const SOCIAL_BONUS_WAIT_MS = 15000;
+    var SOCIAL_BONUS_WAIT_MS = 15000;
     function readSocialBonusProgress(step) {
       try { return JSON.parse(sessionStorage.getItem(step.key) || '{"elapsed":0,"hiddenAt":null}'); }
       catch (_) { return { elapsed: 0, hiddenAt: null }; }
@@ -3931,6 +3931,7 @@
     }
 
     function renderSocialBonus() {
+      if (!SOCIAL_BONUS_STEPS) return;
       const panel = document.getElementById('socialFollowBonusPanel');
       if (!panel) return;
       const claimButton = document.getElementById('socialBonusClaimButton');
