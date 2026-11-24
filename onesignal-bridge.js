@@ -155,6 +155,14 @@ async function initialize() {
   if (!initialization) {
     initialization = OneSignal.initialize(APP_ID).then(() => {
       registerPushStateListener();
+      // Pause OneSignal in-app campaigns only. Android push permission,
+      // subscription opt-in, and push notifications remain enabled.
+      try {
+        OneSignal.InAppMessages.setPaused(true);
+        console.info('OneSignal in-app messages paused; push notifications remain enabled.');
+      } catch (error) {
+        console.warn('Could not pause OneSignal in-app messages:', error);
+      }
       return true;
     }).catch((error) => {
       initialization = null;
