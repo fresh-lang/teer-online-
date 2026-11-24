@@ -752,6 +752,17 @@
       </div>
     </div>
 
+    <!-- MODAL: REDEEM SUCCESS -->
+    <div id="redeemSuccessModal" class="fixed inset-0 bg-black/80 z-[130] hidden flex items-center justify-center p-4">
+      <div class="w-full max-w-xs rounded-3xl border border-emerald-300/50 bg-gradient-to-br from-[#052e32] to-[#101c2b] p-6 text-center text-white shadow-2xl">
+        <div class="text-5xl mb-3">🎉</div>
+        <h3 class="text-xl font-black text-emerald-300">SUCCESS!</h3>
+        <p class="text-sm text-teal-100 mt-2">Redeem reward credited to your wallet</p>
+        <p id="redeemSuccessAmount" class="text-3xl font-black text-amber-300 my-3">₹0.00</p>
+        <button onclick="closeRedeemSuccessModal()" class="w-full py-3 rounded-xl bg-amber-300 text-teal-950 font-black text-sm">CANCEL</button>
+      </div>
+    </div>
+
     <!-- MODAL: NOTIFICATIONS -->
     <div id="notificationModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
       <div class="bg-white w-full max-w-sm rounded-3xl p-4 shadow-2xl flex flex-col max-h-[80vh]">
@@ -2492,7 +2503,13 @@
       document.getElementById('redeemCodeStatus').textContent = 'Limited claims • One claim per account for each code.';
       document.getElementById('redeemCodeInput').focus();
     }
-    function closeRedeemCodeModal() { document.getElementById('redeemCodeModal').classList.add('hidden'); }
+    function closeRedeemCodeModal() {
+      document.getElementById('redeemCodeModal').classList.add('hidden');
+    }
+    function closeRedeemSuccessModal() {
+      document.getElementById('redeemSuccessModal').classList.add('hidden');
+      document.getElementById('redeemCodeModal').classList.add('hidden');
+    }
     async function claimRedeemCode() {
       const input = document.getElementById('redeemCodeInput');
       const button = document.getElementById('redeemCodeClaimBtn');
@@ -2508,7 +2525,10 @@
         await refreshAccountBalance();
         updateUI();
         await syncServerNotifications();
-        status.textContent = '🎉 ₹' + Number(result.reward || 0).toFixed(2) + ' credited to your wallet!';
+        const creditedAmount = Number(result.reward || 0);
+        document.getElementById('redeemSuccessAmount').textContent = '₹' + creditedAmount.toFixed(2);
+        document.getElementById('redeemCodeModal').classList.add('hidden');
+        document.getElementById('redeemSuccessModal').classList.remove('hidden');
         button.textContent = 'REWARD CLAIMED';
         button.disabled = true;
       } catch (error) {
