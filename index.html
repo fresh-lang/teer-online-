@@ -3914,6 +3914,7 @@
     });
     window.addEventListener('blur', markSocialBonusAway);
     window.addEventListener('focus', markSocialBonusReturn);
+    markSocialBonusReturn();
 
     function startSocialBonusStep(platform) {
       const step = SOCIAL_BONUS_STEPS[platform];
