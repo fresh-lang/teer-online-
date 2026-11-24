@@ -381,6 +381,26 @@
     </div>
 
     <div id="tabContent_settings" class="tab-pane space-y-3 hidden">
+      <div class="bg-[#0f1d21] p-4 rounded-2xl border border-amber-500/40 space-y-3">
+        <div class="flex items-center justify-between gap-2"><div><h3 class="font-black text-sm text-amber-300">🎁 Common Redeem Codes</h3><p class="text-[11px] text-slate-400">Daily auto-generation, one common code, one claim per account.</p></div><button onclick="loadRedeemCodesAdmin()" class="px-3 py-2 bg-teal-800 rounded-lg text-xs font-bold">Refresh</button></div>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="text-xs text-slate-300 flex items-center gap-2"><input id="redeemDailyEnabled" type="checkbox" checked class="accent-amber-400"> Daily auto code</label>
+          <label class="text-xs text-slate-300">Daily user limit
+            <select id="redeemDailyLimit" class="mt-1 w-full bg-black/50 border border-teal-800 rounded-lg p-2 text-white"><option value="100">100 users</option><option value="500">500 users</option></select>
+          </label>
+        </div>
+        <button onclick="saveRedeemSettingsAdmin()" class="w-full py-2.5 bg-teal-700 hover:bg-teal-600 rounded-xl text-xs font-black">Save Auto Settings</button>
+        <div class="border-t border-teal-900 pt-3 space-y-2">
+          <label class="block text-xs text-slate-300">Manual code user limit
+            <select id="redeemManualLimit" class="mt-1 w-full bg-black/50 border border-teal-800 rounded-lg p-2 text-white"><option value="100">100 users</option><option value="500">500 users</option></select>
+          </label>
+          <button id="redeemManualGenerateBtn" onclick="generateRedeemCodeAdmin()" class="w-full py-3 bg-gradient-to-r from-amber-300 to-yellow-500 text-teal-950 rounded-xl font-black text-sm">✨ GENERATE COMMON REDEEM CODE</button>
+          <p id="redeemAdminStatus" class="text-[11px] text-amber-200"></p>
+        </div>
+        <div class="border-t border-teal-900 pt-3"><h4 class="text-xs font-bold text-teal-200 mb-2">Recent Codes</h4><div id="redeemAdminList" class="space-y-2 text-xs text-slate-300"><p class="text-slate-500">Open Settings to load codes.</p></div></div>
+      </div>
+
+
       <!-- Agent Ledger -->
       <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-2">
         <h3 class="font-bold text-sm text-amber-300">Agent &amp; Referral Secret Commission Ledger</h3>
@@ -568,6 +588,55 @@
 
     /* Removed disabled legacy checkPass handler. */
 
+
+    async function loadRedeemCodesAdmin() {
+      const list = document.getElementById('redeemAdminList');
+      if (!list || !adminSessionToken) return;
+      list.innerHTML = '<p class="text-slate-500">Loading…</p>';
+      try {
+        const data = await adminApi('admin_redeem_codes');
+        const settings = data.settings || {};
+        document.getElementById('redeemDailyEnabled').checked = settings.daily_enabled !== false;
+        document.getElementById('redeemDailyLimit').value = String(settings.daily_limit || 100);
+        list.innerHTML = '';
+        const codes = Array.isArray(data.codes) ? data.codes : [];
+        if (!codes.length) { list.textContent = 'No redeem codes generated yet.'; return; }
+        codes.forEach(code => {
+          const card = document.createElement('div');
+          card.className = 'rounded-xl border border-teal-900 bg-black/30 p-3 space-y-1';
+          const head = document.createElement('div'); head.className = 'flex justify-between gap-2 font-black text-amber-300';
+          const codeText = document.createElement('span'); codeText.textContent = code.code;
+          const count = document.createElement('span'); count.className = 'text-[10px] text-teal-200'; count.textContent = Number(code.redeemed_count) + '/' + Number(code.max_redemptions);
+          head.append(codeText, count);
+          const meta = document.createElement('p'); meta.className = 'text-[10px] text-slate-400';
+          meta.textContent = String(code.source).toUpperCase() + ' • ' + new Date(code.created_at).toLocaleString() + ' • ' + (code.telegram_posted_at ? 'Telegram posted' : (code.telegram_error || 'Telegram pending')) + ' • ' + (code.push_sent_at ? 'Push sent' : (code.push_error || 'Push pending'));
+          card.append(head, meta); list.appendChild(card);
+        });
+      } catch (error) { list.textContent = error.message || 'Could not load redeem codes.'; }
+    }
+    async function saveRedeemSettingsAdmin() {
+      const status = document.getElementById('redeemAdminStatus');
+      try {
+        await adminApi('admin_save_redeem_settings', {
+          daily_enabled: document.getElementById('redeemDailyEnabled').checked,
+          daily_limit: Number(document.getElementById('redeemDailyLimit').value)
+        });
+        status.textContent = 'Daily redeem settings saved.';
+      } catch (error) { status.textContent = error.message || 'Settings save failed.'; }
+    }
+    async function generateRedeemCodeAdmin() {
+      const button = document.getElementById('redeemManualGenerateBtn');
+      const status = document.getElementById('redeemAdminStatus');
+      if (!confirm('Generate a new common redeem code and notify all users?')) return;
+      button.disabled = true; button.textContent = 'Generating…';
+      try {
+        const data = await adminApi('admin_create_redeem_code', { max_redemptions: Number(document.getElementById('redeemManualLimit').value) });
+        status.textContent = 'Generated: ' + data.code.code + ' • ' + (data.push?.sent ? 'Push notification sent.' : 'Push: ' + (data.push?.reason || 'pending'));
+        await loadRedeemCodesAdmin();
+      } catch (error) { status.textContent = error.message || 'Code generation failed.'; }
+      finally { button.disabled = false; button.textContent = '✨ GENERATE COMMON REDEEM CODE'; }
+    }
+
     function switchTab(tabId) {
       document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.admin-tab-btn').forEach(el => {
@@ -578,6 +647,7 @@
       const btn = document.getElementById('tabBtn_' + tabId);
       if (pane) pane.classList.remove('hidden');
       if (btn) btn.className = "admin-tab-btn flex-1 py-2 px-3 rounded-xl bg-amber-400 text-teal-950 font-bold transition whitespace-nowrap";
+      if (tabId === 'settings') loadRedeemCodesAdmin();
     }
 
     // INITIALIZE REALTIME SYNC FOR USERS, DEPOSITS, WITHDRAWALS

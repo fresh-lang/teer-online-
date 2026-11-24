@@ -395,6 +395,11 @@
             <p id="socialFacebookTimer" class="text-center text-xs text-slate-500">Open Facebook and stay for 15 seconds.</p>
             <button id="socialBonusClaimButton" type="button" onclick="claimSocialFollowBonus()" disabled class="w-full rounded-xl bg-slate-300 text-slate-600 font-black py-3 text-sm">Complete both 15-second steps</button>
             <p id="socialBonusStatus" class="text-center text-[11px] text-slate-500">Bonus is available once per account. Time-based only; channel membership/follow is not verified.</p>
+            <div class="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-1.5">
+              <p class="text-xs font-black text-amber-900">🎁 DAILY REDEEM CODE REWARD</p>
+              <p class="text-[11px] leading-relaxed text-amber-900">A new common Redeem Code is announced on our Telegram channel. Open the three-dot menu → <b>Redeem Code</b> and enter the latest code to get a random ₹2–₹20 wallet reward. Each account can use a code once. Claims are limited to the first 100 or 500 users.</p>
+              <p class="text-[10px] font-semibold text-rose-700">⏳ When a new code is generated, the previous code expires immediately.</p>
+            </div>
           </div>
           <div id="previousResultsPanel" class="bg-white rounded-2xl border border-teal-200 shadow-sm p-3 space-y-3">
             <div class="flex items-center justify-between gap-2">
@@ -687,6 +692,7 @@
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
         </a>
         <a onclick="openPayoutProfileModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer"><span class="flex items-center gap-3"><i class="fa-solid fa-building-columns w-4 text-teal-800"></i> Bank / UPI Details</span><i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i></a>
+        <a onclick="openRedeemCodeModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-amber-50 cursor-pointer"><span class="flex items-center gap-3"><i class="fa-solid fa-ticket w-4 text-rose-600"></i> Redeem Code</span><i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i></a>
         <a onclick="openNotificationModal(); toggleDrawer()" class="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer">
           <span class="flex items-center gap-3"><i class="fa-solid fa-bell w-4 text-teal-800"></i> Notifications</span>
           <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
@@ -708,6 +714,24 @@
         </div>
       </div>
     </aside>
+
+    <!-- MODAL: REDEEM CODE -->
+    <div id="redeemCodeModal" class="fixed inset-0 bg-black/75 z-[110] hidden flex items-center justify-center p-4">
+      <div class="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-amber-300 bg-gradient-to-br from-[#052e32] via-[#073f43] to-[#101c2b] text-white">
+        <div class="p-4 text-center border-b border-amber-300/30">
+          <div class="text-3xl mb-1">🎁</div>
+          <h3 class="text-lg font-black text-amber-300 tracking-wide">REDEEM & WIN</h3>
+          <p class="text-[11px] text-teal-100 mt-1">Enter today's common code and get a random ₹2–₹20 wallet reward.</p>
+          <button onclick="closeRedeemCodeModal()" class="absolute right-6 top-6 text-white/70"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="p-4 space-y-3">
+          <input id="redeemCodeInput" maxlength="32" autocomplete="off" autocapitalize="characters" placeholder="ENTER REDEEM CODE" class="w-full rounded-xl bg-black/35 border border-amber-300/50 px-3 py-3 text-center text-base font-black tracking-[0.18em] text-white uppercase outline-none focus:border-amber-300">
+          <button id="redeemCodeClaimBtn" onclick="claimRedeemCode()" class="w-full py-3 rounded-xl bg-gradient-to-r from-amber-300 to-yellow-500 text-teal-950 font-black text-sm shadow-lg">🎉 CLAIM REWARD</button>
+          <p id="redeemCodeStatus" class="min-h-5 text-center text-[11px] text-teal-100">Limited claims • One claim per account for each code.</p>
+          <button onclick="closeRedeemCodeModal()" class="w-full py-2 text-xs text-white/70">Close</button>
+        </div>
+      </div>
+    </div>
 
     <!-- MODAL: NOTIFICATIONS -->
     <div id="notificationModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
@@ -2441,6 +2465,39 @@
       const legacy=JSON.parse(memoryStore.getItem('teer_saved_payout_details_'+state.user.phone)||'{}');
       applyPayoutProfileToWithdrawForm(legacy);
     }
+
+    function openRedeemCodeModal() {
+      if (!state.user || accountIsDemo) { alert('Please login with your account to redeem a code.'); if (!state.user) openAuthModal(); return; }
+      document.getElementById('redeemCodeModal').classList.remove('hidden');
+      document.getElementById('redeemCodeInput').value = '';
+      document.getElementById('redeemCodeStatus').textContent = 'Limited claims • One claim per account for each code.';
+      document.getElementById('redeemCodeInput').focus();
+    }
+    function closeRedeemCodeModal() { document.getElementById('redeemCodeModal').classList.add('hidden'); }
+    async function claimRedeemCode() {
+      const input = document.getElementById('redeemCodeInput');
+      const button = document.getElementById('redeemCodeClaimBtn');
+      const status = document.getElementById('redeemCodeStatus');
+      const code = String(input.value || '').trim().toUpperCase();
+      if (!code) { status.textContent = 'Please enter the redeem code.'; return; }
+      if (!state.user || accountIsDemo) { status.textContent = 'Login with your real account first.'; return; }
+      button.disabled = true; button.textContent = 'Checking code…'; status.textContent = 'Please wait…';
+      try {
+        const response = await accountApi('redeem_code_claim', { code });
+        const result = response.result || {};
+        if (!response.success || !result.success) throw new Error(result.error || 'Code could not be redeemed.');
+        await refreshAccountBalance();
+        updateUI();
+        await syncServerNotifications();
+        status.textContent = '🎉 ₹' + Number(result.reward || 0).toFixed(2) + ' credited to your wallet!';
+        button.textContent = 'REWARD CLAIMED';
+        button.disabled = true;
+      } catch (error) {
+        status.textContent = error.message || 'Redeem failed. Please try again.';
+        button.disabled = false; button.textContent = '🎉 CLAIM REWARD';
+      }
+    }
+
     async function openPayoutProfileModal() {
       if(!state.user || accountIsDemo){ alert('Please login with your account to view or edit Bank / UPI details.'); if(!state.user) openAuthModal(); return; }
       const modal=document.getElementById('payoutProfileModal'); modal.classList.remove('hidden');
