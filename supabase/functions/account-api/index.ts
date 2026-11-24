@@ -1174,7 +1174,7 @@ async function fetchShillongNightSourcePreview(): Promise<{
     return { ready: false, status: "awaiting_complete_same_date_pair", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
   }
   const pairStart = pair.index ?? 0;
-  const pairText = section.slice(pairStart, pairStart + pair[0].length);
+  const pairText = section.slice(Math.max(0, pairStart - 50), pairStart + pair[0].length + 100);
   if (/\blast\b|previous|yesterday/i.test(pairText)) {
     return { ready: false, status: "previous_result_rejected", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
   }
