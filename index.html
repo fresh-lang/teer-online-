@@ -384,6 +384,18 @@
             </div>
           </div>
           <div id="marketCardsContainer" class="space-y-3 pb-6"></div>
+          <div id="socialFollowBonusPanel" class="bg-white rounded-2xl border border-amber-300 shadow-sm p-3 space-y-3 mb-3">
+            <div class="flex items-center justify-between gap-2">
+              <div><h3 class="font-black text-teal-950 text-base">JOIN BOTH CHANNELS &amp; GET ₹10 BONUS</h3><p class="text-[11px] text-slate-500">Complete both steps to claim your one-time wallet bonus.</p></div>
+              <span class="text-lg font-black text-amber-600">₹10</span>
+            </div>
+            <a href="https://t.me/teerofficiall" target="_blank" rel="noopener noreferrer" onclick="startSocialBonusStep('telegram')" class="block w-full text-center rounded-xl bg-sky-600 text-white font-bold text-sm py-3">Join Telegram Channel &amp; Stay 15 Seconds</a>
+            <p id="socialTelegramTimer" class="text-center text-xs text-slate-500">Open Telegram and stay for 15 seconds.</p>
+            <a href="https://www.facebook.com/61596915446900" target="_blank" rel="noopener noreferrer" onclick="startSocialBonusStep('facebook')" class="block w-full text-center rounded-xl bg-blue-700 text-white font-bold text-sm py-3">Follow Facebook Page &amp; Stay 15 Seconds</a>
+            <p id="socialFacebookTimer" class="text-center text-xs text-slate-500">Open Facebook and stay for 15 seconds.</p>
+            <button id="socialBonusClaimButton" type="button" onclick="claimSocialFollowBonus()" disabled class="w-full rounded-xl bg-slate-300 text-slate-600 font-black py-3 text-sm">Complete both 15-second steps</button>
+            <p id="socialBonusStatus" class="text-center text-[11px] text-slate-500">Bonus is available once per account. Time-based only; channel membership/follow is not verified.</p>
+          </div>
           <div id="previousResultsPanel" class="bg-white rounded-2xl border border-teal-200 shadow-sm p-3 space-y-3">
             <div class="flex items-center justify-between gap-2">
               <div><h3 class="font-bold text-teal-950 text-base">Previous Results</h3><p class="text-[10px] text-slate-500">Latest saved FR / SR results by market</p></div>
@@ -1816,6 +1828,7 @@
     }
 
     function updateUI() {
+      renderSocialBonus();
       const b = '₹' + state.balance.toFixed(2);
       document.getElementById('headerBalance').innerText = b;
       document.getElementById('walletBalanceBig').innerText = b;
@@ -3860,6 +3873,136 @@
       accountSessionToken = null; accountIsDemo = false; state.user = null; state.balance = 0; state.bids = [];
       myReferralFriends = [];
       updateUI(); openAuthModal();
+    }
+
+    // One-time social bonus: count only time spent away from the app after opening each link.
+    var SOCIAL_BONUS_STEPS = {
+      telegram: { key: 'teer_social_bonus_telegram_progress', label: 'Telegram' },
+      facebook: { key: 'teer_social_bonus_facebook_progress', label: 'Facebook' }
+    };
+    var SOCIAL_BONUS_WAIT_MS = 15000;
+    var activeSocialBonusPlatform = null;
+    function readSocialBonusProgress(step) {
+      try { return JSON.parse(sessionStorage.getItem(step.key) || '{"elapsed":0,"hiddenAt":null}'); }
+      catch (_) { return { elapsed: 0, hiddenAt: null }; }
+    }
+    function writeSocialBonusProgress(step, progress) {
+      try { sessionStorage.setItem(step.key, JSON.stringify(progress)); } catch (_) {}
+    }
+    function markSocialBonusAway() {
+      if (!activeSocialBonusPlatform) return;
+      const step = SOCIAL_BONUS_STEPS[activeSocialBonusPlatform];
+      if (!step) return;
+      const progress = readSocialBonusProgress(step);
+      if (!progress.hiddenAt && Number(progress.elapsed || 0) < SOCIAL_BONUS_WAIT_MS) {
+        progress.hiddenAt = Date.now();
+        writeSocialBonusProgress(step, progress);
+      }
+    }
+    function markSocialBonusReturn() {
+      if (!activeSocialBonusPlatform) {
+        activeSocialBonusPlatform = Object.keys(SOCIAL_BONUS_STEPS).find(platform =>
+          Boolean(readSocialBonusProgress(SOCIAL_BONUS_STEPS[platform]).hiddenAt)
+        ) || null;
+      }
+      const step = activeSocialBonusPlatform ? SOCIAL_BONUS_STEPS[activeSocialBonusPlatform] : null;
+      if (step) {
+        const progress = readSocialBonusProgress(step);
+        if (progress.hiddenAt) {
+          progress.elapsed = Math.min(SOCIAL_BONUS_WAIT_MS, Number(progress.elapsed || 0) + Math.max(0, Date.now() - Number(progress.hiddenAt)));
+          progress.hiddenAt = null;
+          writeSocialBonusProgress(step, progress);
+        }
+      }
+      activeSocialBonusPlatform = null;
+      renderSocialBonus();
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') markSocialBonusAway();
+      else markSocialBonusReturn();
+    });
+    window.addEventListener('blur', markSocialBonusAway);
+    window.addEventListener('focus', markSocialBonusReturn);
+    markSocialBonusReturn();
+
+    function startSocialBonusStep(platform) {
+      const step = SOCIAL_BONUS_STEPS[platform];
+      if (!step) return;
+      if (!state.user || accountIsDemo || !accountSessionToken) {
+        setTimeout(() => { if (!state.user) { alert('Please login to claim the ₹10 bonus.'); openAuthModal(); } }, 100);
+        return;
+      }
+      activeSocialBonusPlatform = platform;
+      const progress = readSocialBonusProgress(step);
+      if (Number(progress.elapsed || 0) < SOCIAL_BONUS_WAIT_MS) {
+        progress.hiddenAt = Date.now();
+        writeSocialBonusProgress(step, progress);
+      }
+      void accountApi('start_social_follow_bonus_step', { platform }).catch(error => {
+        const status = document.getElementById('socialBonusStatus');
+        if (status) status.textContent = error.message || 'Could not start this bonus step. Please try again.';
+      });
+      renderSocialBonus();
+    }
+
+    function renderSocialBonus() {
+      if (!SOCIAL_BONUS_STEPS) return;
+      const panel = document.getElementById('socialFollowBonusPanel');
+      if (!panel) return;
+      const claimButton = document.getElementById('socialBonusClaimButton');
+      const status = document.getElementById('socialBonusStatus');
+      const now = Date.now();
+      let ready = true;
+      Object.entries(SOCIAL_BONUS_STEPS).forEach(([platform, step]) => {
+        const progress = readSocialBonusProgress(step);
+        const elapsed = Math.min(SOCIAL_BONUS_WAIT_MS, Number(progress.elapsed || 0) + (progress.hiddenAt ? Math.max(0, now - Number(progress.hiddenAt)) : 0));
+        const remaining = Math.max(0, SOCIAL_BONUS_WAIT_MS - elapsed);
+        const line = document.getElementById(platform === 'telegram' ? 'socialTelegramTimer' : 'socialFacebookTimer');
+        if (line) line.textContent = remaining <= 0
+          ? step.label + ' 15-second step completed.'
+          : progress.hiddenAt
+            ? 'Stay on ' + step.label + ' for ' + Math.ceil(remaining / 1000) + ' more seconds, then return.'
+            : (elapsed > 0 ? 'Open ' + step.label + ' again and stay ' + Math.ceil(remaining / 1000) + ' more seconds.' : 'Open ' + step.label + ' and stay for 15 seconds.');
+        if (remaining > 0) ready = false;
+      });
+      if (claimButton) {
+        claimButton.disabled = !ready || !state.user || accountIsDemo;
+        claimButton.className = claimButton.disabled
+          ? 'w-full rounded-xl bg-slate-300 text-slate-600 font-black py-3 text-sm'
+          : 'w-full rounded-xl bg-amber-400 text-teal-950 font-black py-3 text-sm';
+        claimButton.textContent = ready ? 'Claim ₹10 Bonus' : 'Complete both 15-second steps';
+      }
+      if (status && !state.user) status.textContent = 'Please login first. Bonus can be claimed once per account.';
+    }
+
+    async function claimSocialFollowBonus() {
+      const button = document.getElementById('socialBonusClaimButton');
+      const status = document.getElementById('socialBonusStatus');
+      if (!state.user || accountIsDemo || !accountSessionToken) {
+        alert('Please login with your account first.');
+        openAuthModal();
+        return;
+      }
+      const ready = Object.values(SOCIAL_BONUS_STEPS).every(step => {
+        const progress = readSocialBonusProgress(step);
+        return Number(progress.elapsed || 0) >= SOCIAL_BONUS_WAIT_MS && !progress.hiddenAt;
+      });
+      if (!ready) { alert('Please complete both 15-second steps first.'); renderSocialBonus(); return; }
+      if (button) { button.disabled = true; button.textContent = 'Crediting bonus…'; }
+      try {
+        const result = await accountApi('claim_social_follow_bonus');
+        if (result && result.success) {
+          Object.values(SOCIAL_BONUS_STEPS).forEach(step => { try { sessionStorage.removeItem(step.key); } catch (_) {} });
+          await refreshAccountBalance();
+          if (status) status.textContent = result.already_claimed ? 'This account has already claimed its ₹10 bonus.' : '₹10 bonus credited to your wallet successfully!';
+          if (!result.already_claimed) alert('₹10 bonus credited to your wallet!');
+          renderSocialBonus();
+          if (button) button.textContent = 'Bonus Already Claimed';
+        } else throw new Error(result?.error || 'Bonus could not be claimed.');
+      } catch (error) {
+        if (status) status.textContent = error.message || 'Bonus could not be claimed. Please try again.';
+        if (button) { button.disabled = false; button.textContent = 'Try Claim Again'; }
+      }
     }
 
     async function refreshBalance() {
