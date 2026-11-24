@@ -2119,7 +2119,7 @@ Deno.serve(async (req) => {
       const q = message.toLowerCase();
       let reply = "";
       let usageInfo: { used: number; remaining: number; resetsAt: string } | null = null;
-      const isAccountHelp = /agent\\s*number|my agent|agent details|withdraw|payout|deposit|utr|payment|recharge/.test(q);
+      const isAccountHelp = /agent\s*number|my agent|agent details|withdraw|payout|deposit|utr|payment|recharge/.test(q);
       if (!isAccountHelp) {
         const { data: quotaData, error: quotaError } = await supabase.rpc("consume_ai_support_daily_use", { p_user_id: user.id });
         if (quotaError) throw quotaError;
