@@ -12,7 +12,7 @@ const corsHeaders = (origin: string | null) => {
   const allowed = APP_ORIGINS.includes("*") || (origin !== null && APP_ORIGINS.includes(origin));
   return {
     "Access-Control-Allow-Origin": allowed ? (APP_ORIGINS.includes("*") ? "*" : origin!) : "null",
-    "Access-Control-Allow-Headers": "authorization, x-session-token, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-session-token, x-client-info, apikey, content-type, x-redeem-telegram-token",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin",
   };
@@ -1267,7 +1267,88 @@ async function syncShillongSourceIfDue(force = false) {
   })();
   return await shillongCheckPromise;
 }
-Deno.serve(async (req) => {
+
+async function sendRedeemCodePush(code: Record<string, unknown>) {
+  const restKey = Deno.env.get("ONESIGNAL_REST_API_KEY")?.trim();
+  if (!restKey) {
+    await supabase.from("redeem_codes").update({ push_error: "OneSignal is not configured" }).eq("id", code.id);
+    return { sent: false, reason: "OneSignal is not configured" };
+  }
+  const response = await fetch("https://api.onesignal.com/notifications", {
+    method: "POST",
+    headers: { "Authorization": "Key " + restKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      app_id: ONESIGNAL_APP_ID,
+      included_segments: ["Active Subscriptions"],
+      headings: { en: "🎁 New Redeem Code — Teer Online" },
+      contents: { en: "A common redeem code is live! Claim your random ₹2–₹20 reward. Limited users only. Open the app → menu → Redeem Code." },
+      name: "Teer Online redeem code " + String(code.code || ""),
+      android_channel_id: "478b866d-a74d-4808-91d2-6e926e3f456b",
+      priority: 10,
+      data: { type: "redeem_code", code: String(code.code || "") },
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload.errors) {
+    const reason = String(payload.errors?.[0] || payload.errors || ("OneSignal HTTP " + response.status)).slice(0, 500);
+    await supabase.from("redeem_codes").update({ push_error: reason }).eq("id", code.id);
+    return { sent: false, reason };
+  }
+  await supabase.from("redeem_codes").update({ push_sent_at: new Date().toISOString(), push_error: null }).eq("id", code.id);
+  return { sent: true, recipients: Number(payload.recipients || 0) };
+}
+
+async function validateRedeemTelegramBot(token: string) {
+  if (!token || token.length < 30 || token.length > 200) return null;
+  const meResponse = await fetch("https://api.telegram.org/bot" + token + "/getMe");
+  const me = await meResponse.json().catch(() => ({}));
+  if (!meResponse.ok || !me.ok || !me.result?.id) return null;
+  const memberResponse = await fetch("https://api.telegram.org/bot" + token + "/getChatMember?chat_id=%40teerofficiall&user_id=" + me.result.id);
+  const member = await memberResponse.json().catch(() => ({}));
+  if (!memberResponse.ok || !member.ok) return null;
+  const status = member.result?.status;
+  if (status !== "creator" && !(status === "administrator" && member.result?.can_post_messages !== false)) return null;
+  return { id: me.result.id };
+}
+
+async function flushRedeemTelegramPosts(token: string) {
+  const { data: pending, error } = await supabase.from("redeem_codes")
+    .select("id,code,max_redemptions").is("telegram_posted_at", null)
+    .eq("active", true).order("created_at", { ascending: true }).limit(10);
+  if (error) throw error;
+  let sent = 0;
+  for (const item of pending || []) {
+    const message = [
+      "🎁✨ <b>TEER ONLINE — REDEEM REWARD</b> ✨🎁",
+      "",
+      "🔥 <b>COMMON REDEEM CODE</b>",
+      "<code>" + String(item.code) + "</code>",
+      "",
+      "💰 Reward: <b>₹2 to ₹20</b> — random for each user",
+      "👥 Limit: <b>First " + Number(item.max_redemptions) + " users only</b>",
+      "🎯 One claim per account • First come, first served",
+      "",
+      "⚡ Open Teer Online → 3-dot menu → Redeem Code",
+      "🌐 https://fresh-lang.github.io/teer-online-/",
+      "",
+      "⏳ Hurry! Code is limited and may expire.",
+      "🚀 <b>TEER ONLINE OFFICIAL</b>",
+    ].join("\\n");
+    const response = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: "@teerofficiall", text: message, parse_mode: "HTML", disable_web_page_preview: true }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok && payload.ok) {
+      await supabase.from("redeem_codes").update({ telegram_posted_at: new Date().toISOString(), telegram_error: null }).eq("id", item.id);
+      sent++;
+    } else {
+      await supabase.from("redeem_codes").update({ telegram_error: String(payload.description || ("Telegram HTTP " + response.status)).slice(0, 500) }).eq("id", item.id);
+    }
+  }
+  return { sent, checked: (pending || []).length };
+}
+\nDeno.serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405, origin);
@@ -1300,7 +1381,22 @@ Deno.serve(async (req) => {
       return json({ success: true, marketOffNotifications, sync, khanaparaMorningSync, khanaparaNightSync, shillongMorningSync, shillongNightSync, shillongSync, expiredBetRefunds, notifications, refundPushNotifications }, 200, origin);
     }
 
-    if (action === "register") {
+
+    if (action === "redeem_scheduler") {
+      const botToken = String(req.headers.get("x-redeem-telegram-token") || "").trim();
+      if (!(await validateRedeemTelegramBot(botToken))) return json({ error: "Redeem scheduler authentication failed" }, 403, origin);
+      const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+      const indiaDate = [parts.find(p => p.type === "year")?.value, parts.find(p => p.type === "month")?.value, parts.find(p => p.type === "day")?.value].join("-");
+      const { data: settings } = await supabase.from("redeem_code_settings").select("daily_enabled").eq("id", true).maybeSingle();
+      let generated = null;
+      if (settings?.daily_enabled) {
+        generated = await rpc("api_generate_daily_redeem_code", {});
+        if (generated?.id && !generated.push_sent_at) await sendRedeemCodePush(generated);
+      }
+      const telegram = await flushRedeemTelegramPosts(botToken);
+      return json({ success: true, india_date: indiaDate, generated: generated?.code || null, telegram }, 200, origin);
+    }
+\n    if (action === "register") {
       const name = String(body.name ?? "").trim().slice(0, 80);
       const phone = cleanPhone(body.phone);
       const password = body.password;
@@ -1520,7 +1616,16 @@ Deno.serve(async (req) => {
       return json({ success: true, referral_code: user.uid ?? "", total_referrals: friends.length, total_earned: totalEarned, friends }, 200, origin);
     }
 
-    if (action === "my_notifications" || action === "mark_notifications_read" || action === "clear_my_notifications") {
+
+    if (action === "redeem_code_claim") {
+      const user = await getSession(req);
+      if (!user || !user.id) return json({ error: "Please login to redeem a code" }, 401, origin);
+      const code = String(body.code ?? "").trim().toUpperCase();
+      if (!/^[A-Z0-9-]{6,32}$/.test(code)) return json({ error: "Enter a valid redeem code" }, 400, origin);
+      const result = await rpc("api_claim_redeem_code", { p_user_id: user.id, p_code: code });
+      return json({ success: true, result }, 200, origin);
+    }
+\n    if (action === "my_notifications" || action === "mark_notifications_read" || action === "clear_my_notifications") {
       const user = await getSession(req);
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
       if (action === "my_notifications") {
@@ -1693,7 +1798,33 @@ Deno.serve(async (req) => {
     }
 
 
-    if (action === "admin_send_push") {
+
+    if (action === "admin_redeem_codes" || action === "admin_create_redeem_code" || action === "admin_save_redeem_settings") {
+      const admin = await getSession(req);
+      if (!admin || !admin.id) return json({ error: "Please login again" }, 401, origin);
+      if (!(await requireAdmin(admin))) return json({ error: "Admin access denied" }, 403, origin);
+      if (action === "admin_redeem_codes") {
+        const [codes, settings] = await Promise.all([
+          supabase.from("redeem_codes").select("id,code,max_redemptions,redeemed_count,active,source,india_date,created_at,expires_at,telegram_posted_at,telegram_error,push_sent_at,push_error").order("created_at", { ascending: false }).limit(30),
+          supabase.from("redeem_code_settings").select("daily_enabled,daily_limit").eq("id", true).maybeSingle(),
+        ]);
+        if (codes.error) throw codes.error;
+        if (settings.error) throw settings.error;
+        return json({ success: true, codes: codes.data || [], settings: settings.data || { daily_enabled: true, daily_limit: 100 } }, 200, origin);
+      }
+      if (action === "admin_save_redeem_settings") {
+        const limit = Number(body.daily_limit);
+        if (![100, 500].includes(limit)) return json({ error: "Choose a user limit of 100 or 500" }, 400, origin);
+        const settings = await rpc("api_set_redeem_code_settings", { p_daily_enabled: body.daily_enabled !== false, p_daily_limit: limit, p_admin_id: admin.id });
+        return json({ success: true, settings }, 200, origin);
+      }
+      const limit = Number(body.max_redemptions);
+      if (![100, 500].includes(limit)) return json({ error: "Choose a user limit of 100 or 500" }, 400, origin);
+      const code = await rpc("api_create_redeem_code", { p_limit: limit, p_source: "manual", p_india_date: null, p_admin_id: admin.id });
+      const push = await sendRedeemCodePush(code);
+      return json({ success: true, code, push }, 200, origin);
+    }
+\n    if (action === "admin_send_push") {
       const admin = await getSession(req);
       if (!admin || !admin.id) return json({ error: "Please login again" }, 401, origin);
       if (!(await requireAdmin(admin))) return json({ error: "Admin access denied" }, 403, origin);
