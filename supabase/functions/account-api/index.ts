@@ -1162,20 +1162,20 @@ async function fetchShillongNightSourcePreview(): Promise<{
   // The displayed date must belong to this exact heading/card. Clock labels
   // are intentionally ignored because source-site round times can change.
   const header = section.slice(heading.length, Math.min(section.length, heading.length + 100));
-  const dateMatch = header.match(/^\\s*[-–:]?\\s*(\\d{2})[-/.](\\d{2})[-/.](\\d{4})/);
+  const dateMatch = header.match(/^\s*[-–:]?\s*(\d{2})[-/.](\d{2})[-/.](\d{4})/);
   const date = dateMatch ? dateMatch[1] + "/" + dateMatch[2] + "/" + dateMatch[3] : "";
   if (!date) {
     return { ready: false, status: "date_missing", market, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
   }
 
-  const roundPattern = /\\bFR\\b(?:\\s*[-·•:]\\s*|\\s+)(?:\\([^)]*\\)\\s*)?(?:\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\s*)?(\\d{2})\\b[\\s\\S]{0,120}?\\bSR\\b(?:\\s*[-·•:]\\s*|\\s+)(?:\\([^)]*\\)\\s*)?(?:\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\s*)?(\\d{2})\\b/i;
+  const roundPattern = /\bFR\b(?:\s*[-·•:]\s*|\s+)(?:\([^)]*\)\s*)?(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})\b[\s\S]{0,120}?\bSR\b(?:\s*[-·•:]\s*|\s+)(?:\([^)]*\)\s*)?(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})\b/i;
   const pair = section.match(roundPattern);
   if (!pair) {
     return { ready: false, status: "awaiting_complete_same_date_pair", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
   }
   const pairStart = pair.index ?? 0;
   const pairText = section.slice(pairStart, pairStart + pair[0].length);
-  if (/\\blast\\b|previous|yesterday/i.test(pairText)) {
+  if (/\blast\b|previous|yesterday/i.test(pairText)) {
     return { ready: false, status: "previous_result_rejected", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
   }
 
