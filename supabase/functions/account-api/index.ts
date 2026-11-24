@@ -590,17 +590,12 @@ function parseGroundsMarketCard(
   // Shillong Evening's displayed round times can change. Match the FR/SR
   // labels without pinning the parser to clock text; keep fixed-time matching
   // for the other markets that still use their configured source labels.
-  const rounds = dynamicTimes
-    ? new RegExp(
-      "F\\/R(?:\\s*\\([^)]*\\))?[\\s\\S]{0,100}?S\\/R(?:\\s*\\([^)]*\\))?[\\s\\S]{0,60}?" +
-        token + "(?:\\s*\\|\\s*|\\s+)" + token,
-      "i",
-    )
-    : new RegExp(
-      "F\\/R\\s*\\(" + escapePattern(frTime) + "\\)[\\s\\S]{0,100}?S\\/R\\s*\\(" +
-        escapePattern(srTime) + "\\)[\\s\\S]{0,60}?" + token + "(?:\\s*\\|\\s*|\\s+)" + token,
-      "i",
-    );
+  // Ignore source clock labels: bind FR and SR by the exact named card and its displayed date.
+  const rounds = new RegExp(
+    "F\\/R(?:\\s*\\([^)]*\\))?[\\s\\S]{0,120}?S\\/R(?:\\s*\\([^)]*\\))?[\\s\\S]{0,80}?" +
+      token + "(?:\\s*\\|\\s*|\\s+)" + token,
+    "i",
+  );
   const card = dateMatch && section.match(rounds)
     ? [section, dateMatch[1], ...section.match(rounds)!.slice(1)] as RegExpMatchArray
     : null;
@@ -622,8 +617,8 @@ function parseGroundsMarketCard(
   }
   const fr = /^\d{2}$/.test(frValue) ? frValue : undefined;
   const sr = /^\d{2}$/.test(srValue) ? srValue : undefined;
-  if (!fr && !sr) {
-    return { ready: false as const, status: "awaiting", market, page_date: date, source_updated_at: null, source_url: sourceUrl };
+  if (!fr || !sr) {
+    return { ready: false as const, status: "awaiting_complete_same_date_pair", market, page_date: date, source_updated_at: null, source_url: sourceUrl };
   }
   return { ready: true as const, status: "verified" as const, market, date, ...(fr ? { fr } : {}), ...(sr ? { sr } : {}), source_updated_at: null, source_url: sourceUrl };
 }
