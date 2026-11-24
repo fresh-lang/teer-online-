@@ -2078,6 +2078,26 @@ Deno.serve(async (req) => {
         return json({ success: true, since, total: items.length, items }, 200, origin);
       }
 
+      if (action === "admin_user_activity") {
+        const targetUserId = String(body.user_id ?? "");
+        if (!/^[0-9a-f-]{36}$/i.test(targetUserId)) return json({ error: "Valid user is required" }, 400, origin);
+        const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+        const get = (t: string) => parts.find(p => p.type === t)?.value ?? "";
+        const today = get("year") + "-" + get("month") + "-" + get("day");
+        const start = new Date(today + "T00:00:00+05:30").toISOString();
+        const end = new Date(new Date(start).getTime() + 86400000).toISOString();
+        const { data, error } = await supabase.from("bets")
+          .select("id,market,round,bet_number,amount,status,payout,created_at,settled_at")
+          .eq("user_id", targetUserId).gte("created_at", start).lt("created_at", end)
+          .order("created_at", { ascending: false }).limit(1000);
+        if (error) throw error;
+        const rows = data ?? [];
+        const totalAmount = rows.reduce((s: number, x: any) => s + Number(x.amount || 0), 0);
+        const winAmount = rows.filter((x: any) => x.status === "won").reduce((s: number, x: any) => s + Number(x.payout || 0), 0);
+        const lossAmount = rows.filter((x: any) => x.status === "lost").reduce((s: number, x: any) => s + Number(x.amount || 0), 0);
+        return json({ success: true, date: today, total_bets: rows.length, total_bet_amount: totalAmount, total_win: winAmount, total_loss: lossAmount, items: rows.slice(0, 100) }, 200, origin);
+      }
+
       if (action === "admin_dashboard") {
         const [usersQ, walletsQ, depositsQ, withdrawalsQ, betsQ, resultsQ, settingsQ] = await Promise.all([
           supabase.from("app_users").select("id,uid,name,phone,referred_by,created_at,vip_level").order("created_at", { ascending: false }).limit(500),
