@@ -1751,8 +1751,26 @@
     /* Removed stale in-memory account persistence handler loadStorage. */
 
     async function saveNotifications() {
-      try { await writeUiStore('teer_notifications', state.notifications); }
+      try { await writeUiStore('teer_notifications', state.notifications.filter(n => !n.serverSaved)); }
       catch (e) { console.warn('Notification history could not be saved:', e); }
+    }
+
+    async function syncServerNotifications() {
+      if (!state.user || accountIsDemo || !accountSessionToken) return;
+      try {
+        const response = await accountApi('my_notifications', { limit: 100 });
+        state.notifications = state.notifications.filter(n => !n.serverSaved);
+        (response.items || []).slice().reverse().forEach(row => {
+          state.notifications.unshift({
+            id: row.id, event_key: row.event_key, type: row.type || 'refund',
+            title: row.title, message: row.message,
+            time: new Date(row.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }),
+            unread: !row.read_at, serverSaved: true
+          });
+        });
+        state.notifications = state.notifications.slice(0, 100);
+        syncNotifications();
+      } catch (e) { console.warn('Server notification history could not be loaded:', e.message); }
     }
 
     function syncNotifications() {
@@ -1781,6 +1799,7 @@
 
     async function syncUserRequestNotifications(silent = false) {
       if (!state.user || accountIsDemo || !accountSessionToken) return;
+      await syncServerNotifications();
       try {
         const [deposits, withdrawals] = await Promise.all([
           accountApi('my_deposit_requests', { limit: 30 }),
@@ -2762,7 +2781,8 @@
       }, 4000);
     }
 
-    function openNotificationModal() {
+    async function openNotificationModal() {
+      await syncServerNotifications();
       const cont = document.getElementById('notifListContainer');
       cont.innerHTML = '';
       if (state.notifications.length === 0) {
@@ -2794,6 +2814,9 @@
 
       state.notifications.forEach(n => n.unread = false);
       void saveNotifications();
+      if (state.user && !accountIsDemo && accountSessionToken) {
+        void accountApi('mark_notifications_read').catch(e => console.warn('Notification read status could not be saved:', e.message));
+      }
       syncNotifications();
       document.getElementById('notificationModal').classList.remove('hidden');
     }
@@ -2802,11 +2825,15 @@
       document.getElementById('notificationModal').classList.add('hidden');
     }
 
-    function clearAllNotifications() {
+    async function clearAllNotifications() {
+      if (state.user && !accountIsDemo && accountSessionToken) {
+        try { await accountApi('clear_my_notifications'); }
+        catch (e) { console.warn('Server notifications could not be cleared:', e.message); }
+      }
       state.notifications = [];
       void saveNotifications();
       syncNotifications();
-      openNotificationModal();
+      await openNotificationModal();
     }
 
     /* Removed disabled legacy confirmPlaceBet handler. */
