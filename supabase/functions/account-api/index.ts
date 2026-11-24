@@ -1776,9 +1776,11 @@ Deno.serve(async (req) => {
       const user = await getSession(req);
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
       if (!(await requireAdmin(user))) return json({ error: "Admin access denied" }, 403, origin);
-      const indiaDate = new Intl.DateTimeFormat("en-CA", {
+      const indiaDateParts = new Intl.DateTimeFormat("en-GB", {
         timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit",
-      }).format(new Date());
+      }).formatToParts(new Date());
+      const datePart = (type: string) => indiaDateParts.find((part) => part.type === type)?.value ?? "";
+      const indiaDate = datePart("year") + "-" + datePart("month") + "-" + datePart("day");
       const dayStart = new Date(indiaDate + "T00:00:00+05:30").toISOString();
       const nextDate = new Date(new Date(dayStart).getTime() + 86400000).toISOString();
       const totals = new Map<string, { market: string; round: string; number: string; amount: number; bets: number }>();
@@ -1795,7 +1797,7 @@ Deno.serve(async (req) => {
         for (const bet of rows) {
           const market = String(bet.market ?? "Unknown Market");
           const round = String(bet.round ?? "").toUpperCase();
-          const number = String(bet.bet_number ?? "").trim().padStart(2, "0");
+          const number = String(bet.bet_number ?? "").trim();
           const key = market + "\u0000" + round + "\u0000" + number;
           const current = totals.get(key) ?? { market, round, number, amount: 0, bets: 0 };
           current.amount += Number(bet.amount ?? 0);
