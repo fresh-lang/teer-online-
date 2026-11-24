@@ -1388,9 +1388,9 @@ async function flushRedeemTelegramPosts(token: string) {
       const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
       const indiaDate = [parts.find(p => p.type === "year")?.value, parts.find(p => p.type === "month")?.value, parts.find(p => p.type === "day")?.value].join("-");
       const { data: settings } = await supabase.from("redeem_code_settings").select("daily_enabled").eq("id", true).maybeSingle();
-      let generated = null;
+      let generated: Record<string, unknown> | null = null;
       if (settings?.daily_enabled) {
-        generated = await rpc("api_generate_daily_redeem_code", {});
+        generated = await rpc<Record<string, unknown> | null>("api_generate_daily_redeem_code", {});
         if (generated?.id && !generated.push_sent_at) await sendRedeemCodePush(generated);
       }
       const telegram = await flushRedeemTelegramPosts(botToken);
