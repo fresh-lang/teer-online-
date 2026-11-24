@@ -3060,6 +3060,12 @@
       window.open(whatsappUrl, '_blank');
     }
 
+    function openSupportWebsiteFromApp() {
+      // Route to the authenticated private inbox; legacy ticket-link APIs are not deployed.
+      switchTab('support');
+      openAgentChat('general');
+    }
+
     async function handleSendChat(e) {
       e.preventDefault();
       const input = document.getElementById('chatInput');
