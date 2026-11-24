@@ -197,10 +197,11 @@
             <h3 class="font-bold text-sm text-white flex items-center gap-2">
               <i class="fa-solid fa-users text-amber-400"></i> All Registered Users
             </h3>
-            <p class="text-[11px] text-slate-400">Open any user profile to view and manage their wallet balance.</p>
+            <p class="text-[11px] text-slate-400">Open any user profile to view and manage their wallet balance.</p><button onclick="loadActiveUsersPanel()" class="mt-2 px-3 py-1.5 rounded-lg bg-teal-700 text-white text-[11px] font-bold"><i class="fa-solid fa-user-clock mr-1"></i> Active Users (2 Days) <span id="activeUsersCount" class="ml-1 bg-amber-400 text-teal-950 px-1.5 rounded-full">0</span></button>
           </div>
           <input type="text" id="userSearchInput" oninput="filterUsersList()" placeholder="Search Name or Mobile..." class="bg-black/50 border border-teal-800 text-xs px-3 py-1.5 rounded-xl text-white outline-none">
         </div>
+        <div id="activeUsersPanel" class="hidden rounded-xl border border-teal-800 bg-black/30 p-3 space-y-2"><div class="flex items-center justify-between"><strong class="text-xs text-amber-300">Active in last 48 hours</strong><button onclick="document.getElementById('activeUsersPanel').classList.add('hidden')" class="text-slate-400 text-xs">Close</button></div><div id="activeUsersList" class="space-y-2 text-xs text-slate-300">Loading...</div></div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs text-slate-300">
             <thead class="bg-teal-950/60 text-slate-400 uppercase text-[10px]">
@@ -724,6 +725,24 @@
           </tr>
         `;
       }).join('');
+    }
+
+    async function loadActiveUsersPanel() {
+      const panel = document.getElementById('activeUsersPanel');
+      const list = document.getElementById('activeUsersList');
+      panel.classList.remove('hidden');
+      list.textContent = 'Loading active users...';
+      try {
+        const data = await adminApi('admin_active_users');
+        const items = data.items || [];
+        document.getElementById('activeUsersCount').textContent = String(items.length);
+        if (!items.length) { list.textContent = 'No users active in the last 2 days.'; return; }
+        list.innerHTML = items.map(u => {
+          const phone = String(u.phone || '');
+          const when = u.last_activity_at ? new Date(u.last_activity_at).toLocaleString() : '--';
+          return '<div class="flex items-center justify-between gap-2 border-b border-teal-900/40 pb-2"><div><div class="font-bold text-white">' + escapeHtml(u.name || 'User') + ' (' + escapeHtml(String(u.uid || '')) + ')</div><div class="text-slate-400">+91 ' + escapeHtml(phone) + ' · ' + escapeHtml(when) + '</div></div><button onclick="openUserModal(' + JSON.stringify(phone) + ')" class="px-2 py-1 rounded bg-amber-400/20 text-amber-300 font-bold">Activity / Edit</button></div>';
+        }).join('');
+      } catch (e) { list.textContent = 'Could not load active users: ' + (e.message || e); }
     }
 
     function filterUsersList() {
