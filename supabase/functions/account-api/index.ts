@@ -2139,38 +2139,38 @@ Deno.serve(async (req) => {
       } else if (/dream/.test(q)) {
         const online = await searchSupportWeb("Shillong Teer dream number chart " + message + " traditional dream number direct house ending");
         reply = online
-          ? (online.answer || "Online dream-number references found:") + "\\n" + online.results.map((x: any) => x.title + "\\n" + x.content + "\\n" + x.url).join("\\n\\n") + "\\nDream charts vary by source and are traditional references, not reliable predictions."
+          ? (online.answer || "Online dream-number references found:") + "\n" + online.results.map((x: any) => x.title + "\n" + x.content + "\n" + x.url).join("\n\n") + "\nDream charts vary by source and are traditional references, not reliable predictions."
           : "I can explain traditional dream-number charts, but live web search is not configured yet. Admin must add the TAVILY_API_KEY secret. Tell me what you saw (snake, river, water, animal, etc.). Dream charts are not guaranteed predictions.";
-      } else if (/1\\s*guti|guti|direct analysis|frequency|repeat/.test(q)) {
+      } else if (/1\s*guti|guti|direct analysis|frequency|repeat/.test(q)) {
         const online = await searchSupportWeb("Shillong Teer 1 Guti direct hit analysis latest common number FR SR pattern " + message);
         if (online) {
-          reply = (online.answer || "Online 1 Guti analysis references:") + "\\n" + online.results.map((x: any) => x.title + "\\n" + x.content + "\\n" + x.url).join("\\n\\n") + "\\nOnline tips are unverified and do not guarantee a result.";
+          reply = (online.answer || "Online 1 Guti analysis references:") + "\n" + online.results.map((x: any) => x.title + "\n" + x.content + "\n" + x.url).join("\n\n") + "\nOnline tips are unverified and do not guarantee a result.";
         } else {
           const { data, error } = await supabase.from("teer_result_history").select("market,result_date,fr,sr").order("result_date", { ascending: false }).limit(100);
           if (error) throw error;
-          const rows = (data ?? []).filter((x: any) => /^\\d{1,2}$/.test(String(x.fr)) || /^\\d{1,2}$/.test(String(x.sr)));
+          const rows = (data ?? []).filter((x: any) => /^\d{1,2}$/.test(String(x.fr)) || /^\d{1,2}$/.test(String(x.sr)));
           const counts: Record<string, number> = {};
-          for (const row of rows) for (const value of [row.fr, row.sr]) if (/^\\d{1,2}$/.test(String(value))) counts[String(value).padStart(2, "0")] = (counts[String(value).padStart(2, "0")] ?? 0) + 1;
+          for (const row of rows) for (const value of [row.fr, row.sr]) if (/^\d{1,2}$/.test(String(value))) counts[String(value).padStart(2, "0")] = (counts[String(value).padStart(2, "0")] ?? 0) + 1;
           const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
           reply = top.length
-            ? "1 Guti historical analysis (last " + rows.length + " saved result rows):\\n" + top.map(([n, c]) => n + " appeared " + c + " times").join("\\n") + "\\nThis is only past frequency, not a winning prediction. Past results cannot guarantee future results."
+            ? "1 Guti historical analysis (last " + rows.length + " saved result rows):\n" + top.map(([n, c]) => n + " appeared " + c + " times").join("\n") + "\nThis is only past frequency, not a winning prediction. Past results cannot guarantee future results."
             : "Historical FR/SR data is not available for analysis yet. Live online search requires TAVILY_API_KEY.";
         }
-      } else if (/hit\\s*number|previous result|last result|chart/.test(q)) {
+      } else if (/hit\s*number|previous result|last result|chart/.test(q)) {
         const online = await searchSupportWeb("Shillong Teer hit number today FR SR latest hit numbers " + message);
         if (online) {
-          reply = (online.answer || "Online Hit Number references:") + "\\n" + online.results.map((x: any) => x.title + "\\n" + x.content + "\\n" + x.url).join("\\n\\n") + "\\nThese are third-party suggestions, not official results or guaranteed predictions.";
+          reply = (online.answer || "Online Hit Number references:") + "\n" + online.results.map((x: any) => x.title + "\n" + x.content + "\n" + x.url).join("\n\n") + "\nThese are third-party suggestions, not official results or guaranteed predictions.";
         } else {
           const { data, error } = await supabase.from("teer_result_history").select("market,result_date,fr,sr").order("result_date", { ascending: false }).limit(12);
           if (error) throw error;
           reply = data?.length
-            ? "Latest saved FR/SR results:\\n" + data.map((x: any) => String(x.market) + " — " + new Date(x.result_date + "T00:00:00").toLocaleDateString("en-IN") + " | FR " + x.fr + " / SR " + x.sr).join("\\n")
+            ? "Latest saved FR/SR results:\n" + data.map((x: any) => String(x.market) + " — " + new Date(x.result_date + "T00:00:00").toLocaleDateString("en-IN") + " | FR " + x.fr + " / SR " + x.sr).join("\n")
             : "No saved result history is available yet. Please check Previous Results in the app. Live online search requires TAVILY_API_KEY.";
         }
       } else {
         const online = await searchSupportWeb(message + " Teer Online support");
         reply = online
-          ? (online.answer || "I found these online sources:") + "\\n" + online.results.map((x: any) => x.title + "\\n" + x.content + "\\n" + x.url).join("\\n\\n")
+          ? (online.answer || "I found these online sources:") + "\n" + online.results.map((x: any) => x.title + "\n" + x.content + "\n" + x.url).join("\n\n")
           : "I can answer Teer Online account questions and basic support. For other questions, live online search needs the TAVILY_API_KEY secret to be configured by admin. Type “connect me to an agent” for human help.";
       }
       return json({ success: true, reply }, 200, origin);
