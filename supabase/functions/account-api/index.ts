@@ -224,10 +224,7 @@ async function queueMarketOffPushNotifications() {
     return true;
   };
 
-  for (const market of sundayOffMarkets) {
-    await enqueueOff(market, "Official Sunday holiday.");
-    confirmedOff++;
-  }
+  // Sunday closures also pass through the same five-check verification below.
 
   // Accept a non-Sunday OFF only when the exact market page explicitly says
   // OFF/holiday for today's date. Awaiting, stale dates and fetch errors are not OFF.
@@ -282,7 +279,7 @@ async function queueMarketOffPushNotifications() {
       const section = headingIndex >= 0 ? plain.slice(headingIndex, sectionEnd) : "";
       const normalizedSection = section.replace(/\s+/g, " ").toLowerCase();
       const hasMarketHeading = headingIndex >= 0;
-      const hasSessionTimes = !source.verifyTimes || (normalizedSection.includes(source.frTime.toLowerCase()) &&
+      const hasSessionTimes = true; // OFF verification depends on exact market/date, not clock times.
         normalizedSection.includes(source.srTime.toLowerCase()));
       const monthLong = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", month: "long" }).format(now);
       const monthShort = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", month: "short" }).format(now);
@@ -326,47 +323,50 @@ async function queueMarketOffPushNotifications() {
         ];
         return patterns.some(pattern => pattern.test(normalizedCurrentCard));
       };
-      // Two successful observations, at least 8 minutes apart and no more than
-      // 45 minutes apart, are required before any source-derived OFF is accepted.
-      // Source failures never create or advance a confirmation.
-      const confirmOffSignal = async (signalKey: string, signal: boolean) => {
-        const marker = "off-confirm:" + source.market + ":" + dateIso + ":" + signalKey;
+      // Five successful observations for this exact market/date/round.
+      // Checks are at least 10 minutes apart; any negative check resets the counter.
+      // The date is part of the primary key, so yesterday can never carry forward.
+      const confirmOffSignal = async (round: "FULL" | "FR" | "SR", signal: boolean) => {
+        const { data: prior, error: priorError } = await supabase.from("market_off_verifications")
+          .select("checks,last_checked_at,confirmed")
+          .eq("market", source.market).eq("check_date", dateIso).eq("round", round).maybeSingle();
+        if (priorError) throw priorError;
         if (!signal) {
-          const { error } = await supabase.from("result_source_sync").delete().eq("market", marker);
+          const { error } = await supabase.from("market_off_verifications").upsert({
+            market: source.market, check_date: dateIso, round, checks: 0,
+            last_checked_at: new Date().toISOString(), confirmed: false, updated_at: new Date().toISOString(),
+          }, { onConflict: "market,check_date,round" });
           if (error) throw error;
           return false;
         }
-        const { data: prior, error: priorError } = await supabase.from("result_source_sync")
-          .select("last_checked_at").eq("market", marker).maybeSingle();
-        if (priorError) throw priorError;
         const priorAt = prior?.last_checked_at ? new Date(prior.last_checked_at).getTime() : 0;
-        const age = Date.now() - priorAt;
-        if (priorAt && age >= 8 * 60 * 1000 && age <= 45 * 60 * 1000) {
-          const { error } = await supabase.from("result_source_sync").delete().eq("market", marker);
-          if (error) throw error;
-          return true;
-        }
-        const { error } = await supabase.from("result_source_sync").upsert(
-          { market: marker, last_checked_at: new Date().toISOString() }, { onConflict: "market" },
-        );
+        if (priorAt && Date.now() - priorAt < 10 * 60 * 1000) return Boolean(prior?.confirmed);
+        const checks = Math.min(5, Number(prior?.checks ?? 0) + 1);
+        const confirmed = checks >= 5;
+        const { error } = await supabase.from("market_off_verifications").upsert({
+          market: source.market, check_date: dateIso, round, checks,
+          last_checked_at: new Date().toISOString(), confirmed, updated_at: new Date().toISOString(),
+        }, { onConflict: "market,check_date,round" });
         if (error) throw error;
-        return false;
+        return confirmed;
       };
-      const explicitOff = await confirmOffSignal("FULL", explicitOffSignal);
-      const frSignal = !frHasResult && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOffSignal("FR");
-      const srSignal = !srHasResult && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOffSignal("SR");
+      const sundayScheduledOff = sunday && sundayOffMarkets.includes(source.market);
+      const explicitOff = await confirmOffSignal("FULL",
+        hasMarketHeading && hasCurrentDate && !hasAnySameDayResult && (explicitOffSignal || sundayScheduledOff));
+      const frSignal = !frHasResult && hasMarketHeading && hasCurrentDate && roundOffSignal("FR");
+      const srSignal = !srHasResult && hasMarketHeading && hasCurrentDate && roundOffSignal("SR");
       const frOff = await confirmOffSignal("FR", frSignal);
       const srOff = await confirmOffSignal("SR", srSignal);
-      if (frOff) await enqueueRoundOff(source.market, "FR", "Confirmed on two dated source checks.");
-      if (srOff) await enqueueRoundOff(source.market, "SR", "Confirmed on two dated source checks.");
+      if (frOff) await enqueueRoundOff(source.market, "FR", "Confirmed by five exact market/date checks.");
+      if (srOff) await enqueueRoundOff(source.market, "SR", "Confirmed by five exact market/date checks.");
       // A round with a published result or no current OFF evidence must never
       // retain an older OFF event, even if the other round is still pending.
-      if ((hasMarketHeading && hasSessionTimes && hasCurrentDate) && !frSignal) {
+      if ((hasMarketHeading && hasCurrentDate) && !frSignal) {
         const { error } = await supabase.from("broadcast_notifications")
           .delete().eq("event_key", "market_round_off:" + source.market + ":" + dateIso + ":FR");
         if (error) throw error;
       }
-      if ((hasMarketHeading && hasSessionTimes && hasCurrentDate) && !srSignal) {
+      if ((hasMarketHeading && hasCurrentDate) && !srSignal) {
         const { error } = await supabase.from("broadcast_notifications")
           .delete().eq("event_key", "market_round_off:" + source.market + ":" + dateIso + ":SR");
         if (error) throw error;
@@ -376,7 +376,7 @@ async function queueMarketOffPushNotifications() {
       // statement for today's dated market section. Two loosely matched round
       // labels are not enough to close the whole market.
       const isShillongEvening = source.market === "Shillong Teer (Evening)";
-      const verifiedTodaySection = hasMarketHeading && hasSessionTimes && hasCurrentDate;
+      const verifiedTodaySection = hasMarketHeading && hasCurrentDate;
       const confirmedFullMarketOff = explicitOff || (!isShillongEvening && frOff && srOff);
       if (verifiedTodaySection && confirmedFullMarketOff) {
         await enqueueOff(source.market, "Source-confirmed full-market holiday.");
