@@ -1984,10 +1984,10 @@
       if (ampm === 'AM' && h === 12) h = 0;
 
       const nowParts = new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
       }).formatToParts(new Date());
       const getPart = type => Number(nowParts.find(part => part.type === type)?.value || 0);
-      const nowMinutes = getPart('hour') * 60 + getPart('minute');
+      const nowMinutes = getPart('hour') * 60 + getPart('minute') + getPart('second') / 60;
       let drawMinutes = h * 60 + m;
 
       return drawMinutes - nowMinutes;
@@ -2026,7 +2026,8 @@
         return true;
       }
       if (isSundayInIndia() && isSundayOffMarket(marketName)) return false;
-      return (getMinutesRemaining(timeStr, marketName) > 0);
+      // Close regular-market betting exactly 10 minutes before the scheduled draw.
+      return (getMinutesRemaining(timeStr, marketName) > 10);
     }
 
     function renderMarkets() {
