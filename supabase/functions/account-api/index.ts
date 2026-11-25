@@ -312,8 +312,7 @@ async function queueMarketOffPushNotifications() {
       const frHasResult = /^\d{1,2}$/.test(String(sameDayResult?.fr ?? ""));
       const srHasResult = /^\d{1,2}$/.test(String(sameDayResult?.sr ?? ""));
       const hasAnySameDayResult = frHasResult || srHasResult;
-      // Only inspect the current dated card. Archive/history text is never evidence.
-      const currentCardSection = section.split(/previous\s+results|last\s+7\s+days|last\s+30\s+days|previous\s+30\s+days/i)[0];
+      // OFF wording is evaluated only inside the date-validated current card.
       const normalizedCurrentCard = currentCardSection.replace(/\s+/g, " ").toLowerCase();
       const explicitOffSignal = !hasAnySameDayResult &&
         /\b(?:market\s+(?:is\s+)?closed\s+today|no\s+game\s+today|no\s+teer\s+today|holiday\s+today|today\s+(?:is\s+)?(?:off|a\s+holiday))\b/i.test(normalizedCurrentCard);
