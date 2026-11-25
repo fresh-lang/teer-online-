@@ -311,8 +311,8 @@ async function queueMarketOffPushNotifications() {
         const { data: sameDayResult, error: sameDayResultError } = await supabase.from("teer_results")
           .select("fr,sr").eq("market", source.market).eq("result_date", date).maybeSingle();
         if (sameDayResultError) throw sameDayResultError;
-        suppressKhanaparaNightOff = /^\\d{1,2}$/.test(String(sameDayResult?.fr ?? "")) ||
-          /^\\d{1,2}$/.test(String(sameDayResult?.sr ?? ""));
+        suppressKhanaparaNightOff = /^\d{1,2}$/.test(String(sameDayResult?.fr ?? "")) ||
+          /^\d{1,2}$/.test(String(sameDayResult?.sr ?? ""));
       }
       const explicitOff = !suppressKhanaparaNightOff && /\\b(?:off\\s+today|today\\s+(?:is\\s+)?(?:off|a\\s+holiday)|holiday\\s+today|no\\s+game\\s+today|market\\s+(?:is\\s+)?closed\\s+today|game\\s+is\\s+off\\s+today|no\\s+teer\\s+today)\\b/i.test(section);
       const roundOff = (round: "FR" | "SR") => {
