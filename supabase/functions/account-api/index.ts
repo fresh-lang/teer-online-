@@ -292,8 +292,16 @@ async function queueMarketOffPushNotifications() {
       const datePattern = [dateIso, dateDash, date, dateDot, dateLong, dateShort];
       const lowerSection = section.toLowerCase();
       const hasCurrentDate = datePattern.some((value) => {
-        const escaped = value.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\      const hasCurrentDate = datePattern.some(value => lowerSection.includes(value.toLowerCase()));");
-        return new RegExp("(^|[^0-9])" + escaped + "($|[^0-9])", "i").test(lowerSection);
+        const needle = value.toLowerCase();
+        let index = lowerSection.indexOf(needle);
+        while (index >= 0) {
+          const before = index > 0 ? lowerSection[index - 1] : "";
+          const afterIndex = index + needle.length;
+          const after = afterIndex < lowerSection.length ? lowerSection[afterIndex] : "";
+          if ((!before || !/[0-9]/.test(before)) && (!after || !/[0-9]/.test(after))) return true;
+          index = lowerSection.indexOf(needle, index + 1);
+        }
+        return false;
       });
       // A published FR number proves this market operated today. Never let
       // loosely-scoped OFF text elsewhere on the page close today's market
