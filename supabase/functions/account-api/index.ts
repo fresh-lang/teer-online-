@@ -568,7 +568,7 @@ function parseGroundsMarketCard(
   dynamicTimes = false,
 ) {
   const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const token = "(\\d{2}|off|soon|pending|awaiting|--|xx)";
+  const token = "(\\d{2}|\\*\\*|off|soon|pending|awaiting|--|xx)";
   const lowerPlain = plain.toLowerCase();
   const headingIndex = lowerPlain.indexOf(heading.toLowerCase());
   if (headingIndex < 0) {
@@ -1074,9 +1074,32 @@ async function fetchShillongMorningSourcePreview(): Promise<{
   ready: boolean; status: string; market: string; date?: string;
   fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
 }> {
-  return await fetchGroundsMarketPreview(
+  const preview = await fetchGroundsMarketPreview(
     SHILLONG_MORNING_MARKET, "Shillong Morning Result", "10:30 AM", "11:30 AM",
   );
+  if (!preview.ready && preview.status === "awaiting_complete_same_date_pair" && preview.page_date) {
+    // The named card and today's date are verified; accept a published FR while SR is still pending.
+    // The apply layer preserves the same-date SR until its numeric result is published.
+    const sourceResponse = await fetch(SHILLONG_MORNING_SOURCE_URL, {
+      method: "GET",
+      headers: {
+        "User-Agent": "TeerOnlineResultSync/1.0 (+Shillong Morning result verification)",
+        "Accept": "text/html,application/xhtml+xml",
+        "Cache-Control": "no-cache",
+      },
+    });
+    if (!sourceResponse.ok) throw new Error("Shillong Morning source returned HTTP " + sourceResponse.status);
+    const plain = htmlToPlainText(await sourceResponse.text());
+    const headingIndex = plain.toLowerCase().indexOf("shillong morning result");
+    const section = headingIndex >= 0 ? plain.slice(headingIndex, headingIndex + 1800) : "";
+    const rounds = section.match(/F\\/R(?:\\s*\\([^)]*\\))?[\\s\\S]{0,120}?S\\/R(?:\\s*\\([^)]*\\))?[\\s\\S]{0,80}?(\\d{2}|\\*\\*|off|soon|pending|awaiting|--|xx)(?:\\s*\\|\\s*|\\s+)(\\d{2}|\\*\\*|off|soon|pending|awaiting|--|xx)/i);
+    if (rounds) {
+      const fr = /^\\d{2}$/.test(rounds[1]) ? rounds[1] : undefined;
+      const sr = /^\\d{2}$/.test(rounds[2]) ? rounds[2] : undefined;
+      if (fr || sr) return { ready: true, status: "verified", market: SHILLONG_MORNING_MARKET, date: preview.page_date, ...(fr ? { fr } : {}), ...(sr ? { sr } : {}), source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
+    }
+  }
+  return preview;
 }
 
 async function syncShillongMorningIfDue(force = false) {
