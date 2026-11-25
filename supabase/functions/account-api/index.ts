@@ -286,7 +286,18 @@ async function queueMarketOffPushNotifications() {
       const datePattern = [dateIso, dateDash, date, dateDot, dateLong, dateShort];
       const lowerSection = section.toLowerCase();
       const hasCurrentDate = datePattern.some(value => lowerSection.includes(value.toLowerCase()));
-      const explicitOff = /\b(?:off\s+today|today\s+(?:is\s+)?(?:off|a\s+holiday)|holiday\s+today|no\s+game\s+today|market\s+(?:is\s+)?closed\s+today|game\s+is\s+off\s+today|no\s+teer\s+today)\b/i.test(section);
+      // A published FR number proves this market operated today. Never let
+      // loosely-scoped OFF text elsewhere on the page close today's market
+      // or either round after a verified result has already been published.
+      let suppressKhanaparaNightOff = false;
+      if (source.market === "Khanapara Night Teer") {
+        const { data: sameDayResult, error: sameDayResultError } = await supabase.from("teer_results")
+          .select("fr,sr").eq("market", source.market).eq("result_date", date).maybeSingle();
+        if (sameDayResultError) throw sameDayResultError;
+        suppressKhanaparaNightOff = /^\\d{1,2}$/.test(String(sameDayResult?.fr ?? "")) ||
+          /^\\d{1,2}$/.test(String(sameDayResult?.sr ?? ""));
+      }
+      const explicitOff = !suppressKhanaparaNightOff && /\\b(?:off\\s+today|today\\s+(?:is\\s+)?(?:off|a\\s+holiday)|holiday\\s+today|no\\s+game\\s+today|market\\s+(?:is\\s+)?closed\\s+today|game\\s+is\\s+off\\s+today|no\\s+teer\\s+today)\\b/i.test(section);
       const roundOff = (round: "FR" | "SR") => {
         const labels = round === "FR" ? "(?:FR|F\\s*\\/\\s*R|First\\s+Round)" : "(?:SR|S\\s*\\/\\s*R|Second\\s+Round)";
         const patterns = [
@@ -295,8 +306,8 @@ async function queueMarketOffPushNotifications() {
         ];
         return patterns.some(pattern => pattern.test(normalizedSection));
       };
-      const frOff = hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("FR");
-      const srOff = hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("SR");
+      const frOff = !suppressKhanaparaNightOff && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("FR");
+      const srOff = !suppressKhanaparaNightOff && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("SR");
       if (frOff) await enqueueRoundOff(source.market, "FR", "Source-confirmed round closure.");
       if (srOff) await enqueueRoundOff(source.market, "SR", "Source-confirmed round closure.");
 
