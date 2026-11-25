@@ -1092,10 +1092,10 @@ async function fetchShillongMorningSourcePreview(): Promise<{
     const plain = htmlToPlainText(await sourceResponse.text());
     const headingIndex = plain.toLowerCase().indexOf("shillong morning result");
     const section = headingIndex >= 0 ? plain.slice(headingIndex, headingIndex + 1800) : "";
-    const rounds = section.match(/F\\/R(?:\\s*\\([^)]*\\))?[\\s\\S]{0,120}?S\\/R(?:\\s*\\([^)]*\\))?[\\s\\S]{0,80}?(\\d{2}|\\*\\*|off|soon|pending|awaiting|--|xx)(?:\\s*\\|\\s*|\\s+)(\\d{2}|\\*\\*|off|soon|pending|awaiting|--|xx)/i);
+    const rounds = section.match(/F\/R(?:\s*\([^)]*\))?[\s\S]{0,120}?S\/R(?:\s*\([^)]*\))?[\s\S]{0,80}?(\d{2}|\*\*|off|soon|pending|awaiting|--|xx)(?:\s*\|\s*|\s+)(\d{2}|\*\*|off|soon|pending|awaiting|--|xx)/i);
     if (rounds) {
-      const fr = /^\\d{2}$/.test(rounds[1]) ? rounds[1] : undefined;
-      const sr = /^\\d{2}$/.test(rounds[2]) ? rounds[2] : undefined;
+      const fr = /^\d{2}$/.test(rounds[1]) ? rounds[1] : undefined;
+      const sr = /^\d{2}$/.test(rounds[2]) ? rounds[2] : undefined;
       if (fr || sr) return { ready: true, status: "verified", market: SHILLONG_MORNING_MARKET, date: preview.page_date, ...(fr ? { fr } : {}), ...(sr ? { sr } : {}), source_updated_at: null, source_url: SHILLONG_MORNING_SOURCE_URL };
     }
   }
