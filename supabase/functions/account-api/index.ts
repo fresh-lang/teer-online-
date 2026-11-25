@@ -1792,6 +1792,16 @@ Deno.serve(async (req) => {
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
       if (action === "my_notifications") {
         const limit = Math.min(100, Math.max(1, Number.isInteger(Number(body.limit)) ? Number(body.limit) : 50));
+        const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+        const getPart = (t: string) => parts.find(p => p.type === t)?.value ?? "";
+        const indiaDate = getPart("year") + "-" + getPart("month") + "-" + getPart("day");
+        const dailyKey = "daily_info:" + indiaDate;
+        const { error: dailyError } = await supabase.from("user_notifications").upsert({
+          user_id: user.id, event_key: dailyKey, type: "daily",
+          title: "Daily Account Update",
+          message: "Welcome back to Teer Online. Check your account activity, wallet transactions and verified app updates here. This is an informational notification.",
+        }, { onConflict: "user_id,event_key", ignoreDuplicates: true });
+        if (dailyError) throw dailyError;
         const { data, error } = await supabase.from("user_notifications").select("id,event_key,type,title,message,created_at,read_at")
           .eq("user_id", user.id).order("created_at", { ascending: false }).limit(limit);
         if (error) throw error;
@@ -2041,21 +2051,52 @@ Deno.serve(async (req) => {
       if (!title || !message) return json({ error: "Notification title and message are required" }, 400, origin);
       const restKey = Deno.env.get("ONESIGNAL_REST_API_KEY")?.trim();
       if (!restKey) return json({ error: "OneSignal is not configured on the server" }, 503, origin);
+      const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      const [loginQ, betQ] = await Promise.all([
+        supabase.from("app_users").select("id,last_login_at").gte("last_login_at", since).order("last_login_at", { ascending: false }).limit(500),
+        supabase.from("bets").select("user_id,created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(5000),
+      ]);
+      if (loginQ.error) throw loginQ.error;
+      if (betQ.error) throw betQ.error;
+      const activeAt = new Map<string, number>();
+      for (const row of loginQ.data ?? []) if (row.last_login_at) activeAt.set(row.id, new Date(row.last_login_at).getTime());
+      for (const row of betQ.data ?? []) {
+        const ts = new Date(row.created_at).getTime();
+        if (!activeAt.has(row.user_id) || ts > (activeAt.get(row.user_id) ?? 0)) activeAt.set(row.user_id, ts);
+      }
+      const activeIds = Array.from(activeAt.keys());
       const eventKey = "admin_broadcast:" + crypto.randomUUID();
       const { data: logRow, error: logError } = await supabase.from("broadcast_notifications").insert({
-        title, message, status: "sending", recipients: 0, event_key: eventKey, created_by: admin.id,
+        title, message, status: "sending", recipients: activeIds.length, event_key: eventKey, created_by: admin.id,
       }).select("id").single();
       if (logError) throw logError;
+      if (activeIds.length) {
+        const rows = activeIds.map(userId => ({
+          user_id: userId, event_key: eventKey, type: "admin", title, message,
+        }));
+        const { error: saveError } = await supabase.from("user_notifications").upsert(rows, {
+          onConflict: "user_id,event_key", ignoreDuplicates: true,
+        });
+        if (saveError) {
+          await supabase.from("broadcast_notifications").update({ status: "failed", error_message: saveError.message }).eq("id", logRow.id);
+          throw saveError;
+        }
+      }
       try {
+        if (!activeIds.length) {
+          await supabase.from("broadcast_notifications").update({ status: "sent", recipients: 0, sent_at: new Date().toISOString() }).eq("id", logRow.id);
+          return json({ success: true, recipients: 0, in_app_saved: 0, delivery: "no_active_users" }, 200, origin);
+        }
         const response = await fetch("https://api.onesignal.com/notifications", {
           method: "POST",
           headers: { "Authorization": "Key " + restKey, "Content-Type": "application/json" },
           body: JSON.stringify({
             app_id: ONESIGNAL_APP_ID,
-            included_segments: ["Active Subscriptions"],
+            include_aliases: { external_id: activeIds },
+            target_channel: "push",
             headings: { en: title },
             contents: { en: message },
-            name: "Teer Online admin broadcast " + eventKey,
+            name: "Teer Online active-user broadcast " + eventKey,
             android_channel_id: "478b866d-a74d-4808-91d2-6e926e3f456b",
             priority: 10,
             data: { type: "admin_broadcast", event_key: eventKey },
@@ -2066,11 +2107,11 @@ Deno.serve(async (req) => {
         if (!response.ok || hasErrors) {
           const reason = String(payload.errors?.[0] || payload.errors || ("OneSignal HTTP " + response.status)).slice(0, 500);
           await supabase.from("broadcast_notifications").update({ status: "failed", error_message: reason }).eq("id", logRow.id);
-          return json({ error: "OneSignal rejected the notification", details: reason }, 502, origin);
+          return json({ error: "Notification saved in app, but push delivery failed", details: reason, in_app_saved: activeIds.length }, 502, origin);
         }
         const recipients = Number(payload.recipients || 0);
         await supabase.from("broadcast_notifications").update({ status: "sent", notification_id: payload.id ?? null, recipients, sent_at: new Date().toISOString(), error_message: null }).eq("id", logRow.id);
-        return json({ success: true, recipients, notification_id: payload.id ?? null, delivery: "accepted_by_onesignal" }, 200, origin);
+        return json({ success: true, recipients, in_app_saved: activeIds.length, delivery: "accepted_by_onesignal" }, 200, origin);
       } catch (sendError) {
         const reason = String(sendError instanceof Error ? sendError.message : sendError).slice(0, 500);
         await supabase.from("broadcast_notifications").update({ status: "failed", error_message: reason }).eq("id", logRow.id);
