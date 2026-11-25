@@ -303,18 +303,17 @@ async function queueMarketOffPushNotifications() {
         }
         return false;
       });
-      // A published FR number proves this market operated today. Never let
-      // loosely-scoped OFF text elsewhere on the page close today's market
-      // or either round after a verified result has already been published.
-      let suppressKhanaparaNightOff = false;
-      if (source.market === "Khanapara Night Teer") {
-        const { data: sameDayResult, error: sameDayResultError } = await supabase.from("teer_results")
-          .select("fr,sr").eq("market", source.market).eq("result_date", date).maybeSingle();
-        if (sameDayResultError) throw sameDayResultError;
-        suppressKhanaparaNightOff = /^\d{1,2}$/.test(String(sameDayResult?.fr ?? "")) ||
-          /^\d{1,2}$/.test(String(sameDayResult?.sr ?? ""));
-      }
-      const explicitOff = !suppressKhanaparaNightOff && /\\b(?:off\\s+today|today\\s+(?:is\\s+)?(?:off|a\\s+holiday)|holiday\\s+today|no\\s+game\\s+today|market\\s+(?:is\\s+)?closed\\s+today|game\\s+is\\s+off\\s+today|no\\s+teer\\s+today)\\b/i.test(section);
+      // Protect every market from false OFF notices after a same-day result.
+      // FR and SR are checked independently: a published FR must not block a
+      // genuine SR OFF notice, and vice versa. Any published round proves the
+      // full market was not closed for the day.
+      const { data: sameDayResult, error: sameDayResultError } = await supabase.from("teer_results")
+        .select("fr,sr").eq("market", source.market).eq("result_date", date).maybeSingle();
+      if (sameDayResultError) throw sameDayResultError;
+      const frHasResult = /^\d{1,2}$/.test(String(sameDayResult?.fr ?? ""));
+      const srHasResult = /^\d{1,2}$/.test(String(sameDayResult?.sr ?? ""));
+      const hasAnySameDayResult = frHasResult || srHasResult;
+      const explicitOff = !hasAnySameDayResult && /\\b(?:off\\s+today|today\\s+(?:is\\s+)?(?:off|a\\s+holiday)|holiday\\s+today|no\\s+game\\s+today|market\\s+(?:is\\s+)?closed\\s+today|game\\s+is\\s+off\\s+today|no\\s+teer\\s+today)\\b/i.test(section);
       const roundOff = (round: "FR" | "SR") => {
         const labels = round === "FR" ? "(?:FR|F\\s*\\/\\s*R|First\\s+Round)" : "(?:SR|S\\s*\\/\\s*R|Second\\s+Round)";
         const patterns = [
@@ -323,8 +322,8 @@ async function queueMarketOffPushNotifications() {
         ];
         return patterns.some(pattern => pattern.test(normalizedSection));
       };
-      const frOff = !suppressKhanaparaNightOff && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("FR");
-      const srOff = !suppressKhanaparaNightOff && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("SR");
+      const frOff = !frHasResult && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("FR");
+      const srOff = !srHasResult && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("SR");
       if (frOff) await enqueueRoundOff(source.market, "FR", "Source-confirmed round closure.");
       if (srOff) await enqueueRoundOff(source.market, "SR", "Source-confirmed round closure.");
 
