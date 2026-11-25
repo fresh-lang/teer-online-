@@ -4130,8 +4130,20 @@
 
     async function refreshBalance() {
       if (accountIsDemo) { alert('Demo balance: ₹' + state.balance.toFixed(2)); return; }
-      try { await refreshAccountBalance(); alert('Balance updated: ₹' + state.balance.toFixed(2)); }
-      catch (err) { alert(err.message); }
+      try {
+        await refreshAccountBalance();
+        if (accountSessionToken) {
+          const bets = await accountApi('my_bets', { limit: 100 });
+          state.bids = (bets.items || []).map(b => ({
+            refId:b.client_ref || b.id, market:b.market, round:b.round, roundId:b.round_id,
+            mode:b.bet_mode, number:b.bet_number, amount:Number(b.amount),
+            status:(String(b.status).toLowerCase()==='active'?'Active':String(b.status).toUpperCase()),
+            payout:Number(b.payout || 0), date:b.created_at, time:''
+          }));
+          updateUI();
+        }
+        alert('Balance aur My Bids dono update ho gaye.');
+      } catch (err) { alert(err.message); }
     }
 
     async function submitDepositForm() {
