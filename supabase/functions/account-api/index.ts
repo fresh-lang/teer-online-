@@ -311,9 +311,10 @@ async function queueMarketOffPushNotifications() {
         confirmedOff++;
       }
 
-      // A fresh, dated Shillong Evening section with no OFF markers invalidates
-      // stale OFF flags previously stored for this same market and date.
-      if (isShillongEvening && verifiedTodaySection && !explicitOff && !frOff && !srOff) {
+      // A fresh, dated market section with no OFF markers invalidates stale
+      // OFF flags for that exact market/date. Do not leave old OFF notices
+      // overriding a currently open market or round in the app.
+      if (verifiedTodaySection && !explicitOff && !frOff && !srOff) {
         const staleKeys = [
           "market_off:" + source.market + ":" + dateIso,
           "market_round_off:" + source.market + ":" + dateIso + ":FR",
