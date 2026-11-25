@@ -756,11 +756,45 @@
         const items = Array.isArray(data.items) ? data.items : [];
         document.getElementById('activeUsersCount').textContent = String(Number.isFinite(Number(data.total)) ? Number(data.total) : items.length);
         if (!items.length) { list.textContent = 'No users active in the last 2 days.'; return; }
-        list.innerHTML = items.map(u => {
+        list.innerHTML = '';
+        items.forEach(u => {
           const phone = String(u.phone || '');
           const when = u.last_activity_at ? new Date(u.last_activity_at).toLocaleString() : '--';
-          return '<div class="flex items-center justify-between gap-2 border-b border-teal-900/40 pb-2"><div><div class="font-bold text-white">' + escapeHtml(u.name || 'User') + ' (' + escapeHtml(String(u.uid || '')) + ')</div><div class="text-slate-400">+91 ' + escapeHtml(phone) + ' · ' + escapeHtml(when) + '</div></div><button type="button" onclick="openActiveUserModal(' + JSON.stringify(String(u.id || '')) + ', ' + JSON.stringify(phone) + ')" class="px-2 py-1 rounded bg-amber-400/20 text-amber-300 font-bold">Activity / Edit</button></div>';
-        }).join('');
+          const row = document.createElement('div');
+          row.className = 'flex items-center justify-between gap-2 border-b border-teal-900/40 pb-2';
+          const info = document.createElement('div');
+          const name = document.createElement('div');
+          name.className = 'font-bold text-white';
+          name.textContent = (u.name || 'User') + ' (' + (u.uid || '') + ')';
+          const detail = document.createElement('div');
+          detail.className = 'text-slate-400';
+          detail.textContent = '+91 ' + phone + ' · ' + when;
+          info.append(name, detail);
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'px-2 py-1 rounded bg-amber-400/20 text-amber-300 font-bold';
+          button.textContent = 'Activity / Edit';
+          button.addEventListener('click', async () => {
+            button.disabled = true;
+            button.textContent = 'Opening...';
+            try {
+              let cached = Object.values(allUsersCache || {}).find(x => String(x.id || '') === String(u.id || ''));
+              if (!cached) {
+                await initAdminDataSync();
+                cached = Object.values(allUsersCache || {}).find(x => String(x.id || '') === String(u.id || ''));
+              }
+              if (!cached) throw new Error('User profile not found. Refresh Admin Panel and try again.');
+              openUserModal(cached.phone);
+            } catch (error) {
+              alert(error.message || 'Could not open user profile');
+            } finally {
+              button.disabled = false;
+              button.textContent = 'Activity / Edit';
+            }
+          });
+          row.append(info, button);
+          list.appendChild(row);
+        });
       } catch (e) { list.textContent = 'Could not load active users: ' + (e.message || e); }
     }
 
