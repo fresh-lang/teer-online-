@@ -280,7 +280,6 @@ async function queueMarketOffPushNotifications() {
       const normalizedSection = section.replace(/\s+/g, " ").toLowerCase();
       const hasMarketHeading = headingIndex >= 0;
       const hasSessionTimes = true; // OFF verification depends on exact market/date, not clock times.
-        normalizedSection.includes(source.srTime.toLowerCase()));
       const monthLong = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", month: "long" }).format(now);
       const monthShort = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", month: "short" }).format(now);
       const dateLong = part("day") + " " + monthLong + " " + part("year");
