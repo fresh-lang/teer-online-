@@ -264,15 +264,21 @@ async function queueMarketOffPushNotifications() {
       const headingIndex = plain.toLowerCase().indexOf(source.heading.toLowerCase());
       // Search a wider section after the exact market heading; source sites often
       // place date, FR and SR labels in separate cards within the same market block.
+      // Bound each check to this market's own card. Include every configured
+      // market heading so OFF text from the next market cannot leak backward.
       const nextCardHeadings = [
-        "Khanapara Teer Result", "Juwai Teer Result", "Shillong Morning Result",
-        "Welcome Morning Result", "Shillong Night", "Night Teer Result",
-        "Khanapara Morning Teer Result", "Khanapara Night Result",
+        ...sourceChecks.map((item) => item.heading),
+        "Khanapara Teer Result", "Juwai Teer Result", "Welcome Morning Result",
+        "Shillong Night", "Night Teer Result", "Khanapara Night Result",
       ];
-      const nextCardStarts = nextCardHeadings
-        .map((heading) => plain.toLowerCase().indexOf(heading.toLowerCase(), headingIndex + source.heading.length))
-        .filter((index) => index >= 0);
-      const sectionEnd = nextCardStarts.length ? Math.min(...nextCardStarts) : headingIndex + 1400;
+      const nextCardStarts = headingIndex >= 0
+        ? [...new Set(nextCardHeadings)]
+          .map((heading) => plain.toLowerCase().indexOf(heading.toLowerCase(), headingIndex + source.heading.length))
+          .filter((index) => index > headingIndex)
+        : [];
+      const sectionEnd = nextCardStarts.length
+        ? Math.min(...nextCardStarts)
+        : (headingIndex >= 0 ? Math.min(plain.length, headingIndex + 900) : 0);
       const section = headingIndex >= 0 ? plain.slice(headingIndex, sectionEnd) : "";
       const normalizedSection = section.replace(/\s+/g, " ").toLowerCase();
       const hasMarketHeading = headingIndex >= 0;
@@ -285,7 +291,10 @@ async function queueMarketOffPushNotifications() {
       const dateDot = part("day") + "." + part("month") + "." + part("year");
       const datePattern = [dateIso, dateDash, date, dateDot, dateLong, dateShort];
       const lowerSection = section.toLowerCase();
-      const hasCurrentDate = datePattern.some(value => lowerSection.includes(value.toLowerCase()));
+      const hasCurrentDate = datePattern.some((value) => {
+        const escaped = value.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\      const hasCurrentDate = datePattern.some(value => lowerSection.includes(value.toLowerCase()));");
+        return new RegExp("(^|[^0-9])" + escaped + "($|[^0-9])", "i").test(lowerSection);
+      });
       // A published FR number proves this market operated today. Never let
       // loosely-scoped OFF text elsewhere on the page close today's market
       // or either round after a verified result has already been published.
