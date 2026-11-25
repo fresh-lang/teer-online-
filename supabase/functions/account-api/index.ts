@@ -535,28 +535,36 @@ async function applyVerifiedRoundResults(preview: {
     if (currentIso > dateDmyToIso(preview.date)) return { applied: false, reason: "older_source_date" };
   }
   const sameDate = current?.result_date === preview.date;
-  const nextFr = preview.fr ?? (sameDate ? current?.fr : "**") ?? "**";
-  const nextSr = preview.sr ?? (sameDate ? current?.sr : "**") ?? "**";
   const frChanged = /^[0-9]{2}$/.test(String(preview.fr ?? "")) && (!sameDate || current?.fr !== preview.fr);
   const srChanged = /^[0-9]{2}$/.test(String(preview.sr ?? "")) && (!sameDate || current?.sr !== preview.sr);
   if (!frChanged && !srChanged) return { applied: false, reason: "already_current" };
-  const { error: saveError } = await supabase.from("teer_results").upsert({
-    market: preview.market, fr: nextFr, sr: nextSr, result_date: preview.date,
-    updated_at: new Date().toISOString(), updated_by: null,
-    source_updated_at: preview.source_updated_at ?? (sameDate ? current?.source_updated_at ?? null : null),
-  }, { onConflict: "market" });
-  if (saveError) throw saveError;
+
+  // Route every source result through the same atomic database publisher used
+  // for result corrections. It reverses prior winning credits, reopens affected
+  // bets, and settles them again against the corrected number for every market.
+  const resultDateIso = dateDmyToIso(preview.date);
+  if (!resultDateIso) throw new Error("Invalid verified result date");
+  const published = await rpc<Record<string, unknown>>("api_admin_publish_teer_result", {
+    p_market: preview.market,
+    p_result_date: resultDateIso,
+    p_fr: preview.fr ?? null,
+    p_sr: preview.sr ?? null,
+    p_source: "source",
+    p_actor: null,
+  });
+  const finalFr = String(published.fr ?? (sameDate ? current?.fr : "**") ?? "**");
+  const finalSr = String(published.sr ?? (sameDate ? current?.sr : "**") ?? "**");
   let history: unknown = { saved: false, reason: "waiting_for_both_rounds" };
-  if (/^[0-9]{2}$/.test(String(nextFr)) && /^[0-9]{2}$/.test(String(nextSr))) {
-    history = await saveVerifiedResultHistory(preview.market, preview.date, nextFr, nextSr, "source", preview.source_updated_at);
+  if (/^[0-9]{2}$/.test(finalFr) && /^[0-9]{2}$/.test(finalSr)) {
+    history = await saveVerifiedResultHistory(preview.market, preview.date, finalFr, finalSr, "source", preview.source_updated_at);
   }
-  const settlements: unknown[] = [];
-  if (frChanged && preview.fr) settlements.push(...await settleBetsForResultDate(preview.market, "FR", String(preview.fr), preview.date));
-  if (srChanged && preview.sr) settlements.push(...await settleBetsForResultDate(preview.market, "SR", String(preview.sr), preview.date));
   const notifications: unknown[] = [];
   if (frChanged) notifications.push(await queueResultRoundPushNotification(preview.market, preview.date, "FR", String(preview.fr)));
   if (srChanged) notifications.push(await queueResultRoundPushNotification(preview.market, preview.date, "SR", String(preview.sr)));
-  return { applied: true, fr_changed: frChanged, sr_changed: srChanged, settled_count: settlements.length, history, notifications };
+  return {
+    applied: true, fr_changed: frChanged, sr_changed: srChanged,
+    settled_count: Number(published.settled_count ?? 0), correction: published, history, notifications,
+  };
 }
 
 type KhanaparaSourcePreview =
