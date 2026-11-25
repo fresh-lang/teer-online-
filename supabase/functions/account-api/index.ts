@@ -361,12 +361,12 @@ async function queueMarketOffPushNotifications() {
       if (srOff) await enqueueRoundOff(source.market, "SR", "Confirmed on two dated source checks.");
       // A round with a published result or no current OFF evidence must never
       // retain an older OFF event, even if the other round is still pending.
-      if (verifiedTodaySection && !frSignal) {
+      if ((hasMarketHeading && hasSessionTimes && hasCurrentDate) && !frSignal) {
         const { error } = await supabase.from("broadcast_notifications")
           .delete().eq("event_key", "market_round_off:" + source.market + ":" + dateIso + ":FR");
         if (error) throw error;
       }
-      if (verifiedTodaySection && !srSignal) {
+      if ((hasMarketHeading && hasSessionTimes && hasCurrentDate) && !srSignal) {
         const { error } = await supabase.from("broadcast_notifications")
           .delete().eq("event_key", "market_round_off:" + source.market + ":" + dateIso + ":SR");
         if (error) throw error;
