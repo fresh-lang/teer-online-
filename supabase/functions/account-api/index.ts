@@ -313,23 +313,52 @@ async function queueMarketOffPushNotifications() {
       const frHasResult = /^\d{1,2}$/.test(String(sameDayResult?.fr ?? ""));
       const srHasResult = /^\d{1,2}$/.test(String(sameDayResult?.sr ?? ""));
       const hasAnySameDayResult = frHasResult || srHasResult;
-      const explicitOff = !hasAnySameDayResult && /\\b(?:off\\s+today|today\\s+(?:is\\s+)?(?:off|a\\s+holiday)|holiday\\s+today|no\\s+game\\s+today|market\\s+(?:is\\s+)?closed\\s+today|game\\s+is\\s+off\\s+today|no\\s+teer\\s+today)\\b/i.test(section);
-      // Ignore archive/history rows: only the current result card can confirm OFF.
-      // Historical rows may contain OFF near the current SR/FR labels after HTML flattening.
+      // Only inspect the current dated card. Archive/history text is never evidence.
       const currentCardSection = section.split(/previous\\s+results|last\\s+7\\s+days|last\\s+30\\s+days|previous\\s+30\\s+days/i)[0];
       const normalizedCurrentCard = currentCardSection.replace(/\\s+/g, " ").toLowerCase();
-      const roundOff = (round: "FR" | "SR") => {
-        const labels = round === "FR" ? "(?:FR|F\\s*\\/\\s*R|First\\s+Round)" : "(?:SR|S\\s*\\/\\s*R|Second\\s+Round)";
+      const explicitOffSignal = !hasAnySameDayResult &&
+        /\\b(?:market\\s+(?:is\\s+)?closed\\s+today|no\\s+game\\s+today|no\\s+teer\\s+today|holiday\\s+today|today\\s+(?:is\\s+)?(?:off|a\\s+holiday))\\b/i.test(normalizedCurrentCard);
+      const roundOffSignal = (round: "FR" | "SR") => {
+        const labels = round === "FR" ? "(?:FR|F\\\\s*\\\\/\\\\s*R|First\\\\s+Round)" : "(?:SR|S\\\\s*\\\\/\\\\s*R|Second\\\\s+Round)";
         const patterns = [
-          new RegExp("\\b" + labels + "\\b[^.!?]{0,35}\\bOFF\\b", "i"),
-          new RegExp("\\bOFF\\b[^.!?]{0,35}\\b" + labels + "\\b", "i"),
+          new RegExp("\\\\b" + labels + "\\\\b[^.!?]{0,35}\\\\bOFF\\\\b", "i"),
+          new RegExp("\\\\bOFF\\\\b[^.!?]{0,35}\\\\b" + labels + "\\\\b", "i"),
         ];
         return patterns.some(pattern => pattern.test(normalizedCurrentCard));
       };
-      const frOff = !frHasResult && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("FR");
-      const srOff = !srHasResult && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOff("SR");
-      if (frOff) await enqueueRoundOff(source.market, "FR", "Source-confirmed round closure.");
-      if (srOff) await enqueueRoundOff(source.market, "SR", "Source-confirmed round closure.");
+      // Two successful observations, at least 8 minutes apart and no more than
+      // 45 minutes apart, are required before any source-derived OFF is accepted.
+      // Source failures never create or advance a confirmation.
+      const confirmOffSignal = async (signalKey: string, signal: boolean) => {
+        const marker = "off-confirm:" + source.market + ":" + dateIso + ":" + signalKey;
+        if (!signal) {
+          const { error } = await supabase.from("result_source_sync").delete().eq("market", marker);
+          if (error) throw error;
+          return false;
+        }
+        const { data: prior, error: priorError } = await supabase.from("result_source_sync")
+          .select("last_checked_at").eq("market", marker).maybeSingle();
+        if (priorError) throw priorError;
+        const priorAt = prior?.last_checked_at ? new Date(prior.last_checked_at).getTime() : 0;
+        const age = Date.now() - priorAt;
+        if (priorAt && age >= 8 * 60 * 1000 && age <= 45 * 60 * 1000) {
+          const { error } = await supabase.from("result_source_sync").delete().eq("market", marker);
+          if (error) throw error;
+          return true;
+        }
+        const { error } = await supabase.from("result_source_sync").upsert(
+          { market: marker, last_checked_at: new Date().toISOString() }, { onConflict: "market" },
+        );
+        if (error) throw error;
+        return false;
+      };
+      const explicitOff = await confirmOffSignal("FULL", explicitOffSignal);
+      const frSignal = !frHasResult && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOffSignal("FR");
+      const srSignal = !srHasResult && hasMarketHeading && hasSessionTimes && hasCurrentDate && roundOffSignal("SR");
+      const frOff = await confirmOffSignal("FR", frSignal);
+      const srOff = await confirmOffSignal("SR", srSignal);
+      if (frOff) await enqueueRoundOff(source.market, "FR", "Confirmed on two dated source checks.");
+      if (srOff) await enqueueRoundOff(source.market, "SR", "Confirmed on two dated source checks.");
 
       // Shillong Evening must be marked fully OFF only by an explicit OFF/holiday
       // statement for today's dated market section. Two loosely matched round
@@ -345,7 +374,7 @@ async function queueMarketOffPushNotifications() {
       // A fresh, dated market section with no OFF markers invalidates stale
       // OFF flags for that exact market/date. Do not leave old OFF notices
       // overriding a currently open market or round in the app.
-      if (verifiedTodaySection && !explicitOff && !frOff && !srOff) {
+      if (verifiedTodaySection && !explicitOffSignal && !frSignal && !srSignal) {
         const staleKeys = [
           "market_off:" + source.market + ":" + dateIso,
           "market_round_off:" + source.market + ":" + dateIso + ":FR",
