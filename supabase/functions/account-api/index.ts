@@ -967,11 +967,19 @@ async function fetchKhanaparaSecondaryPreview(
   const dateMatch = section.match(/Khanapara (?:Morning|Night) Result Today\s+(\d{2}-\d{2}-\d{4})/i);
   const date = dateMatch ? parseGroundDate(dateMatch[1]) : "";
   const isMorning = session === "morning";
-  // Accept changed clock labels; identify values by their FR/SR labels only.
-  const frMatch = section.match(/FR\s*[·•]?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
-  const srMatch = section.match(/SR\s*[·•]?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
-  const fr = frMatch?.[1] ?? "";
-  const sr = srMatch?.[1] ?? "";
+  // Read the result token after the optional round clock. The negative
+  // lookahead prevents a clock such as "SR 11:30 AM" from being misread
+  // as result "11" when the SR result has not been published yet.
+  const roundToken = "(\\d{2}|\\*\\*|off|soon|pending|awaiting|--|xx)";
+  const readRound = (label: "FR" | "SR") => {
+    const match = section.match(new RegExp(
+      label + "\\s*[·•]?\\s*(?:\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\s*)?(?!\\d{1,2}:\\d{2}\\s*(?:AM|PM))" + roundToken,
+      "i",
+    ));
+    return match?.[1] ?? "";
+  };
+  const fr = readRound("FR");
+  const sr = readRound("SR");
 
   const today = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
