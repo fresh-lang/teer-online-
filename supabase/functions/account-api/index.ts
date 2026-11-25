@@ -2135,6 +2135,8 @@ Deno.serve(async (req) => {
       }
 
       if (action === "admin_user_activity") {
+        const admin = await getSession(req);
+        if (!admin?.id || !(await requireAdmin(admin))) return json({ error: "Admin access denied" }, 403, origin);
         const targetUserId = String(body.user_id ?? "");
         if (!/^[0-9a-f-]{36}$/i.test(targetUserId)) return json({ error: "Valid user is required" }, 400, origin);
         const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
