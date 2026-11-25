@@ -617,8 +617,8 @@ function parseGroundsMarketCard(
   }
   const fr = /^\d{2}$/.test(frValue) ? frValue : undefined;
   const sr = /^\d{2}$/.test(srValue) ? srValue : undefined;
-  if (!fr || !sr) {
-    return { ready: false as const, status: "awaiting_complete_same_date_pair", market, page_date: date, source_updated_at: null, source_url: sourceUrl };
+  if (!fr && !sr) {
+    return { ready: false as const, status: "awaiting_both_rounds", market, page_date: date, source_updated_at: null, source_url: sourceUrl };
   }
   return { ready: true as const, status: "verified" as const, market, date, ...(fr ? { fr } : {}), ...(sr ? { sr } : {}), source_updated_at: null, source_url: sourceUrl };
 }
@@ -642,7 +642,7 @@ async function fetchGroundsMarketPreview(
 
 async function fetchKhanaparaSourcePreview(): Promise<KhanaparaSourcePreview> {
   return await fetchGroundsMarketPreview(
-    KHANAPARA_MARKET, "Khanapara Teer Result", "04:10 PM", "04:45 PM",
+    KHANAPARA_MARKET, "Khanapara Teer Result", "", "",
   ) as KhanaparaSourcePreview;
 }
 
@@ -818,7 +818,7 @@ async function fetchKhanaparaNightPreferredPreview(): Promise<{
   if (date !== today) {
     return { ready: false, status: date ? "date_not_current" : "date_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: KHANAPARA_NIGHT_PREFERRED_URL };
   }
-  if (!/^\d{2}$/.test(fr) || !/^\d{2}$/.test(sr)) {
+  if (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr)) {
     return { ready: false, status: "awaiting", market, date, source_updated_at: null, source_url: KHANAPARA_NIGHT_PREFERRED_URL };
   }
   return {
@@ -965,10 +965,9 @@ async function fetchKhanaparaSecondaryPreview(
   const dateMatch = section.match(/Khanapara (?:Morning|Night) Result Today\s+(\d{2}-\d{2}-\d{4})/i);
   const date = dateMatch ? parseGroundDate(dateMatch[1]) : "";
   const isMorning = session === "morning";
-  const frTime = isMorning ? "10:30\\s*am" : "10:30\\s*pm";
-  const srTime = isMorning ? "11:30\\s*am" : "11:30\\s*pm";
-  const frMatch = section.match(new RegExp("FR\\s*[·•]?\\s*" + frTime + "\\s*(\\d{2})", "i"));
-  const srMatch = section.match(new RegExp("SR\\s*[·•]?\\s*" + srTime + "\\s*(\\d{2})", "i"));
+  // Accept changed clock labels; identify values by their FR/SR labels only.
+  const frMatch = section.match(/FR\s*[·•]?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
+  const srMatch = section.match(/SR\s*[·•]?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
   const fr = frMatch?.[1] ?? "";
   const sr = srMatch?.[1] ?? "";
 
@@ -1051,11 +1050,11 @@ async function fetchKhanaparaTertiaryPreview(
     timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
   }).format(new Date());
 
-  if (!date || !/^\d{2}$/.test(fr) || !/^\d{2}$/.test(sr)) {
+  if (!date || (!/^\d{2}$/.test(fr) && !/^\d{2}$/.test(sr))) {
     return { ready: false, status: "result_values_missing", market, ...(date ? { date } : {}), source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL };
   }
-  if (dateDmyToIso(date) > dateDmyToIso(today)) {
-    return { ready: false, status: "future_date_rejected", market, date, source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL };
+  if (date !== today) {
+    return { ready: false, status: "date_not_current", market, date, source_updated_at: null, source_url: KHANAPARA_TERTIARY_URL };
   }
   return {
     ready: true, status: "verified", market, date,
@@ -1075,7 +1074,7 @@ async function fetchShillongMorningSourcePreview(): Promise<{
   fr?: string; sr?: string; source_updated_at: string | null; source_url: string;
 }> {
   const preview = await fetchGroundsMarketPreview(
-    SHILLONG_MORNING_MARKET, "Shillong Morning Result", "10:30 AM", "11:30 AM",
+    SHILLONG_MORNING_MARKET, "Shillong Morning Result", "", "",
   );
   if (!preview.ready && preview.status === "awaiting_complete_same_date_pair" && preview.page_date) {
     // The named card and today's date are verified; accept a published FR while SR is still pending.
@@ -1190,6 +1189,9 @@ async function fetchShillongNightSourcePreview(): Promise<{
   if (/\blast\b|previous|yesterday/i.test(pairText)) {
     return { ready: false, status: "previous_result_rejected", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
   }
+  const fr = /^\d{2}$/.test(pair[1]) ? pair[1] : undefined;
+  const sr = /^\d{2}$/.test(pair[2]) ? pair[2] : undefined;
+  if (!fr && !sr) return { ready: false, status: "awaiting_round_values", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
 
   const today = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric",
@@ -1199,7 +1201,7 @@ async function fetchShillongNightSourcePreview(): Promise<{
   }
   return {
     ready: true, status: "verified", market, date,
-    fr: pair[1], sr: pair[2],
+    ...(fr ? { fr } : {}), ...(sr ? { sr } : {}),
     source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL,
   };
 }
