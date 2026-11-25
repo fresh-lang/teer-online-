@@ -755,7 +755,8 @@ async function fetchKhanaparaSessionPreview(
   const section = plain.slice(start, endCandidate >= 0 ? endCandidate : Math.min(plain.length, start + 2200));
   const dateMatch = section.match(/Khanapara (?:Morning|Night) Result\s*[-–:]\s*(\d{2}[.\/-]\d{2}[.\/-]\d{4})/i);
   const date = dateMatch ? parseGroundDate(dateMatch[1]) : "";
-  const resultPattern = /F\/R(?:\s*\([^)]*\))?\s*\|\s*S\/R(?:\s*\([^)]*\))?\s*(\d{2})\s*\|\s*(\d{2})/i;
+  const resultToken = "(\\d{2}|\\*\\*|off|soon|pending|awaiting|--|xx)";
+  const resultPattern = new RegExp("F\\/R(?:\\s*\\([^)]*\\))?\\s*\\|\\s*S\\/R(?:\\s*\\([^)]*\\))?\\s*" + resultToken + "\\s*\\|\\s*" + resultToken, "i");
   const values = section.match(resultPattern);
   const fr = values?.[1] && /^\d{2}$/.test(values[1]) ? values[1] : undefined;
   const sr = values?.[2] && /^\d{2}$/.test(values[2]) ? values[2] : undefined;
@@ -808,8 +809,9 @@ async function fetchKhanaparaNightPreferredPreview(): Promise<{
   const dateMatch = section.match(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i);
   const monthIndex = dateMatch ? ["january","february","march","april","may","june","july","august","september","october","november","december"].indexOf(dateMatch[2].toLowerCase()) + 1 : 0;
   const date = dateMatch ? dateMatch[1].padStart(2, "0") + "/" + String(monthIndex).padStart(2, "0") + "/" + dateMatch[3] : "";
-  const frMatch = section.match(/FR(?:\s*\([^)]*\))?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
-  const srMatch = section.match(/SR(?:\s*\([^)]*\))?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
+  const roundToken = "(\\d{2}|\\*\\*|off|soon|pending|awaiting|--|xx)";
+  const frMatch = section.match(new RegExp("FR(?:\\s*\\([^)]*\\))?\\s*(?:\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\s*)?" + roundToken, "i"));
+  const srMatch = section.match(new RegExp("SR(?:\\s*\\([^)]*\\))?\\s*(?:\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\s*)?" + roundToken, "i"));
   const fr = frMatch?.[1] ?? "";
   const sr = srMatch?.[1] ?? "";
   const today = new Intl.DateTimeFormat("en-GB", {
@@ -1042,8 +1044,9 @@ async function fetchKhanaparaTertiaryPreview(
     ? String(dateParts[1]).padStart(2, "0") + "/" + monthNameToNumber(dateParts[2]) + "/" + dateParts[3]
     : "";
 
-  const frMatch = section.match(/FR(?:\s*\([^)]*\))?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
-  const srMatch = section.match(/SR(?:\s*\([^)]*\))?\s*(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})/i);
+  const roundToken = "(\\d{2}|\\*\\*|off|soon|pending|awaiting|--|xx)";
+  const frMatch = section.match(new RegExp("FR(?:\\s*\\([^)]*\\))?\\s*(?:\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\s*)?" + roundToken, "i"));
+  const srMatch = section.match(new RegExp("SR(?:\\s*\\([^)]*\\))?\\s*(?:\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\s*)?" + roundToken, "i"));
   const fr = frMatch?.[1] ?? "";
   const sr = srMatch?.[1] ?? "";
   const today = new Intl.DateTimeFormat("en-GB", {
@@ -1179,7 +1182,8 @@ async function fetchShillongNightSourcePreview(): Promise<{
     return { ready: false, status: "date_missing", market, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
   }
 
-  const roundPattern = /\bFR\b(?:\s*[-·•:]\s*|\s+)(?:\([^)]*\)\s*)?(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})\b[\s\S]{0,120}?\bSR\b(?:\s*[-·•:]\s*|\s+)(?:\([^)]*\)\s*)?(?:\d{1,2}:\d{2}\s*(?:AM|PM)\s*)?(\d{2})\b/i;
+  const roundToken = "(\\d{2}|\\*\\*|off|soon|pending|awaiting|--|xx)";
+  const roundPattern = new RegExp("\\bFR\\b(?:\\s*[-·•:]\\s*|\\s+)(?:\\([^)]*\\)\\s*)?(?:\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\s*)?" + roundToken + "\\b[\\s\\S]{0,120}?\\bSR\\b(?:\\s*[-·•:]\\s*|\\s+)(?:\\([^)]*\\)\\s*)?(?:\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\s*)?" + roundToken + "\\b", "i");
   const pair = section.match(roundPattern);
   if (!pair) {
     return { ready: false, status: "awaiting_complete_same_date_pair", market, date, source_updated_at: null, source_url: SHILLONG_NIGHT_SOURCE_URL };
