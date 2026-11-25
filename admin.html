@@ -759,7 +759,7 @@
         list.innerHTML = items.map(u => {
           const phone = String(u.phone || '');
           const when = u.last_activity_at ? new Date(u.last_activity_at).toLocaleString() : '--';
-          return '<div class="flex items-center justify-between gap-2 border-b border-teal-900/40 pb-2"><div><div class="font-bold text-white">' + escapeHtml(u.name || 'User') + ' (' + escapeHtml(String(u.uid || '')) + ')</div><div class="text-slate-400">+91 ' + escapeHtml(phone) + ' · ' + escapeHtml(when) + '</div></div><button onclick="openUserModal(' + JSON.stringify(phone) + ')" class="px-2 py-1 rounded bg-amber-400/20 text-amber-300 font-bold">Activity / Edit</button></div>';
+          return '<div class="flex items-center justify-between gap-2 border-b border-teal-900/40 pb-2"><div><div class="font-bold text-white">' + escapeHtml(u.name || 'User') + ' (' + escapeHtml(String(u.uid || '')) + ')</div><div class="text-slate-400">+91 ' + escapeHtml(phone) + ' · ' + escapeHtml(when) + '</div></div><button type="button" onclick="openActiveUserModal(' + JSON.stringify(String(u.id || '')) + ', ' + JSON.stringify(phone) + ')" class="px-2 py-1 rounded bg-amber-400/20 text-amber-300 font-bold">Activity / Edit</button></div>';
         }).join('');
       } catch (e) { list.textContent = 'Could not load active users: ' + (e.message || e); }
     }
@@ -771,6 +771,16 @@
         const text = r.innerText.toLowerCase();
         r.style.display = text.includes(query) ? '' : 'none';
       });
+    }
+
+    function openActiveUserModal(userId, phone) {
+      const cachedUsers = Object.values(allUsersCache || {});
+      const byId = cachedUsers.find(u => String(u.id || '') === String(userId || ''));
+      if (byId) return openUserModal(byId.phone);
+      const digits = String(phone || '').replace(/\\D/g, '');
+      const byPhone = cachedUsers.find(u => String(u.phone || '').replace(/\\D/g, '') === digits);
+      if (byPhone) return openUserModal(byPhone.phone);
+      alert('User profile data not loaded. Please refresh the Admin Panel and try again.');
     }
 
     function openUserModal(phone) {
