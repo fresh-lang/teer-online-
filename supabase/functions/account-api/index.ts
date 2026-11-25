@@ -287,7 +287,9 @@ async function queueMarketOffPushNotifications() {
       const dateShort = part("day") + " " + monthShort + " " + part("year");
       const dateDot = part("day") + "." + part("month") + "." + part("year");
       const datePattern = [dateIso, dateDash, date, dateDot, dateLong, dateShort];
-      const lowerSection = section.toLowerCase();
+      // Date must be found in the current market card only, never archive/history.
+      const currentCardSection = section.split(/previous\\s+results|last\\s+7\\s+days|last\\s+30\\s+days|previous\\s+30\\s+days/i)[0];
+      const lowerSection = currentCardSection.toLowerCase();
       const hasCurrentDate = datePattern.some((value) => {
         const needle = value.toLowerCase();
         let index = lowerSection.indexOf(needle);
