@@ -182,10 +182,11 @@
 
       <!-- Broadcast Custom Notification -->
       <div class="bg-[#0f1d21] p-4 rounded-2xl border border-teal-900/60 space-y-2.5">
-        <h3 class="font-bold text-sm text-amber-300">Broadcast Notification to All Users</h3>
-        <input type="text" id="eventTitle" placeholder="Notification Title (e.g. Special Draw Today!)" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">
-        <textarea id="eventMsg" placeholder="Message details..." rows="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none"></textarea>
-        <button onclick="sendEventNotification()" class="w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-teal-950 font-bold rounded-xl text-xs shadow">Broadcast to All Users</button>
+        <h3 class="font-bold text-sm text-amber-300">Send Notification to Active Users (Last 48 Hours)</h3>
+        <p class="text-[11px] text-slate-400">Message is saved in each active user's notification history and sent as push where subscribed.</p>
+        <input type="text" id="eventTitle" placeholder="Notification Title (e.g. Important App Update)" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none">
+        <textarea id="eventMsg" placeholder="Message details (account, app update, verified result notice)..." rows="2" class="w-full bg-black/50 border border-teal-800 rounded-xl p-2.5 text-xs text-white outline-none"></textarea>
+        <button onclick="sendEventNotification()" class="w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-teal-950 font-bold rounded-xl text-xs shadow">Send to Active Users</button>
       </div>
     </div>
 
@@ -1427,12 +1428,12 @@
       const title = document.getElementById('eventTitle').value.trim();
       const message = document.getElementById('eventMsg').value.trim();
       if (!title || !message) { alert('Enter both a notification title and message.'); return; }
-      if (!confirm('Send this notification to all subscribed Teer Online users?')) return;
+      if (!confirm('Send and save this notification only for users active in the last 48 hours?')) return;
       try {
         const result = await adminApi('admin_send_push', { title, message });
         document.getElementById('eventTitle').value = '';
         document.getElementById('eventMsg').value = '';
-        alert('Notification sent successfully. Recipients: ' + Number(result.recipients || 0));
+        alert('Notification saved for ' + Number(result.in_app_saved || 0) + ' active users. Push delivered to ' + Number(result.recipients || 0) + ' subscribed devices.');
       } catch (e) {
         alert('Notification could not be sent: ' + (e.message || e));
       }
