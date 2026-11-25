@@ -314,15 +314,15 @@ async function queueMarketOffPushNotifications() {
       const srHasResult = /^\d{1,2}$/.test(String(sameDayResult?.sr ?? ""));
       const hasAnySameDayResult = frHasResult || srHasResult;
       // Only inspect the current dated card. Archive/history text is never evidence.
-      const currentCardSection = section.split(/previous\\s+results|last\\s+7\\s+days|last\\s+30\\s+days|previous\\s+30\\s+days/i)[0];
-      const normalizedCurrentCard = currentCardSection.replace(/\\s+/g, " ").toLowerCase();
+      const currentCardSection = section.split(/previous\s+results|last\s+7\s+days|last\s+30\s+days|previous\s+30\s+days/i)[0];
+      const normalizedCurrentCard = currentCardSection.replace(/\s+/g, " ").toLowerCase();
       const explicitOffSignal = !hasAnySameDayResult &&
-        /\\b(?:market\\s+(?:is\\s+)?closed\\s+today|no\\s+game\\s+today|no\\s+teer\\s+today|holiday\\s+today|today\\s+(?:is\\s+)?(?:off|a\\s+holiday))\\b/i.test(normalizedCurrentCard);
+        /\b(?:market\s+(?:is\s+)?closed\s+today|no\s+game\s+today|no\s+teer\s+today|holiday\s+today|today\s+(?:is\s+)?(?:off|a\s+holiday))\b/i.test(normalizedCurrentCard);
       const roundOffSignal = (round: "FR" | "SR") => {
-        const labels = round === "FR" ? "(?:FR|F\\\\s*\\\\/\\\\s*R|First\\\\s+Round)" : "(?:SR|S\\\\s*\\\\/\\\\s*R|Second\\\\s+Round)";
+        const labels = round === "FR" ? "(?:FR|F\\s*\\/\\s*R|First\\s+Round)" : "(?:SR|S\\s*\\/\\s*R|Second\\s+Round)";
         const patterns = [
-          new RegExp("\\\\b" + labels + "\\\\b[^.!?]{0,35}\\\\bOFF\\\\b", "i"),
-          new RegExp("\\\\bOFF\\\\b[^.!?]{0,35}\\\\b" + labels + "\\\\b", "i"),
+          new RegExp("\\b" + labels + "\\b[^.!?]{0,35}\\bOFF\\b", "i"),
+          new RegExp("\\bOFF\\b[^.!?]{0,35}\\b" + labels + "\\b", "i"),
         ];
         return patterns.some(pattern => pattern.test(normalizedCurrentCard));
       };
