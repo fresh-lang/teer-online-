@@ -2258,7 +2258,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (["admin_dashboard", "admin_save_result", "admin_reset_result", "admin_save_settings", "admin_fetch_source_result", "admin_active_users", "admin_user_activity"].includes(action)) {
+    if (["admin_dashboard", "admin_adjust_wallet", "admin_save_result", "admin_reset_result", "admin_save_settings", "admin_fetch_source_result", "admin_active_users", "admin_user_activity"].includes(action)) {
       const admin = await getSession(req);
       if (!admin || !admin.id) return json({ error: "Please login again" }, 401, origin);
       if (!(await requireAdmin(admin))) return json({ error: "Admin access denied" }, 403, origin);
