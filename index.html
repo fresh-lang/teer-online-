@@ -3256,17 +3256,25 @@
     // ==========================================
     // AUTO DETECT REFERRAL LINK (?ref=...)
     // ==========================================
+    // Persist only pending referral attribution; never reuse the current user's own code.
+    function captureTeerReferralCode(rawCode) {
+      const code = String(rawCode || '').trim();
+      if (!/^[A-Za-z0-9_-]{1,64}$/.test(code)) return '';
+      try { localStorage.setItem('teer_pending_referral', code); } catch (_) {}
+      try { memoryStore.setItem('teer_captured_ref', code); } catch (_) {}
+      const field = document.getElementById('regReferral');
+      if (field) { field.value = code; field.readOnly = true; field.classList.add('border-emerald-500', 'bg-emerald-50', 'font-bold'); }
+      return code;
+    }
+    window.__teerCaptureReferralCode = captureTeerReferralCode;
     function checkUrlReferral() {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         let refCode = urlParams.get('ref') || urlParams.get('referral');
         const isRegisterPath = window.location.pathname.toLowerCase().includes('register');
-
-        if (refCode) {
-          memoryStore.setItem('teer_captured_ref', refCode);
-        } else {
-          refCode = memoryStore.getItem('teer_captured_ref');
-        }
+        if (!refCode) { try { refCode = localStorage.getItem('teer_pending_referral'); } catch (_) {} }
+        if (!refCode) refCode = memoryStore.getItem('teer_captured_ref');
+        refCode = captureTeerReferralCode(refCode);
 
         // Referral visitors see the APK download prompt even if this browser already has a logged-in session.
         if (refCode) {
@@ -3287,10 +3295,14 @@
                   <div style="font-size:12px;color:#134e4a;font-weight:700">House Ending: ₹10 = ₹90</div>
                 </div>
                 <button id="teerReferralDownloadBtn" style="display:block;width:100%;border:0;border-radius:12px;padding:14px;background:#078348;color:white;font-size:15px;font-weight:800;margin-bottom:10px">Download Latest APK</button>
+                <button id="teerReferralOpenAppBtn" style="display:block;width:100%;border:1px solid #0b6653;border-radius:12px;padding:12px;background:#ecfdf5;color:#075b4b;font-size:13px;font-weight:800;margin-bottom:9px">APK install ke baad: Open App with Referral</button>
                 <button id="teerReferralRegisterBtn" style="display:block;width:100%;border:1px solid #0b6653;border-radius:12px;padding:12px;background:white;color:#075b4b;font-size:14px;font-weight:700">Continue to Register</button>
               </div>`;
             document.body.appendChild(overlay);
             document.getElementById('teerReferralDownloadBtn').addEventListener('click', () => triggerInstallAction());
+            document.getElementById('teerReferralOpenAppBtn').addEventListener('click', () => {
+              window.location.href = 'teeronline://register?ref=' + encodeURIComponent(refCode);
+            });
             document.getElementById('teerReferralRegisterBtn').addEventListener('click', () => {
               overlay.remove();
               const authM = document.getElementById('authModal');
@@ -3942,7 +3954,8 @@
       const name = document.getElementById('regName').value.trim();
       const phone = document.getElementById('regPhone').value.trim();
       const password = document.getElementById('regPass').value;
-      const referredBy = document.getElementById('regReferral').value.trim();
+      const referralField = document.getElementById('regReferral');
+      const referredBy = (referralField.value.trim() || (() => { try { return localStorage.getItem('teer_pending_referral') || ''; } catch (_) { return ''; } })()).trim();
       if (!name || !/^\d{10}$/.test(phone)) { alert('Enter a valid name and 10-digit mobile number.'); return; }
       if (password.length < 8) { alert('Password must be at least 8 characters long.'); return; }
       try {
@@ -3952,6 +3965,8 @@
         state.user = data.user;
         await saveAccountSession();
         await linkOneSignalAccount(state.user);
+        try { localStorage.removeItem('teer_pending_referral'); } catch (_) {}
+        try { memoryStore.removeItem('teer_captured_ref'); } catch (_) {}
         accountIsDemo = false;
         // Registration is already committed on the server. A balance-read hiccup
         // must not misreport the newly created account as a failed registration.
