@@ -54,6 +54,22 @@ jobs:
           npm run build:onesignal
           echo "{\"build\":${GITHUB_RUN_NUMBER}}" > www/build-info.json
           npx cap add android
+          # Register the referral deep link used after installing the APK.
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          p='android/app/src/main/AndroidManifest.xml'
+          ET.register_namespace('android', 'http://schemas.android.com/apk/res/android')
+          tree=ET.parse(p); root=tree.getroot(); ns='{http://schemas.android.com/apk/res/android}'
+          app=root.find('application')
+          activity=next((a for a in app.findall('activity') if a.get(ns+'name','').endswith('MainActivity')), None)
+          if activity is None: raise SystemExit('MainActivity not found')
+          intent=ET.SubElement(activity, 'intent-filter')
+          ET.SubElement(intent, 'action', {ns+'name':'android.intent.action.VIEW'})
+          ET.SubElement(intent, 'category', {ns+'name':'android.intent.category.DEFAULT'})
+          ET.SubElement(intent, 'category', {ns+'name':'android.intent.category.BROWSABLE'})
+          ET.SubElement(intent, 'data', {ns+'scheme':'teeronline', ns+'host':'register'})
+          tree.write(p, encoding='utf-8', xml_declaration=True)
+          PY
           # Native updater downloads the signed APK and opens Android's package installer.
           cat > android/app/src/main/java/com/freshlang/teeronline/TeerAppUpdaterPlugin.java <<'JAVA'
           package com.freshlang.teeronline;
