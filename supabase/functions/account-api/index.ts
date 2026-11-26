@@ -407,6 +407,81 @@ async function queueMarketOffPushNotifications() {
   }
   return { checked: true, date, sunday, off: confirmedOff, queued, source_errors: sourceErrors };
 }
+
+async function queueDailyAutoMessages() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(now);
+  const part = (type: string) => parts.find(p => p.type === type)?.value ?? "";
+  const hour = Number(part("hour"));
+  const minute = Number(part("minute"));
+  const slot = hour === 10 && minute >= 0 && minute < 10
+    ? "morning"
+    : hour === 18 && minute >= 0 && minute < 10
+    ? "evening"
+    : null;
+  if (!slot) return { scheduled: false, reason: "outside_send_window", saved: 0 };
+
+  const indiaDate = part("year") + "-" + part("month") + "-" + part("day");
+  const since = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
+  const [loginQ, betQ] = await Promise.all([
+    supabase.from("app_users").select("id,last_login_at")
+      .gte("last_login_at", since).order("last_login_at", { ascending: false }).limit(500),
+    supabase.from("bets").select("user_id,created_at")
+      .gte("created_at", since).order("created_at", { ascending: false }).limit(5000),
+  ]);
+  if (loginQ.error) throw loginQ.error;
+  if (betQ.error) throw betQ.error;
+
+  // Match the Admin Panel's existing Active Users definition: login or bet activity
+  // within the last 48 hours.
+  const activeAt = new Map<string, number>();
+  for (const row of loginQ.data ?? []) {
+    if (row.last_login_at) activeAt.set(row.id, new Date(row.last_login_at).getTime());
+  }
+  for (const row of betQ.data ?? []) {
+    const ts = new Date(row.created_at).getTime();
+    if (!activeAt.has(row.user_id) || ts > (activeAt.get(row.user_id) ?? 0)) {
+      activeAt.set(row.user_id, ts);
+    }
+  }
+  const activeIds = Array.from(activeAt.keys());
+  if (!activeIds.length) return { scheduled: true, slot, active_users: 0, saved: 0 };
+
+  const dailyMessages = [
+    { key: "welcome", title: "👋 Welcome Back!", message: "Welcome back! Aaj ki important app information aur account activity check karein." },
+    { key: "app_update", title: "📲 Latest App Update", message: "Latest app version available hai. Update section check karein." },
+    { key: "wallet", title: "💰 Wallet Reminder", message: "Apna wallet balance aur transaction history check karein." },
+    { key: "verified_result", title: "🎯 Verified Result Update", message: "Verified result update app me available hai." },
+    { key: "referral_salary", title: "💎 Refer & Earn Weekly Salary", message: "💎 REFER & EARN! 10+ Active Referrals Complete Karo Aur Paao ₹2,000+ Weekly Salary! 🔥 Eligibility rules apply." },
+    { key: "deposit_bonus", title: "🎁 Special Deposit Bonus", message: "🎁 SPECIAL DEPOSIT BONUS! First Deposit Par 100% Bonus! Uske Baad Har Deposit Par Extra 5% Bonus! Terms & eligibility apply." },
+  ];
+  const messages = slot === "morning"
+    ? dailyMessages
+    : dailyMessages.filter(item => item.key === "referral_salary" || item.key === "deposit_bonus");
+  const rows = activeIds.flatMap(userId => messages.map(item => ({
+    user_id: userId,
+    event_key: "daily_auto:" + indiaDate + ":" + slot + ":" + item.key,
+    type: "daily_auto",
+    title: item.title,
+    message: item.message,
+  })));
+
+  let saved = 0;
+  for (let i = 0; i < rows.length; i += 500) {
+    const { data, error } = await supabase.from("user_notifications").upsert(rows.slice(i, i + 500), {
+      onConflict: "user_id,event_key",
+      ignoreDuplicates: true,
+    }).select("id");
+    if (error) throw error;
+    saved += data?.length ?? 0;
+  }
+  return { scheduled: true, slot, active_users: activeIds.length, messages_per_user: messages.length, saved };
+}
+
 async function queueResultRoundPushNotification(market: string, date: string, round: "FR" | "SR", value: string) {
   const eventKey = `${market}:${date}:${round}:${value}`;
   const marketNames: Record<string, string> = {
@@ -514,7 +589,7 @@ async function flushRefundPushNotifications() {
   const restKey = Deno.env.get("ONESIGNAL_REST_API_KEY")?.trim();
   if (!restKey) return { configured: false, sent: 0, failed: 0 };
   const { data: pending, error } = await supabase.from("user_notifications")
-    .select("id,user_id,title,message")
+    .select("id,user_id,type,title,message")
     .is("push_sent_at", null)
     .order("created_at", { ascending: true })
     .limit(100);
@@ -532,8 +607,8 @@ async function flushRefundPushNotifications() {
           target_channel: "push",
           headings: { en: item.title },
           contents: { en: item.message },
-          name: `Personal refund notification ${item.id}`,
-          data: { type: "bet_refund", notification_id: item.id }
+          name: `Personal ${item.type ?? "user"} notification ${item.id}`,
+          data: { type: item.type ?? "personal_notification", notification_id: item.id }
         })
       });
       const responseText = await response.text();
@@ -1588,6 +1663,7 @@ Deno.serve(async (req) => {
     // cause repeated source fetches inside the five-minute window.
     if (action === "scheduled_result_sync") {
       const marketOffNotifications = await queueMarketOffPushNotifications();
+      const dailyAutoNotifications = await queueDailyAutoMessages();
       const sync = await syncKhanaparaSourceIfDue(false);
       const khanaparaMorningSync = await syncKhanaparaSessionIfDue("morning");
       const khanaparaNightSync = await syncKhanaparaSessionIfDue("night");
@@ -1600,7 +1676,7 @@ Deno.serve(async (req) => {
       const expiredBetRefunds = await rpc("refund_unresolved_teer_bets", { p_before_date: previousIndiaDate });
       const notifications = await flushResultPushNotifications();
       const refundPushNotifications = await flushRefundPushNotifications();
-      return json({ success: true, marketOffNotifications, sync, khanaparaMorningSync, khanaparaNightSync, shillongMorningSync, shillongNightSync, shillongSync, expiredBetRefunds, notifications, refundPushNotifications }, 200, origin);
+      return json({ success: true, marketOffNotifications, dailyAutoNotifications, sync, khanaparaMorningSync, khanaparaNightSync, shillongMorningSync, shillongNightSync, shillongSync, expiredBetRefunds, notifications, refundPushNotifications }, 200, origin);
     }
 
 
@@ -1865,16 +1941,6 @@ Deno.serve(async (req) => {
       if (!user || !user.id) return json({ error: "Please login again" }, 401, origin);
       if (action === "my_notifications") {
         const limit = Math.min(100, Math.max(1, Number.isInteger(Number(body.limit)) ? Number(body.limit) : 50));
-        const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-        const getPart = (t: string) => parts.find(p => p.type === t)?.value ?? "";
-        const indiaDate = getPart("year") + "-" + getPart("month") + "-" + getPart("day");
-        const dailyKey = "daily_info:" + indiaDate;
-        const { error: dailyError } = await supabase.from("user_notifications").upsert({
-          user_id: user.id, event_key: dailyKey, type: "daily",
-          title: "Daily Account Update",
-          message: "Welcome back to Teer Online. Check your account activity, wallet transactions and verified app updates here. This is an informational notification.",
-        }, { onConflict: "user_id,event_key", ignoreDuplicates: true });
-        if (dailyError) throw dailyError;
         const { data, error } = await supabase.from("user_notifications").select("id,event_key,type,title,message,created_at,read_at")
           .eq("user_id", user.id).order("created_at", { ascending: false }).limit(limit);
         if (error) throw error;
